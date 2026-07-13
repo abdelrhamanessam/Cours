@@ -1,0 +1,425 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Mr Maths â€” Elite Math Tutoring with Issam Edris</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:opsz,wght@14..32,400;14..32,500;14..32,600;14..32,700;14..32,800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="style.css">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.css" crossorigin="anonymous">
+<script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.js" crossorigin="anonymous"></script>
+<script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/contrib/auto-render.min.js" crossorigin="anonymous" onload="if(typeof renderMathInElement==='function'){document.querySelectorAll('.math-render').forEach(function(el){renderMathInElement(el,{delimiters:[{left:'$$',right:'$$',display:true},{left:'\\(',right:'\\)',display:false}]});});}"></script>
+<script src="labels.js"></script>
+<script defer src="animengine.min.js"></script>
+
+</head>
+<body>
+
+<!-- Navigation -->
+<nav>
+  <div class="container nav-anim">
+    <a href="#" class="nl2" onclick="showView('landing')">
+      <span class="logo-mark">IE</span>
+      <span class="nl-full">
+        <span class="nl-name">Issam Edris</span>
+        <span class="nl-title">MR • Mathematics</span>
+      </span>
+    </a>
+    <div class="nv1">
+      <a href="#" class="nv-link active" onclick="showView('platform')">Dashboard</a>
+      <a href="#" class="nv-link" onclick="showView('courses')">Courses</a>
+      <a href="#" class="nv-link" onclick="showView('profile')">Profile</a>
+      <a href="#" class="nv-link" onclick="showView('review')">Review</a>
+      <div class="nv-cta" id="auth-status"></div>
+    </div>
+  </div>
+</nav>
+
+<!-- ============ LANDING PAGE ============ -->
+<div id="view-landing" class="landing-view">
+
+<section class="hero" id="hero">
+  <div class="hero-bg">
+    <div class="gradient-1"></div>
+    <div class="gradient-2"></div>
+  </div>
+  <div class="container">
+    <div class="hero-split">
+      <div class="hero-text-col">
+        <div class="hero-tag" id="ht-tag">Elite Online Tutoring</div>
+        <h1 id="ht-title">Master Mathematics with <span class="highlight">Mr Essam</span></h1>
+        <p class="hero-desc" id="ht-desc">Expert math tutoring for secondary school students. Clear explanations, step-by-step problem solving, and proven results.</p>
+        <div class="hero-actions">
+          <button class="btn btn-primary btn-lg" onclick="showView('courses')">Browse Courses</button>
+          <a href="#" onclick="showView('platform');return false" class="btn btn-outline btn-lg">Go to Dashboard</a>
+        </div>
+      </div>
+      <div class="hero-img-col">
+        <div class="hero-img-frame">
+          <div class="hero-img-placeholder" id="hero-teacher-img">
+            <div class="hip-icon">📷</div>
+          </div>
+        </div>
+        <div class="hero-img-name" id="ht-name">Mr Essam Edris</div>
+        <div class="hero-img-title" id="ht-title-text">Mathematics Instructor</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+
+
+
+
+<section class="section" style="background:var(--surface)">
+  <div class="container">
+    <div class="section-header">
+      <h2>How It Works</h2>
+      <p>Three simple steps to math mastery.</p>
+    </div>
+    <div class="steps-grid">
+      <div class="step-card">
+        <div class="step-number">01</div>
+        <h3>Assess Your Level</h3>
+        <p>Take a quick diagnostic to identify strengths and areas for growth. We build your personalized learning path from the results.</p>
+      </div>
+      <div class="step-card">
+        <div class="step-number">02</div>
+        <h3>Learn Step by Step</h3>
+        <p>Work through interactive lessons at your own pace. Each concept is explained clearly with worked examples and practice.</p>
+      </div>
+      <div class="step-card">
+        <div class="step-number">03</div>
+        <h3>Master & Track</h3>
+        <p>Solidify understanding with adaptive quizzes. Track your progress across topics and celebrate every milestone.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+
+<section class="section" id="testimonials">
+  <div class="container">
+    <div class="section-header">
+      <h2>What Students Say</h2>
+      <p>Real results from real students who found their confidence through Mr Maths.</p>
+    </div>
+    <div class="testimonials-grid">
+      <div class="testimonial-card">
+        <div class="testimonial-stars">&#9733;&#9733;&#9733;&#9733;&#9733;</div>
+        <blockquote>"Mr Maths changed how I see math entirely. What used to feel impossible now just feels like a puzzle I can solve. My grades went from a C to an A in one term."</blockquote>
+        <div class="testimonial-author">
+          <div class="avatar">S</div>
+          <div>
+            <div class="name">Sarah K.</div>
+            <div class="role">Year 11 Student</div>
+          </div>
+        </div>
+      </div>
+      <div class="testimonial-card">
+        <div class="testimonial-stars">&#9733;&#9733;&#9733;&#9733;&#9733;</div>
+        <blockquote>"The step-by-step approach is exactly what my son needed. He used to dread math homework. Now he works through lessons on his own and actually enjoys it."</blockquote>
+        <div class="testimonial-author">
+          <div class="avatar">M</div>
+          <div>
+            <div class="name">Maria R.</div>
+            <div class="role">Parent</div>
+          </div>
+        </div>
+      </div>
+      <div class="testimonial-card">
+        <div class="testimonial-stars">&#9733;&#9733;&#9733;&#9733;&#9733;</div>
+        <blockquote>"I was struggling with trigonometry for months. After just three sessions with Mr Maths, the concepts clicked. The precision of the explanations makes all the difference."</blockquote>
+        <div class="testimonial-author">
+          <div class="avatar">J</div>
+          <div>
+            <div class="name">James T.</div>
+            <div class="role">Year 10 Student</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+
+<section class="section landing-courses" id="landing-courses">
+  <div class="container">
+    <div class="section-header">
+      <h2>Our Courses</h2>
+      <p>Structured math courses for every level. Start where you are and build mastery step by step.</p>
+    </div>
+    <div class="lc-grid" id="landing-courses-grid"></div>
+  </div>
+</section>
+
+<footer>
+  <div class="container">
+    <div class="footer-grid">
+      <div>
+        <div style="display:flex;align-items:center;gap:10px;font-weight:800;font-size:1.25rem;color:var(--bg);margin-bottom:16px">
+          <span style="width:36px;height:36px;border-radius:var(--radius);background:var(--primary);color:var(--ink);display:flex;align-items:center;justify-content:center;font-size:1.125rem;font-weight:800">M</span>
+          Mr Maths
+        </div>
+        <p>Premium online mathematics tutoring with Issam Edris. Building confident, precise thinkers â€” one lesson at a time.</p>
+      </div>
+      <div>
+        <h4>Platform</h4>
+        <a href="#" onclick="showView('platform')">Dashboard</a>
+        <a href="#" onclick="showView('courses')">Courses</a>
+        <a href="#">Quizzes</a>
+        <a href="#">Progress</a>
+      </div>
+      <div>
+        <h4>Company</h4>
+        <a href="#" onclick="showView('landing');return false">Home</a>
+        <a href="#testimonials">Testimonials</a>
+        <a href="#" onclick="showView('profile');return false">Profile</a>
+        <a href="#">Contact</a>
+      </div>
+      <div>
+        <h4>Support</h4>
+        <a href="#">Help Center</a>
+        <a href="#">Terms of Service</a>
+        <a href="#">Privacy Policy</a>
+        <a href="#">FAQ</a>
+      </div>
+    </div>
+    <div class="legal">
+      <span>&copy; 2026 Mr Maths. All rights reserved.</span>
+      <span>Designed with precision for Issam Edris</span>
+    </div>
+  </div>
+</footer>
+
+<script>
+// Animations for landing page
+(function() {
+  if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+  var AE = window.AnimEngine;
+  if (!AE) return;
+  // Hero entrance
+  setTimeout(function() {
+    AE.animate2D('.hero-tag', 'slideInUp', { duration: 500 });
+    AE.animate2D('#ht-title', 'slideInUp', { duration: 600, delay: 150 });
+    AE.animate2D('.hero-desc', 'slideInUp', { duration: 500, delay: 300 });
+    AE.animate2D('.hero-actions', 'fadeIn', { duration: 400, delay: 450 });
+    AE.animate2D('.hero-img-col', 'slideInRight', { duration: 700, delay: 200 });
+  }, 100);
+  // Sections on scroll
+  AE.animate2D('.step-card', 'slideInUp', {
+    duration: 500, stagger: 120,
+    scrollTrigger: { threshold: 0.2, once: true }
+  });
+  AE.animate2D('.testimonial-card', 'slideInUp', {
+    duration: 500, stagger: 100,
+    scrollTrigger: { threshold: 0.15, once: true }
+  });
+  AE.animate2D('.lc-grid', 'fadeIn', {
+    duration: 600,
+    scrollTrigger: { threshold: 0.15, once: true }
+  });
+  // Section headers
+  AE.animate2D('.section-header', 'slideInUp', {
+    duration: 500,
+    scrollTrigger: { threshold: 0.2, once: true }
+  });
+})();
+</script>
+</div>
+<!-- END LANDING PAGE -->
+
+<!-- ============ PLATFORM VIEW ============ -->
+<div id="view-platform" class="platform-view">
+<div class="dashboard-header">
+  <div class="container" id="dash-header-content">
+  </div>
+</div>
+<div class="dash-body" id="dash-body">
+  <div class="container">
+    <div id="dash-content"><div style="text-align:center;padding:48px;color:var(--muted)">Loading your dashboard…</div></div>
+  </div>
+</div>
+</div>
+<!-- END PLATFORM VIEW -->
+
+<!-- ============ COURSES VIEW ============ -->
+<div id="view-courses" class="courses-view">
+  <div class="courses-bg">
+    <div class="cb-orb cb-orb--gold"></div>
+    <div class="cb-orb cb-orb--navy"></div>
+    <div class="cb-noise"></div>
+    <div class="cb-symbol" style="top:8%;left:5%;animation-delay:0s">&#8730;</div>
+    <div class="cb-symbol" style="top:15%;right:8%;animation-delay:3s">&#960;</div>
+    <div class="cb-symbol" style="top:45%;left:3%;animation-delay:7s">&#8747;</div>
+    <div class="cb-symbol" style="top:60%;right:4%;animation-delay:11s">&#931;</div>
+    <div class="cb-symbol" style="top:75%;left:6%;animation-delay:5s">&#916;</div>
+    <div class="cb-symbol" style="top:30%;left:92%;animation-delay:9s">f(x)</div>
+    <div class="cb-symbol" style="top:85%;right:9%;animation-delay:15s">&#8730;</div>
+    <div class="cb-symbol" style="top:50%;left:95%;animation-delay:2s">&#960;</div>
+  </div>
+  <div class="container courses-list">
+    <div class="courses-header">
+      <div><h1>Courses</h1><p>Structured math courses across every key topic. Pick a subject and learn step by step.</p></div>
+      <div class="courses-filter" id="courses-filter"></div>
+    </div>
+    <div class="courses-grid" id="courses-grid">
+      <!-- Rendered by JS -->
+    </div>
+  </div>
+</div>
+<!-- END COURSES VIEW -->
+
+<!-- ============ QUIZ VIEW ============ -->
+<div id="view-quiz" class="quiz-view">
+<div class="quiz-header">
+  <div class="container">
+    <button class="back-btn" onclick="showView('courses')">&larr; Back to Courses</button>
+    <span id="quiz-type-label" style="font-size:.75rem;font-weight:600;color:var(--muted);text-transform:uppercase"></span>
+    <div class="quiz-progress-bar"><div class="bar" id="quiz-bar" style="width:0%"></div></div>
+    <span class="quiz-progress-text" id="quiz-progress-text">0/0</span>
+  </div>
+</div>
+<div class="quiz-body">
+  <div class="container" id="quiz-content">
+    <!-- Rendered by JS -->
+  </div>
+</div>
+</div>
+
+<!-- ============ CONTENT VIEW ============ -->
+<div id="view-content" class="content-view">
+<div class="lesson-view-header">
+  <div class="container">
+    <button class="back-btn" onclick="showView('courses')">&larr; Back to Courses</button>
+    <span class="lesson-breadcrumb" id="content-breadcrumb"></span>
+  </div>
+</div>
+<div class="lesson-view-body">
+  <div class="container" id="content-page">
+    <!-- Rendered by JS -->
+  </div>
+</div>
+</div>
+
+<!-- ============ PROFILE VIEW ============ -->
+<div id="view-profile" class="profile-view" style="display:none">
+<div class="pv-header">
+  <div class="container">
+    <button class="pv-back" onclick="showView('platform')">&larr; Dashboard</button>
+  </div>
+</div>
+<div class="pv-body">
+  <div class="container">
+    <div class="pv-card" id="profile-card">
+      <div class="pv-photo-wrap">
+        <div class="pv-photo" id="profile-avatar">U</div>
+        <label class="pv-photo-edit" id="profile-photo-edit" title="Change photo">
+          <input type="file" accept="image/*" id="profile-photo-input" hidden onchange="uploadProfilePic(event)">
+          <svg width="20" height="20" viewBox="0 0 20 20" fill="none"><path d="M10 3a1 1 0 0 1 1 1v5h5a1 1 0 1 1 0 2h-5v5a1 1 0 1 1-2 0v-5H4a1 1 0 1 1 0-2h5V4a1 1 0 0 1 1-1z" fill="currentColor"/></svg>
+        </label>
+      </div>
+      <h2 class="pv-name" id="profile-name">User</h2>
+      <p class="pv-email" id="profile-email">—</p>
+      <div class="pv-level" id="profile-level-wrap"></div>
+      <div class="pv-stats">
+        <div class="pv-stat"><span class="pv-stat-num" id="pm-quizzes">0</span><span class="pv-stat-lbl">Lessons Done</span></div>
+        <div class="pv-stat-divider"></div>
+        <div class="pv-stat"><span class="pv-stat-num" id="pm-avg">—</span><span class="pv-stat-lbl">Avg Score</span></div>
+      </div>
+      <div class="pv-progress" id="profile-topics">
+        <h3 class="pv-progress-head">Lesson Progress</h3>
+        <div id="profile-progress-list"><p style="color:var(--muted);font-size:.875rem">No progress yet.</p></div>
+      </div>
+      <button class="btn btn-outline pv-signout" onclick="signOut()">Sign Out</button>
+    </div>
+  </div>
+</div>
+</div>
+
+<!-- ============ REVIEW VIEW ============ -->
+<div id="view-review" class="review-view" style="display:none">
+<div class="rv-header">
+  <div class="container">
+    <button class="rv-back" onclick="showView('platform')">&larr; Dashboard</button>
+  </div>
+</div>
+<div class="rv-body">
+  <div class="container">
+    <div id="review-content"><div style="text-align:center;padding:48px;color:var(--muted)">Loading review…</div></div>
+  </div>
+</div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="script.js"></script>
+<script>
+// Load teacher settings from DB for the hero
+(function loadHeroSettings() {
+  if (!window.supabase) return;
+  try {
+    var sb = window.supabase.createClient(
+      'https://usllnkoqqpfynsiprvqh.supabase.co',
+      'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InVzbGxua29xcXBmeW5zaXBydnFoIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODM3MTYxMzgsImV4cCI6MjA5OTI5MjEzOH0.JbWJo9S7phVksNx8ib8zXY6QkHy-6FpLT-vDedEFp_g'
+    );
+    sb.from('site_config').select('key, value').then(function(res) {
+      if (!res.data) return;
+      var cfg = {}; res.data.forEach(function(r) { cfg[r.key] = r.value; });
+      if (cfg.teacher_name) document.getElementById('ht-name').textContent = cfg.teacher_name;
+      if (cfg.teacher_title) document.getElementById('ht-title-text').textContent = cfg.teacher_title;
+      if (cfg.teacher_image) {
+        var ph = document.getElementById('hero-teacher-img');
+        ph.innerHTML = '<img src="' + cfg.teacher_image + '" alt="Mr Essam" class="hero-img-loaded">';
+        ph.classList.add('loaded');
+      }
+      if (cfg.hero_tag) document.getElementById('ht-tag').textContent = cfg.hero_tag;
+      if (cfg.hero_title) document.getElementById('ht-title').innerHTML = cfg.hero_title;
+      if (cfg.hero_desc) document.getElementById('ht-desc').textContent = cfg.hero_desc;
+    }).catch(function() {});
+  } catch(e) {}
+})();
+</script>
+<!-- Auth Modal -->
+<div id="auth-modal" class="auth-modal">
+  <div class="auth-modal-content">
+    <button class="auth-close" onclick="hideAuthModal()">&times;</button>
+    <div class="auth-tabs">
+      <button class="auth-tab active" onclick="switchAuthTab('login')">Log In</button>
+      <button class="auth-tab" onclick="switchAuthTab('signup')">Sign Up</button>
+    </div>
+    <div id="auth-login-form">
+      <input type="email" id="login-email" class="auth-input" placeholder="Email">
+      <input type="password" id="login-password" class="auth-input" placeholder="Password">
+      <div style="display:flex;gap:8px;margin-top:12px"><button class="btn btn-primary" onclick="login()" style="flex:1;justify-content:center">Log In</button></div>
+    </div>
+    <div id="auth-signup-form" style="display:none">
+      <input type="text" id="signup-name" class="auth-input" placeholder="Full Name">
+      <input type="email" id="signup-email" class="auth-input" placeholder="Email">
+      <input type="password" id="signup-password" class="auth-input" placeholder="Password">
+      <label style="font-size:.75rem;font-weight:500;color:var(--muted);display:block;margin-bottom:4px">Academic Level</label>
+      <select id="signup-level" class="auth-input">
+        <option value="sec1">Secondary 1</option>
+        <option value="sec2">Secondary 2</option>
+        <option value="sec3">Secondary 3</option>
+      </select>
+      <div style="display:flex;gap:8px;margin-top:12px"><button class="btn btn-primary" onclick="signUp()" style="flex:1;justify-content:center">Sign Up</button></div>
+    </div>
+  </div>
+</div>
+
+<style>
+.auth-modal{position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,.4);display:none;align-items:center;justify-content:center;z-index:1000}
+.auth-modal.show{display:flex}
+.auth-modal-content{background:var(--bg);border-radius:var(--radius-lg);padding:32px;max-width:380px;width:90%}
+.auth-close{float:right;font-size:1.5rem;background:none;border:none;cursor:pointer;color:var(--muted)}
+.auth-tabs{display:flex;gap:0;margin:16px 0 20px;border-bottom:1px solid var(--border)}
+.auth-tab{padding:8px 16px;font-size:.875rem;font-weight:500;border:none;background:none;cursor:pointer;color:var(--muted);border-bottom:2px solid transparent}
+.auth-tab.active{color:var(--ink);border-bottom-color:var(--primary)}
+.auth-input{width:100%;padding:12px 14px;border:1px solid var(--border);border-radius:var(--radius);margin-bottom:10px;font-size:.9375rem;background:var(--bg);color:var(--ink);box-sizing:border-box}
+</style>
+<!-- impeccable-live-start -->
+<!-- impeccable-live-end -->
+</body>
+</html>

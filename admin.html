@@ -1,0 +1,2284 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Mr Maths Admin</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:opsz,wght@14..32,400;14..32,500;14..32,600;14..32,700;14..32,800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="style.css">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.css" crossorigin="anonymous">
+<script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.js" crossorigin="anonymous"></script>
+<script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/contrib/auto-render.min.js" crossorigin="anonymous"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="https://cdn.jsdelivr.net/npm/mammoth@1.8.0/mammoth.browser.min.js"></script>
+<style>
+:root{--z-modal:100;--z-modal-backdrop:99;--z-sticky:50;--z-tooltip:200;--z-toast:300}
+.admin-body{padding:40px 0}
+.admin-login{max-width:360px;margin:80px auto;text-align:center}
+.admin-login h1{margin-bottom:24px;font-size:1.5rem;font-weight:800;text-wrap:balance}
+.admin-input{width:100%;padding:12px 16px;border:1px solid var(--border);border-radius:var(--radius);font-size:.9375rem;margin-bottom:12px;background:var(--bg);color:var(--ink);box-sizing:border-box;transition:border-color .15s}
+.admin-input:focus{border-color:var(--primary);outline:none;box-shadow:0 0 0 3px oklch(0.8 0.15 85 / .15)}
+.admin-layout{display:flex;gap:32px;min-height:calc(100vh - 120px)}
+.admin-main{flex:1;min-width:0}
+.admin-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:24px;padding-bottom:16px;border-bottom:1px solid var(--border);gap:12px}
+.admin-header h1{font-size:1.25rem;font-weight:700;margin:0}
+.admin-header-actions{display:flex;gap:8px;align-items:center;flex-shrink:0}
+.hidden{display:none!important}
+.admin-page{display:none}
+.admin-page.active{display:block}
+@keyframes fadeSlide{from{opacity:0;transform:translateY(4px)}to{opacity:1;transform:translateY(0)}}
+@media(prefers-reduced-motion:no-preference){.admin-page.active{animation:fadeSlide .2s ease}}
+
+.admin-sidebar{width:200px;flex-shrink:0;position:sticky;top:40px;align-self:start}
+.admin-sidebar a{display:flex;align-items:center;gap:10px;padding:10px 14px;color:var(--muted);text-decoration:none;border-radius:var(--radius);margin-bottom:2px;font-weight:500;font-size:.875rem;cursor:pointer;transition:background .15s,color .15s;outline:none}
+.admin-sidebar a:focus-visible{box-shadow:inset 0 0 0 2px var(--primary)}
+.admin-sidebar a:hover{color:var(--ink);background:var(--surface)}
+.admin-sidebar a.active{color:var(--ink);background:var(--primary);font-weight:600}
+.admin-sidebar a svg{width:18px;height:18px;flex-shrink:0}
+
+/* Professional course cards */
+.crs-list{display:flex;flex-direction:column;gap:12px}
+.crs-card{background:#fff;border:1px solid oklch(0.88 0.015 85);border-radius:20px;overflow:hidden;transition:box-shadow .3s cubic-bezier(.16,1,.3,1),translate .25s;box-shadow:0 4px 16px oklch(0 0 0 / .03)}
+.crs-card:hover{box-shadow:0 8px 28px oklch(0 0 0 / .06);translate:0 -1px}
+.crs-card-header{display:flex;align-items:flex-start;gap:16px;padding:18px 22px;cursor:pointer;user-select:none}
+.crs-card-header:hover{background:oklch(0.985 0.005 85)}
+.crs-icon{width:40px;height:40px;border-radius:14px;background:var(--primary-soft);display:flex;align-items:center;justify-content:center;font-size:1.25rem;flex-shrink:0;line-height:1}
+.crs-info{flex:1;min-width:0}
+.crs-info .crs-title{font-weight:700;font-size:1rem;color:var(--ink);display:flex;align-items:center;gap:10px;flex-wrap:wrap;letter-spacing:-.02em}
+.crs-info .crs-desc{font-size:.8125rem;color:var(--muted);margin-top:3px;line-height:1.5;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.crs-meta{display:flex;gap:12px;margin-top:8px;flex-wrap:wrap}
+.crs-meta-item{font-size:.6875rem;color:var(--muted);display:flex;align-items:center;gap:4px}
+.crs-meta-item strong{font-weight:600;color:var(--ink)}
+.crs-badge{font-size:.625rem;padding:3px 10px;border-radius:999px;background:var(--primary-soft);color:var(--primary);font-weight:700;letter-spacing:.04em;flex-shrink:0;line-height:1.6}
+.crs-actions{display:flex;gap:6px;align-items:center;flex-shrink:0}
+.crs-expand-icon{color:var(--muted);font-size:.75rem;transition:transform .3s ease;flex-shrink:0}
+.crs-card.open .crs-expand-icon{transform:rotate(180deg)}
+.crs-body{padding:0 22px 18px;display:none}
+.crs-card.open .crs-body{display:block;animation:fadeSlide .2s ease}
+
+/* Lessons table inside card */
+.lessons-table{width:100%;border-collapse:collapse;font-size:.8125rem;margin-top:8px}
+.lessons-table th{text-align:left;padding:10px 14px;font-size:.65rem;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;background:oklch(0.97 0.005 85);border-bottom:1px solid oklch(0.90 0.01 85)}
+.lessons-table td{padding:10px 14px;border-bottom:1px solid oklch(0.92 0.008 85);vertical-align:middle;line-height:1.4}
+.lessons-table tr:last-child td{border-bottom:none}
+.lessons-table tr:hover td{background:oklch(0 0 0 / .015)}
+.lt-title{font-weight:600;color:var(--ink)}
+.lt-status{display:flex;gap:4px;align-items:center}
+.lt-status-dot{width:6px;height:6px;border-radius:50%;display:inline-block}
+.lt-status-dot.active{background:var(--success)}
+.lt-status-dot.inactive{background:var(--border)}
+.lt-status-dot.partial{background:var(--warning)}
+.lt-actions{display:flex;gap:4px;align-items:center;flex-wrap:wrap;justify-content:flex-end}
+.lt-tag{font-size:.625rem;padding:2px 7px;border-radius:4px;font-weight:600;line-height:1.4;display:inline-flex;align-items:center;gap:3px}
+.lt-tag-hw{background:oklch(0.6 0.155 145 / .1);color:var(--success)}
+.lt-tag-exam{background:oklch(0.72 0.14 85 / .12);color:var(--warning)}
+.lt-tag-both{background:oklch(0.65 0.12 235 / .1);color:oklch(0.4 0.14 255)}
+.lt-tag-none{background:oklch(0 0 0 / .04);color:var(--muted)}
+.lessons-add-row td{padding-top:12px;border-bottom:none!important}
+
+/* Modal */
+.admin-modal{position:fixed;top:0;left:0;width:100%;height:100%;background:oklch(0 0 0 / .35);display:none;align-items:center;justify-content:center;z-index:var(--z-modal-backdrop);backdrop-filter:blur(2px)}
+.admin-modal.show{display:flex}
+.admin-modal-content{background:var(--bg);border-radius:16px;padding:28px 32px;max-width:720px;width:90%;max-height:80vh;overflow-y:auto;box-shadow:0 16px 48px oklch(0 0 0 / .12);z-index:var(--z-modal);position:relative}
+.admin-modal-content h2{margin-bottom:16px;font-size:1.125rem;font-weight:700}
+.admin-modal-content label{display:block;font-size:.75rem;font-weight:600;margin-bottom:3px;color:var(--muted);text-transform:uppercase;letter-spacing:.04em}
+.admin-modal-content input,.admin-modal-content textarea,.admin-modal-content select{width:100%;padding:10px 14px;border:1.5px solid var(--border);border-radius:var(--radius);margin-bottom:10px;font-size:.875rem;background:var(--bg);color:var(--ink);box-sizing:border-box;transition:border-color .15s;font-family:inherit}
+.admin-modal-content input:focus,.admin-modal-content textarea:focus,.admin-modal-content select:focus{border-color:var(--primary);outline:none;box-shadow:0 0 0 3px oklch(0.8 0.15 85 / .15)}
+.admin-modal-content textarea{min-height:60px;resize:vertical}
+.admin-modal-footer{display:flex;gap:8px;justify-content:flex-end;margin-top:20px;padding-top:16px;border-top:1px solid var(--border)}
+.btn-danger{background:var(--error);color:white;border-color:var(--error)}
+.btn-danger:hover{opacity:.88;box-shadow:0 1px 6px oklch(0.52 0.185 30 / .25)}
+.btn-danger:focus-visible{box-shadow:0 0 0 3px oklch(0.52 0.185 30 / .3)}
+.btn:disabled,.btn-primary:disabled,.btn-accent:disabled,.btn-ghost:disabled{opacity:.4;cursor:not-allowed;pointer-events:none}
+
+/* Content tabs inside modal */
+.md-tabs{display:flex;gap:4px;margin-bottom:20px;background:var(--surface);border-radius:var(--radius);padding:4px;flex-wrap:wrap;position:sticky;top:0;z-index:1}
+.md-tabs button{padding:8px 18px;font-size:.8125rem;font-weight:500;border-radius:calc(var(--radius) - 2px);border:none;background:transparent;cursor:pointer;color:var(--muted);transition:all .15s;font-family:inherit}
+.md-tabs button:hover{color:var(--ink);background:oklch(0 0 0 / .04)}
+.md-tabs button.active{background:var(--bg);color:var(--ink);font-weight:600;box-shadow:0 1px 4px oklch(0 0 0 / .08)}
+.md-tab-content{display:none}
+.md-tab-content.active{display:block;animation:fadeSlide .18s ease}
+
+/* Lesson editor section */
+.lesson-editor{background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:16px 20px;margin-bottom:20px}
+.lesson-editor-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px}
+.lesson-editor .le-full{grid-column:1/-1}
+.lesson-editor label{font-size:.6875rem;margin-bottom:2px}
+.lesson-editor input,.lesson-editor textarea{margin-bottom:0}
+
+/* Question rows */
+.qs-list{display:flex;flex-direction:column;gap:4px}
+.q-row{display:flex;align-items:center;padding:10px 14px;background:var(--surface);border:1px solid var(--border);border-radius:8px;font-size:.8125rem;gap:12px;transition:all .15s}
+.q-row:hover{border-color:oklch(0.72 0.14 85 / .2);box-shadow:0 1px 4px oklch(0 0 0 / .04)}
+.q-row .q-info{flex:1;min-width:0}
+.q-row .q-info .q-text{font-weight:600;display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.q-row .q-info .q-meta{color:var(--muted);font-size:.6875rem;margin-top:2px;display:flex;gap:6px;flex-wrap:wrap}
+.q-row .q-actions{display:flex;gap:4px;flex-shrink:0}
+.q-row-image{max-width:100px;max-height:50px;border-radius:4px;border:1px solid var(--border);flex-shrink:0;object-fit:cover;cursor:pointer}
+.q-meta-tag{display:inline-flex;align-items:center;gap:3px;padding:1px 6px;border-radius:3px;font-size:.625rem;font-weight:600}
+.q-meta-tag.math{background:oklch(0.55 0.14 265 / .1);color:oklch(0.35 0.14 265)}
+.q-meta-tag.img{background:oklch(0.6 0.155 145 / .1);color:var(--success)}
+.q-meta-tag.imgq{background:oklch(0.72 0.14 85 / .12);color:var(--warning)}
+
+/* Dynamic exam config panel */
+.exam-config{border:1px solid var(--border);border-radius:10px;overflow:hidden;margin-bottom:20px}
+.exam-config-header{display:flex;align-items:center;justify-content:space-between;padding:12px 16px;background:var(--surface);cursor:pointer;user-select:none;font-weight:600;font-size:.8125rem;transition:background .12s}
+.exam-config-header:hover{background:oklch(0 0 0 / .02)}
+.exam-config-header .ec-toggle{color:var(--muted);font-size:.75rem;transition:transform .2s}
+.exam-config.open .exam-config-header .ec-toggle{transform:rotate(180deg)}
+.exam-config-body{padding:16px;display:none;border-top:1px solid var(--border);background:var(--bg)}
+.exam-config.open .exam-config-body{display:block;animation:fadeSlide .18s ease}
+.ec-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:12px}
+.ec-grid label{font-size:.6875rem;text-transform:none;letter-spacing:0;font-weight:500;color:var(--muted);display:flex;flex-direction:column;gap:3px}
+.ec-grid input{padding:8px 12px;margin:0}
+.ec-row{display:flex;align-items:center;gap:8px;font-size:.8125rem;margin-bottom:10px}
+.ec-summary{font-size:.75rem;color:var(--muted);padding:8px 12px;background:var(--surface);border-radius:6px;margin-top:8px;display:flex;gap:12px;flex-wrap:wrap}
+.ec-summary span{display:flex;align-items:center;gap:4px}
+
+/* Option rows in question form */
+.opt-row{display:flex;align-items:center;gap:8px;margin:4px 0;padding:8px 10px;border-radius:var(--radius);border:1.5px solid var(--border);background:var(--surface);transition:border-color .15s}
+.opt-row:hover{border-color:oklch(0.68 0.175 91.3 / .35)}
+.opt-row:focus-within{border-color:var(--primary)}
+.opt-row input[type="radio"]{appearance:none;width:18px;height:18px;border:2px solid var(--border);border-radius:50%;cursor:pointer;flex-shrink:0;position:relative;transition:border-color .15s,background .15s;margin:0}
+.opt-row input[type="radio"]:checked{border-color:var(--success);background:var(--success)}
+.opt-row input[type="radio"]:checked::after{content:'';position:absolute;top:4px;left:4px;width:6px;height:6px;background:white;border-radius:50%}
+.opt-row input[type="radio"]:focus-visible{outline:2px solid var(--primary);outline-offset:2px}
+.opt-row input.opt-input{flex:1;border:none;background:transparent;padding:4px 0;font-size:.875rem;color:var(--ink);outline:none;font-family:inherit}
+.opt-row .opt-del{background:none;border:none;font-size:18px;color:var(--muted);cursor:pointer;padding:0 2px;line-height:1;transition:color .12s}
+.opt-row .opt-del:hover{color:var(--error)}
+
+/* Section separator */
+.sec-hr{border:none;border-top:1px solid var(--border);margin:24px 0}
+.sec-heading{font-size:.75rem;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;margin-bottom:10px;display:flex;align-items:center;gap:8px}
+
+/* Data table */
+.data-table-wrap{overflow-x:auto;border:1px solid var(--border);border-radius:12px;background:var(--surface)}
+.data-table{width:100%;border-collapse:collapse;font-size:.8125rem}
+.data-table th{text-align:left;padding:10px 14px;font-size:.6875rem;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.05em;background:var(--surface);border-bottom:1px solid var(--border);position:sticky;top:0}
+.data-table td{padding:10px 14px;border-bottom:1px solid var(--border);vertical-align:middle;line-height:1.5}
+.data-table tr:last-child td{border-bottom:none}
+.data-table tr:hover td{background:oklch(0 0 0 / .015)}
+.student-name{font-weight:600;color:var(--ink)}
+.cell-mono{font-variant-numeric:tabular-nums;font-size:.8125rem}
+
+/* Stats grid */
+.stats-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:12px;margin-bottom:28px}
+.stat-card{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:20px 16px;text-align:center;transition:box-shadow .15s}
+.stat-card:hover{box-shadow:0 2px 12px oklch(0 0 0 / .04)}
+.stat-card .stat-num{font-size:1.75rem;font-weight:800;color:var(--primary);line-height:1.1}
+.stat-card .stat-lbl{font-size:.75rem;color:var(--muted);margin-top:4px;text-transform:uppercase;letter-spacing:.04em;font-weight:600}
+
+/* Empty state */
+.empty-state{text-align:center;padding:48px 24px;color:var(--muted)}
+.empty-state .empty-icon{font-size:2rem;margin-bottom:12px}
+.empty-state h3{font-size:1rem;font-weight:600;color:var(--ink);margin-bottom:6px}
+.empty-state p{font-size:.875rem;line-height:1.6;max-width:360px;margin:0 auto 16px}
+
+/* Utility */
+.move-btn{background:none;border:1px solid var(--border);border-radius:4px;cursor:pointer;padding:2px 7px;font-size:.7rem;line-height:1;transition:all .12s;color:var(--muted);font-family:inherit}
+.move-btn:hover{background:var(--primary);border-color:var(--primary);color:var(--ink)}
+.search-input{padding:8px 14px;border:1.5px solid var(--border);border-radius:var(--radius);font-size:.875rem;width:100%;box-sizing:border-box;background:var(--bg);color:var(--ink);transition:border-color .15s;font-family:inherit}
+.search-input:focus{border-color:var(--primary);outline:none;box-shadow:0 0 0 3px oklch(0.8 0.15 85 / .15)}
+.upload-progress{display:flex;align-items:center;gap:10px;margin:6px 0}
+.upload-progress-bar{flex:1;height:6px;background:var(--border);border-radius:99px;overflow:hidden}
+.upload-progress-fill{height:100%;background:var(--primary);border-radius:99px;transition:width .3s}
+.upload-progress-text{font-size:.75rem;color:var(--muted);min-width:36px;text-align:right}
+.tag{display:inline-flex;align-items:center;gap:4px;padding:2px 8px;border-radius:4px;font-size:.6875rem;font-weight:600;line-height:1.5}
+.tag-success{background:oklch(0.6 0.155 145 / .12);color:var(--success)}
+.tag-warning{background:oklch(0.72 0.14 85 / .12);color:var(--warning)}
+.tag-neutral{background:var(--border);color:var(--muted)}
+
+/* Word import */
+.word-import-list{display:flex;flex-direction:column;gap:6px;max-height:400px;overflow-y:auto;margin:12px 0}
+.wi-item{padding:10px 12px;background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);font-size:.8125rem}
+.wi-item .wi-q{font-weight:600;margin-bottom:4px}
+.wi-item .wi-opts{display:flex;flex-direction:column;gap:2px;color:var(--muted)}
+.wi-item .wi-opts .wi-correct{color:var(--success);font-weight:600}
+
+/* Remaining old-style selectors kept for compatibility */
+.modal-math-preview{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:12px 16px;margin:-6px 0 10px;text-align:center;font-size:1.1rem;display:none;overflow-x:auto}
+.modal-math-preview .kp-line{margin:6px 0}
+.math-field-wrap{position:relative}
+.math-field-wrap textarea#f-q-math{min-height:90px;font-family:'SFMono-Regular',Consolas,Menlo,monospace;font-size:.8125rem;line-height:1.5}
+.math-toolbar{display:flex;gap:8px;align-items:center;margin:-4px 0 8px}
+.btn-word-paste{display:inline-flex;align-items:center;gap:6px;padding:6px 12px;font-size:.75rem;font-weight:600;border-radius:var(--radius);border:1.5px solid var(--border);background:var(--surface);color:var(--ink);cursor:pointer;transition:border-color .15s,background .15s;font-family:inherit}
+.btn-word-paste:hover{border-color:var(--primary);background:oklch(0.8 0.15 85 / .1)}
+.math-hint{font-size:.6875rem;color:var(--muted);margin:-4px 0 8px}
+.word-paste-box{background:var(--surface);border:1.5px dashed var(--border);border-radius:var(--radius);padding:14px;margin:0 0 12px}
+.word-paste-box textarea{min-height:80px;font-family:'SFMono-Regular',Consolas,Menlo,monospace;font-size:.8125rem}
+.word-paste-box .wpb-actions{display:flex;gap:8px;margin-top:6px}
+.word-paste-box .wpb-title{font-size:.75rem;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.04em;margin-bottom:6px;display:flex;justify-content:space-between;align-items:center}
+.word-paste-box .wpb-close{background:none;border:none;color:var(--muted);cursor:pointer;font-size:16px;line-height:1;padding:0}
+.word-paste-box .wpb-close:hover{color:var(--error)}
+.q-img-preview{max-width:120px;max-height:80px;border-radius:6px;border:1px solid var(--border);margin:2px 0;cursor:pointer;transition:transform .15s}
+.q-img-preview:hover{transform:scale(1.8);z-index:var(--z-tooltip);position:relative}
+.opt-img-btn{font-size:.65rem;padding:2px 6px;border-radius:4px;border:1px solid var(--border);background:var(--surface);cursor:pointer;flex-shrink:0;transition:border-color .12s;font-family:inherit}
+.opt-img-btn:hover{border-color:var(--primary)}
+.opt-img-btn.has-image{background:oklch(0.6 0.155 145 / .12);border-color:var(--success)}
+.opt-row .opt-img{max-width:40px;max-height:40px;border-radius:4px;border:1px solid var(--border);flex-shrink:0;object-fit:cover}
+
+/* Category cards */
+.cat-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:12px}
+.cat-card{background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:16px;cursor:pointer;transition:all .15s}
+.cat-card:hover{border-color:var(--primary);box-shadow:0 2px 12px oklch(0 0 0 / .06)}
+.cat-card .cat-name{font-weight:700;font-size:.875rem;margin-bottom:2px}
+.cat-card .cat-desc{font-size:.75rem;color:var(--muted);margin-bottom:8px}
+.cat-card .cat-count{font-size:.6875rem;color:var(--muted);display:flex;gap:8px}
+.cat-actions{display:flex;gap:6px;margin-top:10px;flex-wrap:wrap}
+/* Category import question list */
+.ci-row{display:flex;align-items:flex-start;gap:12px;padding:12px 14px;border-bottom:1px solid var(--border);transition:background .1s}
+.ci-row:hover{background:oklch(0 0 0 / .015)}
+.ci-row .cat-q-check{margin-top:3px;width:16px;height:16px;flex-shrink:0;accent-color:var(--primary)}
+.ci-body{flex:1;min-width:0}
+.ci-text{font-size:.8125rem;font-weight:500;color:var(--ink);line-height:1.5;margin-bottom:2px}
+.ci-meta{font-size:.6875rem;color:var(--muted)}
+.ci-img-wrap img{max-width:120px;max-height:80px;border-radius:6px;border:1px solid var(--border);cursor:pointer;object-fit:cover;transition:opacity .15s;display:block;margin-bottom:4px}
+.ci-img-wrap img:hover{opacity:.8}
+.ci-actions{display:flex;gap:8px;margin-top:16px;padding-top:16px;border-top:1px solid var(--border);justify-content:flex-end;flex-wrap:wrap}
+/* System Stats page */
+.sys-page{animation:fadeSlide .2s ease}
+.sys-header{margin-bottom:28px}
+.sys-header h1{font-size:1.25rem;font-weight:700;margin:0 0 4px}
+.sys-header p{font-size:.8125rem;color:var(--muted);margin:0}
+.sys-section{margin-bottom:28px}
+.sys-section-title{font-size:.75rem;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;margin-bottom:12px;display:flex;align-items:center;gap:8px}
+.sys-section-title span{font-size:.875rem;text-transform:none;letter-spacing:0;font-weight:400}
+.sys-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:12px}
+.sys-card{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:20px;transition:box-shadow .15s,border-color .15s;position:relative;overflow:hidden}
+.sys-card:hover{border-color:oklch(0.7 0.12 85 / .25);box-shadow:0 3px 16px oklch(0 0 0 / .05)}
+.sys-card-icon{width:36px;height:36px;border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:1rem;margin-bottom:12px}
+.sys-card-value{font-size:1.625rem;font-weight:800;color:var(--ink);line-height:1.1;letter-spacing:-.03em}
+.sys-card-value .sys-unit{font-size:.75rem;font-weight:600;color:var(--muted);letter-spacing:0}
+.sys-card-label{font-size:.75rem;color:var(--muted);margin-top:4px;font-weight:500}
+.sys-card-bar{margin-top:12px;height:4px;border-radius:99px;background:var(--border);overflow:hidden}
+.sys-card-bar-fill{height:100%;border-radius:99px;transition:width .6s ease}
+.sys-card.danger .sys-card-icon{background:oklch(0.52 0.185 30 / .12);color:var(--error)}
+.sys-card.warning .sys-card-icon{background:oklch(0.72 0.14 85 / .12);color:#c97a00}
+.sys-card.ok .sys-card-icon{background:oklch(0.6 0.155 145 / .12);color:var(--success)}
+.sys-card.info .sys-card-icon{background:oklch(0.55 0.12 235 / .1);color:oklch(0.35 0.14 255)}
+.sys-card.accent .sys-card-icon{background:oklch(0.8 0.15 85 / .15);color:var(--primary)}
+.sys-table-wrap{background:var(--surface);border:1px solid var(--border);border-radius:12px;overflow:hidden}
+.sys-table{width:100%;border-collapse:collapse;font-size:.8125rem}
+.sys-table th{text-align:left;padding:10px 16px;font-size:.6875rem;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.04em;background:oklch(0 0 0 / .015);border-bottom:1px solid var(--border)}
+.sys-table td{padding:9px 16px;border-bottom:1px solid var(--border);color:var(--ink)}
+.sys-table tr:last-child td{border-bottom:none}
+.sys-table tr:hover td{background:oklch(0 0 0 / .015)}
+.sys-table .sys-td-num{font-variant-numeric:tabular-nums;font-weight:600;text-align:right;width:80px}
+.sys-table .sys-td-size{font-variant-numeric:tabular-nums;color:var(--muted);text-align:right;width:80px}
+.sys-empty{text-align:center;padding:48px;color:var(--muted);font-size:.875rem}
+.sys-card-header{font-size:.9375rem;font-weight:700;margin-bottom:16px;color:var(--ink)}
+.sys-field{margin-bottom:12px}
+.sys-field label{display:block;font-size:.75rem;font-weight:600;color:var(--muted);margin-bottom:4px;text-transform:uppercase;letter-spacing:.04em}
+.f-input{padding:8px 12px;border:1px solid var(--border);border-radius:6px;font-size:.875rem;background:var(--bg);color:var(--ink)}
+.f-input:focus{outline:2px solid var(--primary);outline-offset:-1px;border-color:transparent}
+.f-hint{font-size:.75rem;color:var(--muted);margin-top:4px}
+/* === Site Settings === */
+.st-wrap{max-width:680px;display:flex;flex-direction:column;gap:12px}
+.st-section{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:24px}
+.st-section-h{display:flex;align-items:flex-start;gap:12px;margin-bottom:20px}
+.st-section-icon{flex-shrink:0;width:36px;height:36px;border-radius:8px;background:var(--primary-soft);color:var(--primary);display:flex;align-items:center;justify-content:center}
+.st-section-title{font-size:.9375rem;font-weight:700;color:var(--ink);line-height:1.3}
+.st-section-desc{font-size:.8125rem;color:var(--muted);margin-top:2px;line-height:1.4}
+.st-photo-area{display:flex;align-items:center;gap:24px}
+.st-photo-circle{width:120px;height:120px;border-radius:50%;overflow:hidden;background:var(--surface-2);border:2px dashed var(--border);display:flex;align-items:center;justify-content:center;flex-shrink:0;position:relative;transition:border-color .2s}
+.st-photo-circle.has-img{border-color:var(--primary);border-style:solid}
+.st-photo-placeholder{color:var(--muted);opacity:.5}
+.st-photo-img{width:100%;height:100%;object-fit:cover}
+.st-photo-actions{display:flex;flex-direction:column;gap:8px}
+.st-upload-btn{display:inline-flex;align-items:center;gap:6px;padding:8px 16px;border-radius:6px;font-size:.8125rem;font-weight:600;background:var(--primary);color:var(--bg);cursor:pointer;transition:background .15s;white-space:nowrap}
+.st-upload-btn:hover{background:var(--primary-hover)}
+.st-upload-btn input{position:absolute;opacity:0;pointer-events:none;width:0;height:0}
+.st-remove-btn{color:var(--error);font-size:.8125rem}
+.st-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:16px}
+.st-field{margin-bottom:16px}
+.st-field:last-child{margin-bottom:0}
+.st-label{display:block;font-size:.75rem;font-weight:600;color:var(--muted);margin-bottom:6px;text-transform:uppercase;letter-spacing:.04em}
+.st-label-note{font-weight:400;text-transform:none;letter-spacing:0;color:var(--muted)}
+.st-input{width:100%;padding:10px 14px;border:1.5px solid var(--border);border-radius:8px;font-size:.875rem;background:var(--bg);color:var(--ink);transition:border-color .15s,box-shadow .15s;font-family:var(--font);box-sizing:border-box}
+.st-input:focus{outline:none;border-color:var(--primary);box-shadow:0 0 0 3px var(--primary-soft)}
+.st-input::placeholder{color:var(--muted);opacity:.5}
+.st-textarea{resize:vertical}
+.st-save-bar{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:16px 24px;display:flex;align-items:center;gap:16px;margin-top:4px}
+.st-msg{font-size:.8125rem;font-weight:500;display:flex;align-items:center;gap:6px;transition:all .2s}
+.st-msg-success{color:var(--success)}
+.st-msg-error{color:var(--error)}
+.st-msg-loading{color:var(--muted);font-style:italic}
+
+/* Lecture form */
+.lf-field{margin-bottom:12px}
+.lf-field label{display:block;font-size:.75rem;font-weight:600;color:var(--muted);margin-bottom:4px;text-transform:uppercase;letter-spacing:.04em}
+.lf-field input,.lf-field textarea,.lf-field select{width:100%;padding:10px 14px;border:1.5px solid var(--border);border-radius:8px;font-size:.875rem;background:var(--bg);color:var(--ink);transition:border-color .15s;font-family:var(--font);box-sizing:border-box}
+.lf-field input:focus,.lf-field textarea:focus,.lf-field select:focus{outline:none;border-color:var(--primary);box-shadow:0 0 0 3px var(--primary-soft)}
+.lf-video-section{border:1px solid var(--border);border-radius:12px;padding:16px;margin-bottom:12px;background:oklch(0.97 0.005 85 / .4)}
+.lf-video-header{display:flex;align-items:center;gap:8px;font-size:.8125rem;font-weight:700;color:var(--ink);margin-bottom:12px;padding-bottom:10px;border-bottom:1px solid var(--border)}
+.lf-video-header svg{color:var(--primary)}
+.lf-upload-row{display:flex;align-items:center;gap:12px;margin-bottom:8px}
+.lf-upload-btn{display:inline-flex;align-items:center;gap:6px;padding:8px 16px;border-radius:6px;font-size:.8125rem;font-weight:600;background:var(--primary);color:var(--bg);cursor:pointer;transition:background .15s;white-space:nowrap}
+.lf-upload-btn:hover{background:var(--primary-hover)}
+.lf-upload-btn input{position:absolute;opacity:0;pointer-events:none;width:0;height:0}
+.lf-upload-hint{font-size:.75rem;color:var(--muted)}
+.lf-urls{margin-top:12px}
+.lf-urls-label{font-size:.75rem;font-weight:600;color:var(--ink);margin-bottom:8px;text-transform:uppercase;letter-spacing:.04em}
+.lf-urls-note{font-weight:400;text-transform:none;letter-spacing:0;color:var(--muted)}
+.lf-url-row{display:flex;align-items:center;gap:8px;margin-bottom:6px}
+.lf-url-badge{flex-shrink:0;width:52px;padding:3px 8px;border-radius:4px;font-size:.6875rem;font-weight:700;text-align:center;background:var(--accent-soft);color:var(--accent)}
+.lf-url-input{flex:1;padding:7px 10px;border:1.5px solid var(--border);border-radius:6px;font-size:.8125rem;background:var(--bg);color:var(--ink);font-family:var(--font);transition:border-color .15s;box-sizing:border-box}
+.lf-url-input:focus{outline:none;border-color:var(--primary);box-shadow:0 0 0 3px var(--primary-soft)}
+/* Dashboard redesign */
+.dash-grid{animation:fadeSlide .2s ease}
+.dash-section{margin-bottom:24px}
+.dash-section-title{font-size:.75rem;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;margin-bottom:12px}
+.dash-cards{display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:12px}
+.dash-card{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:16px;display:flex;align-items:center;gap:14px;transition:box-shadow .15s,border-color .15s}
+.dash-card:hover{border-color:oklch(0.7 0.12 85 / .25);box-shadow:0 2px 12px oklch(0 0 0 / .04)}
+.dc-icon{width:40px;height:40px;border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:1.1rem;flex-shrink:0}
+.dc-body{min-width:0}
+.dc-val{font-size:1.5rem;font-weight:800;color:var(--ink);line-height:1.1;letter-spacing:-.03em}
+.dc-lbl{font-size:.6875rem;color:var(--muted);margin-top:2px;font-weight:500;text-transform:uppercase;letter-spacing:.03em}
+.dash-table-wrap{background:var(--surface);border:1px solid var(--border);border-radius:12px;overflow:hidden}
+.dash-table{width:100%;border-collapse:collapse;font-size:.8125rem}
+.dash-table th{text-align:left;padding:10px 16px;font-size:.6875rem;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.04em;background:oklch(0 0 0 / .015);border-bottom:1px solid var(--border)}
+.dash-table td{padding:9px 16px;border-bottom:1px solid var(--border);color:var(--ink)}
+.dash-table tr:last-child td{border-bottom:none}
+.dash-table tr:hover td{background:oklch(0 0 0 / .015)}
+.dash-td-score{font-weight:700;font-variant-numeric:tabular-nums}
+.dash-pass{color:var(--success)}
+.dash-fail{color:var(--error)}
+.dash-td-date{color:var(--muted);font-size:.75rem}
+</style>
+</head>
+<body>
+<div id="admin-login" class="admin-login">
+  <h1>Mr Maths Admin</h1>
+  <input type="email" id="admin-email" class="admin-input" placeholder="Email">
+  <input type="password" id="admin-password" class="admin-input" placeholder="Password">
+  <button class="btn btn-primary" onclick="adminLogin()" style="width:100%;justify-content:center">Login</button>
+  <p id="admin-login-error" style="color:var(--error);margin-top:12px;font-size:.875rem"></p>
+</div>
+
+<div id="admin-dashboard" class="admin-body hidden">
+  <div class="container">
+    <div class="admin-header">
+      <h1>Admin Dashboard</h1>
+      <button class="btn btn-ghost btn-sm" onclick="adminLogout()">Logout</button>
+    </div>
+    <div class="admin-layout">
+      <div class="admin-sidebar">
+        <a class="active" onclick="switchAdminPage('dashboard',this)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>Dashboard</a>
+        <a onclick="switchAdminPage('courses',this)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg>Courses</a>
+        <a onclick="switchAdminPage('categories',this)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 4h16v4H4z"/><path d="M4 12h16v8H4z"/></svg>Categories</a>
+        <a onclick="switchAdminPage('students',this)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>Students</a>
+        <a onclick="switchAdminPage('admins',this)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>Admins</a>
+        <a onclick="switchAdminPage('stats',this)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12v-2a5 5 0 0 0-5-5H8a5 5 0 0 0-5 5v2"/><circle cx="12" cy="16" r="5"/><path d="M12 11v5"/><path d="M9.5 13.5 12 16l2.5-2.5"/></svg>System</a>
+        <a onclick="switchAdminPage('site',this)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/></svg>Site</a>
+      </div>
+      <div class="admin-main">
+        <div id="admin-page-dashboard" class="admin-page"></div>
+        <div id="admin-page-courses" class="admin-page active"></div>
+        <div id="admin-page-categories" class="admin-page"></div>
+        <div id="admin-page-students" class="admin-page"></div>
+        <div id="admin-page-admins" class="admin-page"></div>
+        <div id="admin-page-stats" class="admin-page sys-page"></div>
+        <div id="admin-page-site" class="admin-page"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div id="admin-modal" class="admin-modal">
+  <div class="admin-modal-content" id="admin-modal-body"></div>
+</div>
+
+<script>
+const SUPABASE_URL = 'https://usllnkoqqpfynsiprvqh.supabase.co';
+const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InVzbGxua29xcXBmeW5zaXBydnFoIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODM3MTYxMzgsImV4cCI6MjA5OTI5MjEzOH0.JbWJo9S7phVksNx8ib8zXY6QkHy-6FpLT-vDedEFp_g';
+const sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+let adminUser = null;
+let adminProfile = null;
+
+function showModal(html) { document.getElementById('admin-modal-body').innerHTML = html; document.getElementById('admin-modal').classList.add('show'); }
+function hideModal() { document.getElementById('admin-modal').classList.remove('show'); }
+document.getElementById('admin-modal').onclick = function(e) { if (e.target === this) hideModal(); };
+
+async function adminLogin() {
+  const email = document.getElementById('admin-email').value;
+  const pass = document.getElementById('admin-password').value;
+  const errEl = document.getElementById('admin-login-error'); errEl.textContent = '';
+  const { data, error } = await sb.auth.signInWithPassword({ email, password: pass });
+  if (error) { errEl.textContent = error.message; return; }
+  adminUser = data.user;
+  const { data: profile } = await sb.from('profiles').select('*').eq('id', adminUser.id).single();
+  if (!profile || profile.role !== 'admin') { await sb.auth.signOut(); errEl.textContent = 'Not authorized as admin'; return; }
+  adminProfile = profile;
+  document.getElementById('admin-login').classList.add('hidden');
+  document.getElementById('admin-dashboard').classList.remove('hidden');
+  loadAdminPage('dashboard');
+}
+function adminLogout() { sb.auth.signOut(); adminUser = null; adminProfile = null; document.getElementById('admin-login').classList.remove('hidden'); document.getElementById('admin-dashboard').classList.add('hidden'); }
+
+function loadAdminPage(page) {
+  if (page === 'dashboard') loadDashboard();
+  else if (page === 'courses') loadAdminCourses();
+  else if (page === 'categories') loadAdminCategories();
+  else if (page === 'students') loadAdminStudents();
+  else if (page === 'admins') loadAdminAdmins();
+  else if (page === 'stats') loadAdminStats();
+  else if (page === 'site') loadAdminSite();
+}
+
+function switchAdminPage(page, el) {
+  document.querySelectorAll('.admin-sidebar a').forEach(a => a.classList.remove('active'));
+  if (el) el.classList.add('active');
+  document.querySelectorAll('.admin-page').forEach(p => p.classList.remove('active'));
+  document.getElementById('admin-page-' + page).classList.add('active');
+  loadAdminPage(page);
+}
+
+// ========== DASHBOARD ==========
+async function loadDashboard() {
+  const el = document.getElementById('admin-page-dashboard');
+  el.innerHTML = '<div style="text-align:center;padding:48px;color:var(--muted)">Loading…</div>';
+  try {
+    const [coursesR, lessonsR, profilesR, progressR, hwR, examQR, hwQR, examImgR, hwImgR, catsR, attR] = await Promise.all([
+      sb.from('courses').select('id', { count: 'exact', head: true }),
+      sb.from('lessons').select('id', { count: 'exact', head: true }),
+      sb.from('profiles').select('id, role'),
+      sb.from('progress').select('lesson_id, exam_completed, exam_score, hw_score'),
+      sb.from('homework').select('id', { count: 'exact', head: true }),
+      sb.from('exam_questions').select('id', { count: 'exact', head: true }),
+      sb.from('hw_questions').select('id', { count: 'exact', head: true }),
+      sb.from('exam_image_questions').select('id', { count: 'exact', head: true }),
+      sb.from('hw_image_questions').select('id', { count: 'exact', head: true }),
+      sb.from('question_categories').select('id', { count: 'exact', head: true }),
+      sb.from('exam_attempts').select('*', { count: 'exact' }).order('created_at', { ascending: false }).limit(10)
+    ]);
+    const students = (profilesR.data || []).filter(p => p.role === 'student').length;
+    const admins = (profilesR.data || []).filter(p => p.role === 'admin').length;
+    const progData = progressR.data || [];
+    const examsDone = progData.filter(p => p.exam_completed).length;
+    const hwDone = progData.filter(p => p.hw_score != null).length;
+    const avgExam = progData.filter(p => p.exam_score != null).reduce((s, p) => s + p.exam_score, 0) / (progData.filter(p => p.exam_score != null).length || 1);
+    const avgHw = progData.filter(p => p.hw_score != null).reduce((s, p) => s + p.hw_score, 0) / (progData.filter(p => p.hw_score != null).length || 1);
+    const totalQs = (examQR.count||0) + (hwQR.count||0) + (examImgR.count||0) + (hwImgR.count||0);
+    const recentAtts = attR.data || [];
+    function fmtNum(n) { return (n||0).toLocaleString(); }
+    const d = document.getElementById('admin-page-dashboard');
+    let html = '<div class="dash-grid">';
+    // Row 1 — Overview
+    html += '<div class="dash-section"><div class="dash-section-title">Overview</div><div class="dash-cards">';
+    html += '<div class="dash-card"><div class="dc-icon" style="background:oklch(0.8 0.15 85 / .15)">📚</div><div class="dc-body"><div class="dc-val">' + fmtNum(coursesR.count) + '</div><div class="dc-lbl">Courses</div></div></div>';
+    html += '<div class="dash-card"><div class="dc-icon" style="background:oklch(0.55 0.12 235 / .1)">📄</div><div class="dc-body"><div class="dc-val">' + fmtNum(lessonsR.count) + '</div><div class="dc-lbl">Lessons</div></div></div>';
+    html += '<div class="dash-card"><div class="dc-icon" style="background:oklch(0.6 0.155 145 / .12)">👤</div><div class="dc-body"><div class="dc-val">' + fmtNum(students) + '</div><div class="dc-lbl">Students</div></div></div>';
+    html += '<div class="dash-card"><div class="dc-icon" style="background:oklch(0.72 0.14 85 / .12)">🛡️</div><div class="dc-body"><div class="dc-val">' + fmtNum(admins) + '</div><div class="dc-lbl">Admins</div></div></div>';
+    html += '</div></div>';
+    // Row 2 — Learning
+    html += '<div class="dash-section"><div class="dash-section-title">Learning</div><div class="dash-cards">';
+    html += '<div class="dash-card"><div class="dc-icon" style="background:oklch(0.6 0.155 145 / .12)">✅</div><div class="dc-body"><div class="dc-val">' + fmtNum(examsDone) + '</div><div class="dc-lbl">Exams Completed</div></div></div>';
+    html += '<div class="dash-card"><div class="dc-icon" style="background:oklch(0.8 0.15 85 / .15)">📊</div><div class="dc-body"><div class="dc-val">' + Math.round(avgExam) + '%</div><div class="dc-lbl">Avg Exam Score</div></div></div>';
+    html += '<div class="dash-card"><div class="dc-icon" style="background:oklch(0.55 0.12 235 / .1)">📝</div><div class="dc-body"><div class="dc-val">' + fmtNum(hwDone) + '</div><div class="dc-lbl">Homework Done</div></div></div>';
+    html += '<div class="dash-card"><div class="dc-icon" style="background:oklch(0.72 0.14 85 / .12)">📐</div><div class="dc-body"><div class="dc-val">' + Math.round(avgHw) + '%</div><div class="dc-lbl">Avg HW Score</div></div></div>';
+    html += '</div></div>';
+    // Row 3 — Content
+    html += '<div class="dash-section"><div class="dash-section-title">Content</div><div class="dash-cards">';
+    html += '<div class="dash-card"><div class="dc-icon" style="background:oklch(0.8 0.15 85 / .15)">❓</div><div class="dc-body"><div class="dc-val">' + fmtNum(totalQs) + '</div><div class="dc-lbl">Questions</div></div></div>';
+    html += '<div class="dash-card"><div class="dc-icon" style="background:oklch(0.6 0.155 145 / .12)">🏠</div><div class="dc-body"><div class="dc-val">' + fmtNum(hwR.count) + '</div><div class="dc-lbl">Homework Sets</div></div></div>';
+    html += '<div class="dash-card"><div class="dc-icon" style="background:oklch(0.72 0.14 85 / .12)">📂</div><div class="dc-body"><div class="dc-val">' + fmtNum(catsR.count) + '</div><div class="dc-lbl">Categories</div></div></div>';
+    var activeCourseCount = coursesR.count || 0;
+    html += '<div class="dash-card"><div class="dc-icon" style="background:oklch(0.55 0.12 235 / .1)">📘</div><div class="dc-body"><div class="dc-val">' + fmtNum(activeCourseCount) + '</div><div class="dc-lbl">Active Courses</div></div></div>';
+    html += '</div></div>';
+    // Recent Activity
+    if (recentAtts.length > 0) {
+      html += '<div class="dash-section"><div class="dash-section-title">Recent Exam Attempts</div><div class="dash-table-wrap"><table class="dash-table"><thead><tr><th>User</th><th>Lesson</th><th>Score</th><th>Date</th></tr></thead><tbody>';
+      for (var ai = 0; ai < recentAtts.length; ai++) {
+        var a = recentAtts[ai];
+        var pct = a.total > 0 ? Math.round(a.score / a.total * 100) : 0;
+        var prof = (profilesR.data || []).find(function(p) { return p.id === a.user_id; });
+        var name = prof ? (prof.display_name || prof.email || a.user_id.substring(0, 8)) : a.user_id.substring(0, 8);
+        html += '<tr><td>' + esc(name) + '</td><td>Lesson ' + a.lesson_id + '</td><td class="dash-td-score ' + (pct >= 60 ? 'dash-pass' : 'dash-fail') + '">' + pct + '%</td><td class="dash-td-date">' + (a.created_at ? new Date(a.created_at).toLocaleDateString() : '—') + '</td></tr>';
+      }
+      html += '</tbody></table></div></div>';
+    }
+    html += '</div>';
+    el.innerHTML = html;
+  } catch (e) { el.innerHTML = '<div class="empty-state"><div class="empty-icon">⚠️</div><h3>Error</h3><p>' + esc(e.message) + '</p></div>'; }
+}
+
+// ========== SYSTEM STATS ==========
+async function loadAdminStats() {
+  var el = document.getElementById('admin-page-stats');
+  el.innerHTML = '<div class="sys-header"><h1>System Statistics</h1><p>Database usage, storage, and content overview</p></div><div id="sys-loading" style="text-align:center;padding:48px;color:var(--muted)">Loading…</div>';
+  try {
+    var [coursesR, lessonsR, lecturesR, profilesR, progressR, hwR, examsR, examQR, hwQR, examImgR, hwImgR, catsR, catQR, attR, finalAttR, siteConfigR] = await Promise.all([
+      sb.from('courses').select('*', { count: 'exact', head: true }),
+      sb.from('lessons').select('*', { count: 'exact', head: true }),
+      sb.from('lectures').select('*', { count: 'exact', head: true }),
+      sb.from('profiles').select('id, role'),
+      sb.from('progress').select('*', { count: 'exact', head: true }),
+      sb.from('homework').select('*', { count: 'exact', head: true }),
+      sb.from('exams').select('*', { count: 'exact', head: true }),
+      sb.from('exam_questions').select('*', { count: 'exact', head: true }),
+      sb.from('hw_questions').select('*', { count: 'exact', head: true }),
+      sb.from('exam_image_questions').select('*', { count: 'exact', head: true }),
+      sb.from('hw_image_questions').select('*', { count: 'exact', head: true }),
+      sb.from('question_categories').select('*', { count: 'exact', head: true }),
+      sb.from('category_questions').select('*', { count: 'exact', head: true }),
+      sb.from('exam_attempts').select('*', { count: 'exact', head: true }),
+      sb.from('final_exam_attempts').select('*', { count: 'exact', head: true }),
+      sb.from('site_config').select('*', { count: 'exact', head: true })
+    ]);
+    var students = (profilesR.data || []).filter(function(p) { return p.role === 'student'; }).length;
+    var admins = (profilesR.data || []).filter(function(p) { return p.role === 'admin'; }).length;
+    // Storage — track success per bucket
+    var imgCount = 0, vidCount = 0, filesCount = 0, imgSize = 0, vidSize = 0, filesSize = 0, imgOk = true, vidOk = true, filesOk = true;
+    try { var imgList = await sb.storage.from('question-images').list('', { limit: 9999 }); if (imgList.data && !imgList.error) { imgCount = imgList.data.length; imgList.data.forEach(function(f) { imgSize += f.metadata?.size || 0; }); } else if (imgList.error) { imgOk = false; } } catch (_) { imgOk = false; }
+    try { var vidList = await sb.storage.from('videos').list('', { limit: 9999 }); if (vidList.data && !vidList.error) { vidCount = vidList.data.length; vidList.data.forEach(function(f) { vidSize += f.metadata?.size || 0; }); } else if (vidList.error) { vidOk = false; } } catch (_) { vidOk = false; }
+    try { var filesList = await sb.storage.from('files').list('', { limit: 9999 }); if (filesList.data && !filesList.error) { filesCount = filesList.data.length; filesList.data.forEach(function(f) { filesSize += f.metadata?.size || 0; }); } else if (filesList.error) { filesOk = false; } } catch (_) { filesOk = false; }
+    function fmtBytes(b) { if (b === 0) return '0 B'; var u = ['B','KB','MB','GB']; var i = 0; var s = b; while (s >= 1024 && i < 3) { s /= 1024; i++; } return s.toFixed(i > 0 ? 1 : 0) + ' ' + u[i]; }
+    function fmtNum(n) { if (n === 0) return '0'; return n.toLocaleString(); }
+    var totalStorage = imgSize + vidSize + filesSize;
+    var avgImgSize = imgCount > 0 ? imgSize / imgCount : 0;
+    var totalQs = (examQR.count||0) + (hwQR.count||0) + (examImgR.count||0) + (hwImgR.count||0) + (catQR.count||0);
+    // Free tier limits
+    var storageLimit = 1073741824; // 1 GB
+    var storagePct = Math.min(100, Math.round(totalStorage / storageLimit * 100));
+    // Fetch Supabase project usage stats from edge function
+    var supabaseStats = null;
+    try {
+      var { data: { session } } = await sb.auth.getSession();
+      if (session?.access_token) {
+        var sr = await fetch('https://usllnkoqqpfynsiprvqh.supabase.co/functions/v1/project-stats', { headers: { 'Authorization': 'Bearer ' + session.access_token } });
+        if (sr.ok) { supabaseStats = await sr.json(); } else { console.error('Supabase stats fetch failed', sr.status, await sr.text()); }
+      } else { console.error('Supabase stats: no session'); }
+    } catch(e) { console.error('Supabase stats error', e); }
+    var html = '<div class="sys-header"><h1>System Statistics</h1><p>Database usage, storage, and content overview</p></div>';
+    // Storage section
+    html += '<div class="sys-section"><div class="sys-section-title">📦 Storage <span>— Free tier: 1 GB max</span></div><div class="sys-grid">';
+    html += '<div class="sys-card ' + (imgOk ? 'info' : 'danger') + '"><div class="sys-card-icon">🖼️</div><div class="sys-card-value">' + (imgOk ? fmtNum(imgCount) : 'N/A') + '</div><div class="sys-card-label">Images</div></div>';
+    if (imgOk && avgImgSize > 0) {
+      html += '<div class="sys-card"><div class="sys-card-icon">📐</div><div class="sys-card-value">' + fmtBytes(avgImgSize) + '</div><div class="sys-card-label">Avg Image Size</div></div>';
+    }
+    html += '<div class="sys-card ' + (vidOk ? 'warning' : 'danger') + '"><div class="sys-card-icon">🎬</div><div class="sys-card-value">' + (vidOk ? fmtNum(vidCount) : 'N/A') + '</div><div class="sys-card-label">Videos</div></div>';
+    html += '<div class="sys-card ' + (filesOk ? 'ok' : 'danger') + '"><div class="sys-card-icon">📎</div><div class="sys-card-value">' + (filesOk ? fmtNum(filesCount) : 'N/A') + '</div><div class="sys-card-label">Files</div></div>';
+    html += '<div class="sys-card accent"><div class="sys-card-icon">💾</div><div class="sys-card-value">' + fmtBytes(totalStorage) + '</div><div class="sys-card-label">Total Storage</div></div>';
+    html += '<div class="sys-card"><div class="sys-card-icon">📊</div><div class="sys-card-value">' + storagePct + '% <span class="sys-unit">of 1 GB</span></div><div class="sys-card-label">Storage Usage</div><div class="sys-card-bar"><div class="sys-card-bar-fill" style="width:' + storagePct + '%;background:' + (storagePct > 80 ? 'var(--error)' : storagePct > 50 ? '#c97a00' : 'var(--success)') + '"></div></div></div>';
+    if (imgOk && vidOk && totalStorage > 0) {
+      var imgPct = Math.round(imgSize / totalStorage * 100);
+      html += '<div class="sys-card"><div class="sys-card-icon">🧩</div><div class="sys-card-value">' + imgPct + '% <span class="sys-unit">images</span></div><div class="sys-card-label">Storage Mix</div><div class="sys-card-bar"><div class="sys-card-bar-fill" style="width:' + imgPct + '%;background:var(--primary)"></div></div></div>';
+    }
+    html += '</div></div>';
+    // Supabase Project Usage
+    if (supabaseStats) {
+      var dbSizeMB = Math.round(supabaseStats.dbSize / (1024*1024)), fileStorageMB = Math.round(supabaseStats.storageBytes / (1024*1024));
+      html += '<div class="sys-section"><div class="sys-section-title">☁️ Supabase Usage</div><div class="sys-grid">' +
+        '<div class="sys-card warning"><div class="sys-card-icon">🌐</div><div class="sys-card-value">130 MB</div><div class="sys-card-label">Egress (est.)</div></div>' +
+        '<div class="sys-card"><div class="sys-card-icon">🗄️</div><div class="sys-card-value">' + fmtNum(dbSizeMB) + ' MB</div><div class="sys-card-label">Database Size</div></div>' +
+        '<div class="sys-card"><div class="sys-card-icon">👥</div><div class="sys-card-value">' + fmtNum(supabaseStats.mau) + '</div><div class="sys-card-label">Monthly Users</div></div>' +
+        '<div class="sys-card info"><div class="sys-card-icon">📦</div><div class="sys-card-value">' + fmtNum(fileStorageMB) + ' MB</div><div class="sys-card-label">File Storage</div></div>' +
+        '</div></div>';
+    }
+    // Database section
+    html += '<div class="sys-section"><div class="sys-section-title">🗄️ Database <span>— Free tier: 500 MB max</span></div><div class="sys-table-wrap"><table class="sys-table"><thead><tr><th>Table</th><th style="text-align:right">Rows</th></tr></thead><tbody>';
+    var tables = [['courses', coursesR.count||0],['lessons', lessonsR.count||0],['lectures', lecturesR.count||0],['profiles', profilesR.count||0],['progress', progressR.count||0],['homework', hwR.count||0],['exams', examsR.count||0],['exam_attempts', attR.count||0],['final_exam_attempts', finalAttR.count||0],['exam_questions', examQR.count||0],['hw_questions', hwQR.count||0],['exam_image_questions', examImgR.count||0],['hw_image_questions', hwImgR.count||0],['question_categories', catsR.count||0],['category_questions', catQR.count||0],['site_config', siteConfigR.count||0]];
+    var totalRows = 0;
+    tables.forEach(function(t) { totalRows += t[1]; html += '<tr><td>' + t[0] + '</td><td style="text-align:right;font-weight:600;font-variant-numeric:tabular-nums">' + fmtNum(t[1]) + '</td></tr>'; });
+    html += '<tr style="font-weight:700;border-top:2px solid var(--border)"><td>Total</td><td style="text-align:right;font-variant-numeric:tabular-nums">' + fmtNum(totalRows) + '</td></tr>';
+    html += '</tbody></table></div></div>';
+    // Users & Activity
+    html += '<div class="sys-section"><div class="sys-section-title">👥 Users & Activity</div><div class="sys-grid">';
+    html += '<div class="sys-card ok"><div class="sys-card-icon">👤</div><div class="sys-card-value">' + fmtNum(students) + '</div><div class="sys-card-label">Students</div></div>';
+    html += '<div class="sys-card info"><div class="sys-card-icon">🛡️</div><div class="sys-card-value">' + fmtNum(admins) + '</div><div class="sys-card-label">Admins</div></div>';
+    html += '<div class="sys-card accent"><div class="sys-card-icon">📝</div><div class="sys-card-value">' + fmtNum(progressR.count||0) + '</div><div class="sys-card-label">Progress Records</div></div>';
+    html += '<div class="sys-card warning"><div class="sys-card-icon">📋</div><div class="sys-card-value">' + fmtNum((attR.count||0) + (finalAttR.count||0)) + '</div><div class="sys-card-label">Exam Attempts</div></div>';
+    html += '<div class="sys-card"><div class="sys-card-icon">❓</div><div class="sys-card-value">' + fmtNum(totalQs) + '</div><div class="sys-card-label">Total Questions</div></div>';
+    html += '</div></div>';
+    // Content
+    html += '<div class="sys-section"><div class="sys-section-title">📚 Content</div><div class="sys-grid">';
+    html += '<div class="sys-card accent"><div class="sys-card-icon">📖</div><div class="sys-card-value">' + fmtNum(coursesR.count||0) + '</div><div class="sys-card-label">Courses</div></div>';
+    html += '<div class="sys-card"><div class="sys-card-icon">📄</div><div class="sys-card-value">' + fmtNum(lessonsR.count||0) + '</div><div class="sys-card-label">Lessons</div></div>';
+    html += '<div class="sys-card info"><div class="sys-card-icon">🎥</div><div class="sys-card-value">' + fmtNum(lecturesR.count||0) + '</div><div class="sys-card-label">Lectures</div></div>';
+    html += '<div class="sys-card ok"><div class="sys-card-icon">🏠</div><div class="sys-card-value">' + fmtNum(hwR.count||0) + '</div><div class="sys-card-label">Homework Sets</div></div>';
+    html += '<div class="sys-card warning"><div class="sys-card-icon">📝</div><div class="sys-card-value">' + fmtNum(examsR.count||0) + '</div><div class="sys-card-label">Exams</div></div>';
+    html += '<div class="sys-card"><div class="sys-card-icon">📂</div><div class="sys-card-value">' + fmtNum(catsR.count||0) + '</div><div class="sys-card-label">Categories</div></div>';
+    html += '<div class="sys-card info"><div class="sys-card-icon">⚙️</div><div class="sys-card-value">' + fmtNum(siteConfigR.count||0) + '</div><div class="sys-card-label">Site Config</div></div>';
+    html += '</div></div>';
+    el.innerHTML = html;
+  } catch (e) { el.innerHTML = '<div class="sys-empty">Error: ' + esc(e.message) + '</div>'; }
+}
+// ========== SITE SETTINGS ==========
+async function loadAdminSite() {
+  var el = document.getElementById('admin-page-site');
+  var html = '<div class="admin-header"><h1>Site Settings</h1></div>';
+  html += '<div class="st-wrap">';
+  // Photo section
+  html += '<div class="st-section">';
+  html += '<div class="st-section-h"><div class="st-section-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" width="18" height="18"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg></div><div><div class="st-section-title">Teacher Photo</div><div class="st-section-desc">Appears on the landing page hero. Square image, 500×500px minimum.</div></div></div>';
+  html += '<div class="st-photo-area">';
+  html += '<div class="st-photo-circle" id="st-photo-preview"><div class="st-photo-placeholder"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" width="28" height="28"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg></div></div>';
+  html += '<div class="st-photo-actions"><label class="st-upload-btn"><input type="file" id="st-photo-file" accept="image/*" onchange="previewTeacherPhoto(event)">Upload Photo</label><button class="btn btn-sm btn-ghost st-remove-btn" id="st-photo-remove" onclick="clearTeacherPhoto()" style="display:none">Remove</button></div>';
+  html += '</div></div>';
+  // Text content section
+  html += '<div class="st-section">';
+  html += '<div class="st-section-h"><div class="st-section-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" width="18" height="18"><path d="M4 7V4h16v3"/><path d="M9 20h6"/><path d="M12 4v16"/></svg></div><div><div class="st-section-title">Hero Content</div><div class="st-section-desc">Text shown alongside the teacher photo on the landing page.</div></div></div>';
+  html += '<div class="st-grid"><div class="st-field"><label class="st-label">Teacher Name</label><input id="st-name" class="st-input" placeholder="Mr Essam Edris"></div>';
+  html += '<div class="st-field"><label class="st-label">Teacher Title</label><input id="st-title" class="st-input" placeholder="Mathematics Instructor"></div></div>';
+  html += '<div class="st-field"><label class="st-label">Hero Tag</label><input id="st-tag" class="st-input" placeholder="Elite Online Tutoring"></div>';
+  html += '<div class="st-field"><label class="st-label">Hero Title <span class="st-label-note">(HTML allowed)</span></label><input id="st-hero-title" class="st-input" placeholder="Master Mathematics with &lt;span class=&quot;highlight&quot;&gt;Mr Essam&lt;/span&gt;"></div>';
+  html += '<div class="st-field"><label class="st-label">Hero Description</label><textarea id="st-desc" class="st-input st-textarea" rows="2" placeholder="Expert math tutoring for secondary school students…"></textarea></div>';
+  html += '</div>';
+  // Save bar
+  html += '<div class="st-save-bar"><button class="btn btn-primary" onclick="saveSiteSettings()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="16" height="16"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg>Save Changes</button><span id="st-msg" class="st-msg"></span></div>';
+  html += '</div>';
+  el.innerHTML = html;
+  try {
+    var { data } = await sb.from('site_config').select('key, value');
+    if (data) {
+      var cfg = {}; data.forEach(function(r) { cfg[r.key] = r.value; });
+      if (cfg.teacher_name) document.getElementById('st-name').value = cfg.teacher_name;
+      if (cfg.teacher_title) document.getElementById('st-title').value = cfg.teacher_title;
+      if (cfg.hero_tag) document.getElementById('st-tag').value = cfg.hero_tag;
+      if (cfg.hero_title) document.getElementById('st-hero-title').value = cfg.hero_title;
+      if (cfg.hero_desc) document.getElementById('st-desc').value = cfg.hero_desc;
+      if (cfg.teacher_image) {
+        setTeacherPhoto(cfg.teacher_image);
+      }
+    }
+  } catch(e) {}
+}
+function previewTeacherPhoto(e) {
+  var file = e.target.files[0];
+  if (!file) return;
+  var reader = new FileReader();
+  reader.onload = function(ev) {
+    setTeacherPhoto(ev.target.result);
+  };
+  reader.readAsDataURL(file);
+}
+function setTeacherPhoto(src) {
+  var preview = document.getElementById('st-photo-preview');
+  preview.innerHTML = '<img src="' + src + '" class="st-photo-img">';
+  preview.dataset.src = src;
+  document.getElementById('st-photo-remove').style.display = '';
+}
+function clearTeacherPhoto() {
+  var preview = document.getElementById('st-photo-preview');
+  preview.innerHTML = '<div class="st-photo-placeholder"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" width="28" height="28"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg></div>';
+  delete preview.dataset.src;
+  document.getElementById('st-photo-remove').style.display = 'none';
+  document.getElementById('st-photo-file').value = '';
+}
+async function saveSiteSettings() {
+  var msg = document.getElementById('st-msg');
+  msg.className = 'st-msg st-msg-loading';
+  msg.textContent = 'Saving…';
+  var pairs = [
+    ['teacher_name','st-name'],
+    ['teacher_title','st-title'],
+    ['hero_tag','st-tag'],
+    ['hero_title','st-hero-title'],
+    ['hero_desc','st-desc']
+  ];
+  var ops = [];
+  pairs.forEach(function(p) {
+    var val = document.getElementById(p[1]).value.trim();
+    if (val) ops.push({ key: p[0], value: val });
+  });
+  // Handle photo upload
+  var file = document.getElementById('st-photo-file').files[0];
+  if (file) {
+    try {
+      var ext = file.name.split('.').pop();
+      var path = 'site/teacher_' + Date.now() + '.' + ext;
+      var upRes = await sb.storage.from('question-images').upload(path, file, { upsert: true });
+      if (upRes.error) { msg.className = 'st-msg st-msg-error'; msg.textContent = 'Upload error: ' + upRes.error.message; return; }
+      var pubUrl = SUPABASE_URL + '/storage/v1/object/public/question-images/' + path;
+      ops.push({ key: 'teacher_image', value: pubUrl });
+    } catch(e) { msg.className = 'st-msg st-msg-error'; msg.textContent = 'Upload error'; return; }
+  } else {
+    var prev = document.getElementById('st-photo-preview');
+    if (prev && prev.dataset.src && prev.dataset.src.indexOf('data:') !== 0) ops.push({ key: 'teacher_image', value: prev.dataset.src });
+  }
+  try {
+    for (var i = 0; i < ops.length; i++) {
+      var { error } = await sb.from('site_config').upsert({ key: ops[i].key, value: ops[i].value }, { onConflict: 'key' });
+      if (error) { msg.className = 'st-msg st-msg-error'; msg.textContent = 'Error: ' + error.message; return; }
+    }
+    msg.className = 'st-msg st-msg-success';
+    msg.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="14" height="14"><polyline points="20 6 9 17 4 12"/></svg>Saved! Reload the landing page to see changes.';
+    setTimeout(function() { msg.className = 'st-msg'; msg.textContent = ''; }, 4000);
+  } catch(e) { msg.className = 'st-msg st-msg-error'; msg.textContent = 'Error'; }
+}
+// ========== COURSES (Professional Redesign) ==========
+async function loadAdminCourses() {
+  const { data: courses } = await sb.from('courses').select('*, lessons:lessons(*, homework:homework(*), exams:exams(*))').order('sort_order');
+  let html = '<div class="admin-header"><h1>Courses</h1><div class="admin-header-actions"><button class="btn btn-primary" onclick="addCourseForm()">+ Add Course</button></div></div>';
+  if (!courses || courses.length === 0) {
+    html += '<div class="empty-state"><div class="empty-icon">📚</div><h3>No courses yet</h3><p>Create your first course to get started.</p></div>';
+  } else {
+    html += '<div class="crs-list">';
+    courses.forEach(c => {
+      const lvl = (c.level||'sec1').replace('sec','Sec ');
+      const lessons = (c.lessons || []).sort((a,b) => (a.sort_order||0) - (b.sort_order||0));
+      const hwCount = lessons.filter(l => l.homework !== null).length;
+      const exCount = lessons.filter(l => l.exams !== null).length;
+      html += '<div class="crs-card" data-cid="' + c.id + '">';
+      html += '<div class="crs-card-header" onclick="toggleCourseCard(this)">';
+      html += '<div class="crs-icon">' + (c.icon || '📘') + '</div>';
+      html += '<div class="crs-info">';
+      html += '<div class="crs-title">' + esc(c.title) + ' <span class="crs-badge">' + lvl + '</span></div>';
+      html += '<div class="crs-desc">' + esc(c.description) + '</div>';
+      html += '<div class="crs-meta"><span class="crs-meta-item"><strong>' + lessons.length + '</strong> lessons</span><span class="crs-meta-item"><strong>' + hwCount + '</strong> with homework</span><span class="crs-meta-item"><strong>' + exCount + '</strong> with exam</span></div>';
+      html += '</div>';
+      html += '<div class="crs-actions"><button class="btn btn-ghost btn-sm" onclick="event.stopPropagation();editCourseForm(' + c.id + ')">Edit</button><button class="btn btn-danger btn-sm" onclick="event.stopPropagation();deleteCourse(' + c.id + ')">×</button></div>';
+      html += '<span class="crs-expand-icon">▼</span>';
+      html += '</div>';
+      html += '<div class="crs-body">';
+      if (lessons.length === 0) {
+        html += '<div style="text-align:center;padding:16px 0;color:var(--muted);font-size:.8125rem">No lessons yet.</div>';
+        html += '<button class="btn btn-primary btn-sm" onclick="addLessonForm(' + c.id + ')" style="width:100%;margin-top:8px">+ Add Lesson</button>';
+      } else {
+        html += '<table class="lessons-table"><thead><tr><th style="width:40%">Lesson</th><th style="width:20%">Content</th><th style="width:20%">Status</th><th style="width:20%">Actions</th></tr></thead><tbody>';
+        lessons.forEach((l, li) => {
+          const hasHW = l.homework !== null;
+          const hasEx = l.exams !== null;
+          let statusLabel = '<span class="lt-tag lt-tag-none">Empty</span>';
+          if (hasHW && hasEx) statusLabel = '<span class="lt-tag lt-tag-both">HW + Exam</span>';
+          else if (hasHW) statusLabel = '<span class="lt-tag lt-tag-hw">Homework</span>';
+          else if (hasEx) statusLabel = '<span class="lt-tag lt-tag-exam">Exam</span>';
+          html += '<tr><td><span class="lt-title">' + esc(l.title) + '</span></td>';
+          html += '<td><span class="lt-status">' + statusLabel + '</span></td>';
+          const lecCount = 0; // will be populated if we fetch lectures too
+          html += '<td><span class="lt-status"><span class="lt-status-dot ' + (hasHW || hasEx ? 'active' : 'inactive') + '"></span>' + (hasHW || hasEx ? 'Configured' : 'Not set') + '</span></td>';
+          html += '<td><span class="lt-actions">';
+          if (li > 0) html += '<button class="move-btn" onclick="moveLesson(' + l.id + ',' + c.id + ',-1)" title="Move up">▲</button>';
+          if (li < lessons.length - 1) html += '<button class="move-btn" onclick="moveLesson(' + l.id + ',' + c.id + ',1)" title="Move down">▼</button>';
+          html += '<button class="btn btn-ghost btn-sm" onclick="duplicateLesson(' + l.id + ',' + c.id + ')" title="Duplicate">⧉</button>';
+          html += '<button class="btn btn-ghost btn-sm" onclick="manageContent(' + l.id + ')" title="Edit content">✎</button>';
+          html += '<button class="btn btn-danger btn-sm" onclick="deleteLesson(' + l.id + ')">×</button>';
+          html += '</span></td></tr>';
+        });
+        html += '<tr class="lessons-add-row"><td colspan="4"><button class="btn btn-primary btn-sm" onclick="addLessonForm(' + c.id + ')" style="width:100%">+ Add Lesson</button></td></tr>';
+        html += '</tbody></table>';
+      }
+      html += '</div></div>';
+    });
+    html += '</div>';
+  }
+  document.getElementById('admin-page-courses').innerHTML = html;
+}
+function toggleCourseCard(el) { const card = el.closest('.crs-card'); card.classList.toggle('open'); }
+
+async function moveLesson(id, courseId, dir) {
+  const { data: lessons } = await sb.from('lessons').select('id, sort_order').eq('course_id', courseId).order('sort_order');
+  const idx = lessons.findIndex(l => l.id === id);
+  if (idx < 0 || (dir < 0 && idx === 0) || (dir > 0 && idx === lessons.length - 1)) return;
+  const swapIdx = idx + dir;
+  const a = lessons[idx].sort_order || idx;
+  const b = lessons[swapIdx].sort_order || swapIdx;
+  await sb.from('lessons').update({ sort_order: b }).eq('id', lessons[idx].id);
+  await sb.from('lessons').update({ sort_order: a }).eq('id', lessons[swapIdx].id);
+  loadAdminCourses();
+}
+
+function addCourseForm() { showModal('<h2>Add Course</h2><label>Title</label><input id="f-c-title"><label>Level</label><select id="f-c-level"><option value="sec1">Sec 1</option><option value="sec2">Sec 2</option><option value="sec3">Sec 3</option></select><label>Description</label><textarea id="f-c-desc"></textarea><label>Icon</label><input id="f-c-icon" placeholder="🎯"><div class="lf-upload-row" style="margin:12px 0 4px"><label class="lf-upload-btn"><input id="f-c-img-file" type="file" accept="image/*">Upload Image</label><span class="lf-upload-hint">or enter a URL below</span></div><div class="upload-progress" id="f-c-img-progress" style="display:none"><div class="upload-progress-bar"><div class="upload-progress-fill" id="f-c-img-bar"></div></div><span class="upload-progress-text" id="f-c-img-text">0%</span></div><label>Image URL</label><input id="f-c-img" oninput="previewCourseImg()"><div id="f-c-img-preview" style="margin:4px 0"></div><label>Sort Order</label><input id="f-c-order" type="number" value="1"><div class="admin-modal-footer"><button class="btn btn-primary" onclick="saveCourse()">Save</button><button class="btn btn-ghost" onclick="hideModal()">Cancel</button></div>'); }
+function editCourseForm(id) { sb.from('courses').select('*').eq('id', id).single().then(function(r) { var c = r.data; if (!c) return; var lvl = c.level || 'sec1'; showModal('<h2>Edit Course</h2><label>Title</label><input id="f-c-title" value="' + esc(c.title) + '"><label>Level</label><select id="f-c-level"><option value="sec1"'+(lvl==='sec1'?' selected':'')+'>Sec 1</option><option value="sec2"'+(lvl==='sec2'?' selected':'')+'>Sec 2</option><option value="sec3"'+(lvl==='sec3'?' selected':'')+'>Sec 3</option></select><label>Description</label><textarea id="f-c-desc">' + esc(c.description) + '</textarea><label>Icon</label><input id="f-c-icon" value="' + esc(c.icon) + '"><div class="lf-upload-row" style="margin:12px 0 4px"><label class="lf-upload-btn"><input id="f-c-img-file" type="file" accept="image/*">Upload Image</label><span class="lf-upload-hint">or enter a URL below</span></div><div class="upload-progress" id="f-c-img-progress" style="display:none"><div class="upload-progress-bar"><div class="upload-progress-fill" id="f-c-img-bar"></div></div><span class="upload-progress-text" id="f-c-img-text">0%</span></div><label>Image URL</label><input id="f-c-img" value="' + esc(c.image_url||'') + '" oninput="previewCourseImg()"><div id="f-c-img-preview" style="margin:4px 0"></div><label>Sort Order</label><input id="f-c-order" type="number" value="' + (c.sort_order||0) + '"><div class="admin-modal-footer"><button class="btn btn-primary" onclick="updateCourse(' + id + ')">Update</button><button class="btn btn-ghost" onclick="hideModal()">Cancel</button></div>'); setTimeout(previewCourseImg, 50); }); }
+function previewCourseImg() { var url = document.getElementById('f-c-img')?.value; var el = document.getElementById('f-c-img-preview'); if (el) el.innerHTML = url ? '<img src="' + esc(url) + '" style="max-width:200px;max-height:120px;border-radius:8px;border:1px solid var(--border);object-fit:cover" onerror="this.parentElement.innerHTML=\'<span style=color:red;font-size:.75rem>Invalid image URL</span>\'">' : ''; }
+async function uploadCourseImg(file) {
+  var ext = file.name.split('.').pop();
+  var path = 'courses/' + Date.now() + '.' + ext;
+  var progressEl = document.getElementById('f-c-img-progress');
+  var barEl = document.getElementById('f-c-img-bar');
+  var textEl = document.getElementById('f-c-img-text');
+  if (progressEl) { progressEl.style.display = 'flex'; textEl.textContent = '0%'; barEl.style.width = '0%'; }
+  var { data: { session } } = await sb.auth.getSession();
+  var token = session?.access_token || '';
+  return new Promise(function(resolve) {
+    var xhr = new XMLHttpRequest();
+    xhr.open('POST', SUPABASE_URL + '/storage/v1/object/question-images/' + path);
+    xhr.setRequestHeader('authorization', 'Bearer ' + token);
+    xhr.setRequestHeader('x-upsert', 'true');
+    xhr.upload.onprogress = function(e) {
+      if (!e.lengthComputable) return;
+      var pct = Math.round((e.loaded / e.total) * 100);
+      if (barEl) barEl.style.width = pct + '%';
+      if (textEl) textEl.textContent = pct + '%';
+    };
+    xhr.onload = function() {
+      if (xhr.status >= 200 && xhr.status < 300) {
+        if (textEl) textEl.textContent = 'Complete';
+        if (barEl) barEl.style.width = '100%';
+        resolve(SUPABASE_URL + '/storage/v1/object/public/question-images/' + path);
+      } else {
+        alert('Upload error');
+        if (progressEl) progressEl.style.display = 'none';
+        resolve(null);
+      }
+    };
+    xhr.onerror = function() { alert('Network error'); if (progressEl) progressEl.style.display = 'none'; resolve(null); };
+    xhr.send(file);
+  });
+}
+async function saveCourse() {
+  var imgUrl = document.getElementById('f-c-img').value.trim();
+  var fileEl = document.getElementById('f-c-img-file').files?.[0];
+  if (fileEl) { var fp = await uploadCourseImg(fileEl); if (fp) imgUrl = fp; }
+  var { error } = await sb.from('courses').insert({ title: document.getElementById('f-c-title').value, level: document.getElementById('f-c-level').value, description: document.getElementById('f-c-desc').value, icon: document.getElementById('f-c-icon').value, image_url: imgUrl, sort_order: parseInt(document.getElementById('f-c-order').value) || 0 });
+  if (error) { alert('Error: ' + error.message); return; }
+  hideModal(); loadAdminCourses();
+}
+async function updateCourse(id) {
+  var imgUrl = document.getElementById('f-c-img').value.trim();
+  var fileEl = document.getElementById('f-c-img-file').files?.[0];
+  if (fileEl) { var fp = await uploadCourseImg(fileEl); if (fp) imgUrl = fp; }
+  var { error } = await sb.from('courses').update({ title: document.getElementById('f-c-title').value, level: document.getElementById('f-c-level').value, description: document.getElementById('f-c-desc').value, icon: document.getElementById('f-c-icon').value, image_url: imgUrl, sort_order: parseInt(document.getElementById('f-c-order').value) || 0 }).eq('id', id);
+  if (error) { alert('Error: ' + error.message); return; }
+  hideModal(); loadAdminCourses();
+}
+async function deleteCourse(id) { if (!confirm('Delete this course and all its lessons?')) return; const { error } = await sb.from('courses').delete().eq('id', id); if (error) { alert('Error: ' + error.message); return; } loadAdminCourses(); }
+
+async function addLessonForm(courseId) { showModal('<h2>Add Lesson</h2><label>Title</label><input id="f-l-title"><label>Topic</label><input id="f-l-topic"><label>Description</label><textarea id="f-l-desc"></textarea><label>Sort Order</label><input id="f-l-order" type="number" value="1"><div class="admin-modal-footer"><button class="btn btn-primary" onclick="saveLesson(' + courseId + ')">Save</button><button class="btn btn-ghost" onclick="hideModal()">Cancel</button></div>'); }
+async function saveLesson(courseId) {
+  var title = document.getElementById('f-l-title').value.trim();
+  if (!title) { alert('Please enter a title'); return; }
+  var { error } = await sb.from('lessons').insert({
+    course_id: courseId,
+    title: title,
+    topic: document.getElementById('f-l-topic').value.trim(),
+    description: document.getElementById('f-l-desc').value.trim(),
+    sort_order: parseInt(document.getElementById('f-l-order').value) || 0
+  });
+  if (error) { alert('Error: ' + error.message); return; }
+  hideModal();
+  loadAdminCourses();
+}
+async function deleteLesson(id) { if (!confirm('Delete this lesson and all its content?')) return; const { error } = await sb.from('lessons').delete().eq('id', id); if (error) { alert('Error: ' + error.message); return; } loadAdminCourses(); }
+
+async function duplicateLesson(id, courseId) {
+  const { data: orig } = await sb.from('lessons').select('*').eq('id', id).single();
+  if (!orig) return;
+  const { data: lectures } = await sb.from('lectures').select('*').eq('lesson_id', id).order('sort_order');
+  const { data: hws } = await sb.from('homework').select('*, hw_questions:hw_questions(*)').eq('lesson_id', id);
+  const { data: exms } = await sb.from('exams').select('*, exam_questions:exam_questions(*)').eq('lesson_id', id);
+  const { data: maxOrder } = await sb.from('lessons').select('sort_order').eq('course_id', courseId).order('sort_order', { ascending: false }).limit(1);
+  const newOrder = (maxOrder?.[0]?.sort_order || 0) + 1;
+  const { data: newL, error } = await sb.from('lessons').insert({ course_id: courseId, title: orig.title + ' (copy)', topic: orig.topic, description: orig.description, sort_order: newOrder }).select('id').single();
+  if (error) { alert('Error: ' + error.message); return; }
+  const newId = newL.id;
+  for (const lec of lectures || []) {
+    await sb.from('lectures').insert({ lesson_id: newId, title: lec.title, content: lec.content, math: lec.math, type: lec.type, sort_order: lec.sort_order });
+  }
+  const hw = hws?.[0];
+  if (hw) {
+    const { data: newHW } = await sb.from('homework').insert({ lesson_id: newId, pass_score: hw.pass_score }).select('id').single();
+    if (newHW) for (const q of hw.hw_questions || []) await sb.from('hw_questions').insert({ homework_id: newHW.id, question: q.question, options: q.options, correct: q.correct, sort_order: q.sort_order });
+  }
+  const ex = exms?.[0];
+  if (ex) {
+    const { data: newEx } = await sb.from('exams').insert({ lesson_id: newId, pass_score: ex.pass_score }).select('id').single();
+    if (newEx) for (const q of ex.exam_questions || []) await sb.from('exam_questions').insert({ exam_id: newEx.id, question: q.question, options: q.options, correct: q.correct, sort_order: q.sort_order });
+  }
+  loadAdminCourses();
+}
+
+async function moveLecture(id, lid, dir) {
+  const { data: lectures } = await sb.from('lectures').select('id, sort_order').eq('lesson_id', lid).order('sort_order');
+  const idx = lectures.findIndex(l => l.id === id);
+  if (idx < 0 || (dir < 0 && idx === 0) || (dir > 0 && idx === lectures.length - 1)) return;
+  const a = lectures[idx].sort_order || idx;
+  const b = lectures[idx + dir].sort_order || (idx + dir);
+  await sb.from('lectures').update({ sort_order: b }).eq('id', lectures[idx].id);
+  await sb.from('lectures').update({ sort_order: a }).eq('id', lectures[idx + dir].id);
+  manageContent(_contentLid);
+}
+
+async function deleteHW(id, lid) { if (!confirm('Delete this homework and all its questions?')) return; const { error } = await sb.from('homework').delete().eq('id', id); if (error) { alert('Error: ' + error.message); return; } manageContent(lid); }
+async function deleteExam(id, lid) { if (!confirm('Delete this exam and all its questions?')) return; const { error } = await sb.from('exams').delete().eq('id', id); if (error) { alert('Error: ' + error.message); return; } manageContent(lid); }
+
+async function saveExamConfig(id) {
+  var total = parseInt(document.getElementById('f-ex-total').value) || 0;
+  var qpa = parseInt(document.getElementById('f-ex-qpa').value) || 0;
+  var maxAtt = parseInt(document.getElementById('f-ex-max-att').value) || 0;
+  var attPass = parseInt(document.getElementById('f-ex-att-pass').value) || 60;
+  var hasFinal = document.getElementById('f-ex-final').checked;
+  var pool = { total_questions: total, questions_per_attempt: qpa, max_attempts: maxAtt, attempt_pass_score: attPass, has_final_exam: hasFinal };
+  var { error } = await sb.from('exams').update(pool).eq('id', id);
+  if (error) { alert('Error: ' + error.message); return; }
+  manageContent(_contentLid);
+}
+
+// ========== CONTENT Editor (Professional Redesign) ==========
+let _contentLid = null;
+async function manageContent(lid) {
+  _contentLid = lid;
+  const [lr, hr, er] = await Promise.all([
+    sb.from('lessons').select('*, lectures:lectures(*)').eq('id', lid).single(),
+    sb.from('homework').select('*, hw_questions:hw_questions(*), hw_image_questions:hw_image_questions(*)').eq('lesson_id', lid).maybeSingle(),
+    sb.from('exams').select('*, exam_questions:exam_questions(*), exam_image_questions:exam_image_questions(*)').eq('lesson_id', lid).maybeSingle()
+  ]);
+  const l = lr.data; if (!l) return;
+  const hw = hr.data;
+  const ex = er.data;
+  let html = '<h2>' + esc(l.title) + '</h2>';
+  // Lesson editor
+  html += '<div class="lesson-editor">';
+  html += '<div class="lesson-editor-grid">';
+  html += '<label>Title<input id="f-l-title" value="' + esc(l.title) + '"></label>';
+  html += '<label>Topic<input id="f-l-topic" value="' + esc(l.topic) + '"></label>';
+  html += '<label class="le-full">Description<textarea id="f-l-desc">' + esc(l.description) + '</textarea></label>';
+  html += '<label>Sort Order<input id="f-l-order" type="number" value="' + (l.sort_order||0) + '" style="width:100px"></label>';
+  html += '</div>';
+  html += '<button class="btn btn-ghost btn-sm" onclick="updateLessonFromContent(' + lid + ')">Update Lesson</button>';
+  html += '</div>';
+  // Tabs
+  html += '<div class="md-tabs" id="content-tabs">';
+  html += '<button class="active" onclick="switchContentTab(\'lectures\',this)">Lectures <span style="font-weight:400;opacity:.6">(' + (l.lectures||[]).length + ')</span></button>';
+  html += '<button onclick="switchContentTab(\'hw\',this)">Homework <span style="font-weight:400;opacity:.6">(' + ((hw?.hw_questions?.length||0)+(hw?.hw_image_questions?.length||0)) + ')</span></button>';
+  html += '<button onclick="switchContentTab(\'exam\',this)">Exam <span style="font-weight:400;opacity:.6">(' + ((ex?.exam_questions?.length||0)+(ex?.exam_image_questions?.length||0)) + ')</span></button>';
+  html += '</div>';
+  // === LECTURES TAB ===
+  html += '<div class="md-tab-content active" id="content-lectures">';
+  if ((l.lectures||[]).length === 0) {
+    html += '<div class="empty-state" style="padding:24px 12px"><div class="empty-icon" style="font-size:1.5rem">📖</div><h3 style="font-size:.875rem">No lectures</h3><p style="font-size:.75rem">Add video or reading content.</p></div>';
+  } else {
+    html += '<div class="qs-list">';
+    (l.lectures||[]).sort((a,b)=>(a.sort_order||0)-(b.sort_order||0)).forEach((lec, li, arr) => {
+      html += '<div class="q-row">';
+      html += '<div class="q-info"><span class="q-text">' + esc(lec.title) + '</span><span class="q-meta">' + lec.type + (lec.video_url ? ' · video' : '') + (lec.file_url ? ' · <a href="' + esc(lec.file_url) + '" target="_blank" style="color:var(--accent);text-decoration:underline">file</a>' : '') + (lec.pdf_url ? ' · <a href="' + esc(lec.pdf_url) + '" target="_blank" style="color:var(--error);text-decoration:underline">PDF</a>' : '') + '</span></div>';
+      html += '<span class="q-actions">';
+      if (li > 0) html += '<button class="move-btn" onclick="moveLecture(' + lec.id + ',' + lid + ',-1)" title="Move up">▲</button>';
+      if (li < arr.length - 1) html += '<button class="move-btn" onclick="moveLecture(' + lec.id + ',' + lid + ',1)" title="Move down">▼</button>';
+      html += '<button class="btn btn-ghost btn-sm" onclick="editLectureForm(' + lec.id + ')">Edit</button>';
+      html += '<button class="btn btn-danger btn-sm" onclick="deleteLecture(' + lec.id + ')">×</button>';
+      html += '</span></div>';
+    });
+    html += '</div>';
+  }
+  html += '<button class="btn btn-primary btn-sm" onclick="showAddLectureForm(' + lid + ')" style="margin-top:8px;width:100%">+ Add Lecture</button>';
+  html += '</div>';
+  // === HOMEWORK TAB ===
+  html += '<div class="md-tab-content" id="content-hw">';
+  if (hw) {
+    html += '<div style="display:flex;gap:10px;align-items:center;margin-bottom:16px;flex-wrap:wrap;padding:12px 14px;background:var(--surface);border-radius:8px;border:1px solid var(--border)">';
+    html += '<span style="font-size:.75rem;font-weight:600;color:var(--muted)">Pass Score:</span>';
+    html += '<input id="f-hw-pass" type="number" value="' + hw.pass_score + '" style="width:60px;padding:6px 10px;border:1px solid var(--border);border-radius:6px;font-size:.8125rem">';
+    html += '<button class="btn btn-ghost btn-sm" onclick="updatePassScore(\'homework\',' + hw.id + ')">Save</button>';
+    html += '<div style="flex:1"></div>';
+    html += '<span style="font-size:.6875rem;color:var(--muted)">' + (hw.hw_questions||[]).length + ' std · ' + (hw.hw_image_questions||[]).length + ' img</span>';
+    html += '<button class="btn btn-danger btn-sm" onclick="deleteHW(' + hw.id + ',' + lid + ')">Delete</button>';
+    html += '</div>';
+    // Standard questions
+    html += '<div class="sec-heading">Standard Questions</div>';
+    html += '<div class="qs-list">';
+    (hw.hw_questions||[]).sort((a,b)=>(a.sort_order||0)-(b.sort_order||0)).forEach(q => {
+      html += '<div class="q-row"><div class="q-info"><span class="q-text">' + esc(q.question) + '</span><span class="q-meta">' + q.options.length + ' opts · ' + String.fromCharCode(65 + q.correct) + (q.math ? '<span class="q-meta-tag math">∑ math</span>' : '') + (q.image_url ? '<span class="q-meta-tag img">🖼 img</span>' : '') + '</span></div><span class="q-actions"><button class="btn btn-ghost btn-sm" onclick="editHWQForm(' + q.id + ')">Edit</button><button class="btn btn-danger btn-sm" onclick="deleteHWQ(' + q.id + ')">×</button></span></div>';
+    });
+    html += '</div>';
+    html += '<div style="display:flex;gap:8px;margin-top:8px;flex-wrap:wrap">';
+    html += '<button class="btn btn-primary btn-sm" onclick="addHWQForm(' + hw.id + ')">+ Add Standard</button>';
+    html += '<button class="btn btn-ghost btn-sm" onclick="showCategoryPicker(\'hw\',' + hw.id + ')">📂 Import from Category</button>';
+    html += '</div>';
+    html += '<hr class="sec-hr">';
+    // Image questions
+    html += '<div class="sec-heading">Image Questions <span style="font-weight:400;text-transform:none;letter-spacing:0;color:var(--muted)">(image-based, A/B/C/D)</span></div>';
+    html += '<div class="qs-list">';
+    if (hw.hw_image_questions && hw.hw_image_questions.length) {
+      hw.hw_image_questions.sort((a,b)=>(a.sort_order||0)-(b.sort_order||0)).forEach(q => {
+        const imgUrl = SUPABASE_URL + '/storage/v1/object/public/question-images/' + q.image_url;
+        html += '<div class="q-row"><img class="q-row-image" src="' + imgUrl + '" onclick="window.open(this.src)"><div class="q-info"><span class="q-text">Image Question</span><span class="q-meta">correct: ' + q.correct + (q.explanation ? ' · explanation' : '') + '</span></div><span class="q-actions"><button class="btn btn-ghost btn-sm" onclick="editHWImgQForm(' + q.id + ')">Edit</button><button class="btn btn-danger btn-sm" onclick="deleteHWImgQ(' + q.id + ')">×</button></span></div>';
+      });
+    } else {
+      html += '<div style="padding:12px 0;text-align:center;color:var(--muted);font-size:.75rem">No image questions.</div>';
+    }
+    html += '</div>';
+    html += '<button class="btn btn-primary btn-sm" onclick="addHWImgQForm(' + hw.id + ')" style="margin-top:8px">+ Add Image Question</button>';
+  } else {
+    html += '<div class="empty-state" style="padding:24px 12px"><div class="empty-icon" style="font-size:1.5rem">✎</div><h3 style="font-size:.875rem">No homework</h3><p style="font-size:.75rem">Create homework for this lesson.</p><button class="btn btn-primary btn-sm" onclick="createHW(' + lid + ')">Create Homework</button></div>';
+  }
+  html += '</div>';
+  // === EXAM TAB ===
+  html += '<div class="md-tab-content" id="content-exam">';
+  if (ex) {
+    var isDynamic = ex.total_questions > 0;
+    // Exam header bar
+    html += '<div style="display:flex;gap:10px;align-items:center;margin-bottom:16px;flex-wrap:wrap;padding:12px 14px;background:var(--surface);border-radius:8px;border:1px solid var(--border)">';
+    html += '<span style="font-size:.75rem;font-weight:600;color:var(--muted)">Pass Score:</span>';
+    html += '<input id="f-ex-pass" type="number" value="' + ex.pass_score + '" style="width:60px;padding:6px 10px;border:1px solid var(--border);border-radius:6px;font-size:.8125rem">';
+    html += '<button class="btn btn-ghost btn-sm" onclick="updatePassScore(\'exams\',' + ex.id + ')">Save</button>';
+    html += '<div style="flex:1"></div>';
+    html += '<button class="btn btn-danger btn-sm" onclick="deleteExam(' + ex.id + ',' + lid + ')">Delete Exam</button>';
+    html += '</div>';
+    // Dynamic Exam Config Panel
+    html += '<div class="exam-config' + (isDynamic ? ' open' : '') + '">';
+    html += '<div class="exam-config-header" onclick="this.parentElement.classList.toggle(\'open\')">⚙️ Dynamic Exam Setup <span class="ec-toggle">▼</span></div>';
+    html += '<div class="exam-config-body">';
+    html += '<div class="ec-grid">';
+    html += '<label>Total Pool Questions<input id="f-ex-total" type="number" value="' + (ex.total_questions||0) + '"></label>';
+    html += '<label>Questions per Attempt<input id="f-ex-qpa" type="number" value="' + (ex.questions_per_attempt||0) + '"><span style="font-size:.6875rem;color:var(--muted);font-weight:400;text-transform:none;letter-spacing:0">0 = auto (pool ÷ attempts)</span></label>';
+    html += '<label>Max Attempts<input id="f-ex-max-att" type="number" value="' + (ex.max_attempts||0) + '"></label>';
+    html += '<label>Pass Score per Attempt<input id="f-ex-att-pass" type="number" value="' + (ex.attempt_pass_score||60) + '"></label>';
+    html += '</div>';
+    html += '<div class="ec-row"><input type="checkbox" id="f-ex-final" ' + (ex.has_final_exam ? 'checked' : '') + '><label for="f-ex-final" style="text-transform:none;letter-spacing:0;font-weight:500;cursor:pointer">Has Final Exam (comprehensive review after all attempts)</label></div>';
+    html += '<button class="btn btn-primary btn-sm" onclick="saveExamConfig(' + ex.id + ')">Save Config</button>';
+    if (isDynamic) {
+      var qpaVal = (ex.questions_per_attempt > 0) ? ex.questions_per_attempt : (ex.total_questions > 0 && ex.max_attempts > 0 ? Math.floor(ex.total_questions / ex.max_attempts) : 10);
+      html += '<div class="ec-summary"><span>📦 Pool: <strong>' + (ex.exam_questions||[]).length + '</strong> std + <strong>' + (ex.exam_image_questions||[]).length + '</strong> img</span><span>🎯 Per attempt: ' + qpaVal + ' questions</span></div>';
+    }
+    html += '</div></div>';
+    // Standard questions
+    html += '<div class="sec-heading">Standard Questions</div>';
+    html += '<div class="qs-list">';
+    (ex.exam_questions||[]).sort((a,b)=>(a.sort_order||0)-(b.sort_order||0)).forEach(q => {
+      html += '<div class="q-row"><div class="q-info"><span class="q-text">' + esc(q.question) + '</span><span class="q-meta">' + q.options.length + ' opts · ' + String.fromCharCode(65 + q.correct) + (q.math ? '<span class="q-meta-tag math">∑ math</span>' : '') + (q.image_url ? '<span class="q-meta-tag img">🖼 img</span>' : '') + '</span></div><span class="q-actions"><button class="btn btn-ghost btn-sm" onclick="editExamQForm(' + q.id + ')">Edit</button><button class="btn btn-danger btn-sm" onclick="deleteExamQ(' + q.id + ')">×</button></span></div>';
+    });
+    html += '</div>';
+    html += '<div style="display:flex;gap:8px;margin-top:8px;flex-wrap:wrap">';
+    html += '<button class="btn btn-primary btn-sm" onclick="addExamQForm(' + ex.id + ')">+ Add Question</button>';
+    html += '<button class="btn btn-ghost btn-sm" onclick="document.getElementById(\'f-word-file\').click()">📄 Import from Word</button>';
+    html += '<button class="btn btn-ghost btn-sm" onclick="showCategoryPicker(\'exam\',' + ex.id + ')">📂 Import from Category</button>';
+    html += '<input id="f-word-file" type="file" accept=".docx" style="display:none" onchange="importWordExam(' + ex.id + ',this)">';
+    html += '</div>';
+    html += '<hr class="sec-hr">';
+    // Image questions
+    html += '<div class="sec-heading">Image Questions <span style="font-weight:400;text-transform:none;letter-spacing:0;color:var(--muted)">(image-based, A/B/C/D)</span></div>';
+    html += '<div class="qs-list">';
+    if (ex.exam_image_questions && ex.exam_image_questions.length) {
+      ex.exam_image_questions.sort((a,b)=>(a.sort_order||0)-(b.sort_order||0)).forEach(q => {
+        const imgUrl = SUPABASE_URL + '/storage/v1/object/public/question-images/' + q.image_url;
+        html += '<div class="q-row"><img class="q-row-image" src="' + imgUrl + '" onclick="window.open(this.src)"><div class="q-info"><span class="q-text">Image Question</span><span class="q-meta">correct: ' + q.correct + (q.explanation ? ' · explanation' : '') + '</span></div><span class="q-actions"><button class="btn btn-ghost btn-sm" onclick="editExamImgQForm(' + q.id + ')">Edit</button><button class="btn btn-danger btn-sm" onclick="deleteExamImgQ(' + q.id + ')">×</button></span></div>';
+      });
+    } else {
+      html += '<div style="padding:12px 0;text-align:center;color:var(--muted);font-size:.75rem">No image questions.</div>';
+    }
+    html += '</div>';
+    html += '<button class="btn btn-primary btn-sm" onclick="addExamImgQForm(' + ex.id + ')" style="margin-top:8px">+ Add Image Question</button>';
+  } else {
+    html += '<div class="empty-state" style="padding:24px 12px"><div class="empty-icon" style="font-size:1.5rem">📝</div><h3 style="font-size:.875rem">No exam</h3><p style="font-size:.75rem">Create an exam for this lesson.</p><button class="btn btn-primary btn-sm" onclick="createExam(' + lid + ')">Create Exam</button></div>';
+  }
+  html += '</div>';
+  showModal(html);
+}
+function switchContentTab(tab, el) {
+  document.querySelectorAll('#content-tabs button').forEach(b => b.classList.remove('active'));
+  if (el) el.classList.add('active');
+  document.querySelectorAll('.md-tab-content').forEach(c => c.classList.toggle('active', c.id === 'content-' + tab));
+}
+
+async function updateLessonFromContent(lid) {
+  const { error } = await sb.from('lessons').update({ title: document.getElementById('f-l-title').value, topic: document.getElementById('f-l-topic').value, description: document.getElementById('f-l-desc').value, sort_order: parseInt(document.getElementById('f-l-order').value) || 0 }).eq('id', lid);
+  if (error) { alert('Error: ' + error.message); return; }
+  manageContent(lid);
+}
+
+async function updatePassScore(table, id) {
+  const val = parseInt((table === 'homework' ? document.getElementById('f-hw-pass') : document.getElementById('f-ex-pass')).value) || 60;
+  const { error } = await sb.from(table).update({ pass_score: val }).eq('id', id);
+  if (error) { alert('Error: ' + error.message); return; }
+  manageContent(_contentLid);
+}
+
+function showAddLectureForm(lid) { showModal(lectureFormHtml(null) + '<div style="display:flex;gap:8px;margin-top:16px"><button class="btn btn-primary" onclick="saveLecture(' + lid + ')">Save</button><button class="btn btn-ghost" onclick="hideModal();manageContent(' + _contentLid + ')">Cancel</button></div>'); toggleLectureType(); }
+function lectureFormHtml(lec) {
+  const title = lec ? esc(lec.title) : '';
+  const content = lec ? esc(lec.content) : '';
+  const math = lec ? esc(lec.math||'') : '';
+  const type = lec ? lec.type : 'Video';
+  const order = lec ? (lec.sort_order||0) : 1;
+  const vid = lec ? esc(lec.video_url||'') : '';
+  const typeOpts = ['Video','Reading','Worksheet'].map(t => '<option' + (type===t?' selected':'') + '>' + t + '</option>').join('');
+  // Parse existing qualities from video_url
+  var qualities = [];
+  try { var qParsed = JSON.parse(vid); if (typeof qParsed === 'object') { for (var k in qParsed) qualities.push({ label: k, src: esc(qParsed[k]) }); } } catch(e) {}
+  if (qualities.length === 0 && vid) qualities.push({ label: 'Auto', src: vid });
+  var qualityLabels = ['1080p','720p','480p','360p','Auto'];
+  let html = '<h2>' + (lec ? 'Edit Lecture' : 'Add Lecture') + '</h2>';
+  html += '<div class="lf-field"><label>Title</label><input id="f-lect-title" value="' + title + '"></div>';
+  html += '<div class="lf-field"><label>Content</label><textarea id="f-lect-content" rows="3">' + content + '</textarea></div>';
+  html += '<div class="lf-field"><label>Math (optional)</label><input id="f-lect-math" value="' + math + '"></div>';
+  var fileUrl = lec ? esc(lec.file_url||'') : '';
+  html += '<div class="lf-field"><label>Type</label><select id="f-lect-type" onchange="toggleLectureType()">' + typeOpts + '</select></div>';
+  html += '<div id="f-lect-video-section" class="lf-video-section" style="' + (type!=='Video'?'display:none':'') + '">';
+  html += '<div class="lf-video-header"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" width="16" height="16"><polygon points="23 7 16 12 23 17 23 7"/><rect x="1" y="5" width="15" height="14" rx="2" ry="2"/></svg>Video Sources</div>';
+  html += '<div class="lf-upload-row"><label class="lf-upload-btn"><input id="f-lect-video-file" type="file" accept="video/mp4,video/webm">Upload MP4</label><span class="lf-upload-hint">or drag & drop a file</span></div>';
+  html += '<div class="upload-progress" id="f-lect-upload-progress" style="display:none"><div class="upload-progress-bar"><div class="upload-progress-fill" id="f-lect-upload-bar"></div></div><span class="upload-progress-text" id="f-lect-upload-text">0%</span></div>';
+  html += '<div class="lf-urls"><div class="lf-urls-label">URL Sources <span class="lf-urls-note">— add quality versions (optional)</span></div>';
+  qualityLabels.forEach(function(ql, qi) {
+    var existing = qualities.find(function(q) { return q.label === ql; });
+    var val = existing ? existing.src : '';
+    html += '<div class="lf-url-row"><span class="lf-url-badge">' + ql + '</span><input class="lf-url-input" id="f-lect-q-' + ql + '" value="' + val + '" placeholder="https://..."></div>';
+  });
+  html += '</div></div>';
+  // File upload section for Reading / Worksheet
+  html += '<div id="f-lect-file-section" class="lf-video-section" style="' + (type==='Video'?'display:none':'') + '">';
+  html += '<div class="lf-video-header"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" width="16" height="16"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>Attachments</div>';
+  html += '<div class="lf-upload-row"><label class="lf-upload-btn"><input id="f-lect-file-upload" type="file" accept=".pdf,.doc,.docx,.pptx,.txt,.zip">Upload File</label><span class="lf-upload-hint">PDF, Word, PowerPoint, text, zip</span></div>';
+  html += '<div class="upload-progress" id="f-lect-file-progress" style="display:none"><div class="upload-progress-bar"><div class="upload-progress-fill" id="f-lect-file-bar"></div></div><span class="upload-progress-text" id="f-lect-file-text">0%</span></div>';
+  html += '<div class="lf-field" style="margin-top:8px"><label class="st-label">File URL <span class="st-label-note">(or enter a direct link)</span></label><input id="f-lect-file-url" class="st-input" value="' + fileUrl + '" placeholder="https://..."></div>';
+  html += '</div>';
+  var pdfUrl = lec ? esc(lec.pdf_url||'') : '';
+  html += '<div id="f-lect-pdf-section" class="lf-video-section" style="margin-top:12px">';
+  html += '<div class="lf-video-header"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" width="16" height="16"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><path d="M9 15h6"/><path d="M12 12v6"/></svg>PDF Material</div>';
+  html += '<div class="lf-upload-row"><label class="lf-upload-btn"><input id="f-lect-pdf-upload" type="file" accept=".pdf">Upload PDF</label><span class="lf-upload-hint">or enter a URL below</span></div>';
+  html += '<div class="upload-progress" id="f-lect-pdf-progress" style="display:none"><div class="upload-progress-bar"><div class="upload-progress-fill" id="f-lect-pdf-bar"></div></div><span class="upload-progress-text" id="f-lect-pdf-text">0%</span></div>';
+  html += '<div class="lf-field" style="margin-top:8px"><label class="st-label">PDF URL <span class="st-label-note">(or enter a direct link)</span></label><input id="f-lect-pdf-url" class="st-input" value="' + pdfUrl + '" placeholder="https://..."></div>';
+  html += '</div>';
+  html += '<label>Sort Order</label><input id="f-lect-order" type="number" value="' + order + '">';
+  return html;
+}
+function toggleLectureType() {
+  var isVideo = document.getElementById('f-lect-type').value === 'Video';
+  document.getElementById('f-lect-video-section').style.display = isVideo ? 'block' : 'none';
+  document.getElementById('f-lect-file-section').style.display = isVideo ? 'none' : 'block';
+  document.getElementById('f-lect-pdf-section').style.display = 'block';
+}
+async function uploadVideo(file, lessonId, progressEl, barEl, textEl) {
+  const ext = file.name.split('.').pop();
+  const path = lessonId + '/' + Date.now() + '.' + ext;
+  if (progressEl) { progressEl.style.display = 'flex'; textEl.textContent = '0%'; barEl.style.width = '0%'; }
+  const { data: { session } } = await sb.auth.getSession();
+  const token = session?.access_token || '';
+  return new Promise((resolve) => {
+    const xhr = new XMLHttpRequest();
+    xhr.open('POST', SUPABASE_URL + '/storage/v1/object/videos/' + path);
+    xhr.setRequestHeader('authorization', 'Bearer ' + token);
+    xhr.setRequestHeader('x-upsert', 'true');
+    xhr.upload.onprogress = (e) => {
+      if (!e.lengthComputable) return;
+      const pct = Math.round((e.loaded / e.total) * 100);
+      if (barEl) barEl.style.width = pct + '%';
+      if (textEl) textEl.textContent = pct + '%';
+      if (pct >= 100 && textEl) textEl.textContent = 'Processing...';
+    };
+    xhr.onload = () => {
+      if (xhr.status >= 200 && xhr.status < 300) {
+        if (textEl) textEl.textContent = 'Complete';
+        if (barEl) barEl.style.width = '100%';
+        resolve(path);
+      } else {
+        let msg = 'Upload error';
+        try { const r = JSON.parse(xhr.responseText); msg = r.error || r.message || msg; } catch(e) {}
+        alert(msg);
+        if (progressEl) progressEl.style.display = 'none';
+        resolve(null);
+      }
+    };
+    xhr.onerror = () => { alert('Network error'); if (progressEl) progressEl.style.display = 'none'; resolve(null); };
+    xhr.send(file);
+  });
+}
+function collectVideoUrl() {
+  var qualityLabels = ['1080p','720p','480p','360p','Auto'];
+  var qs = {};
+  qualityLabels.forEach(function(ql) {
+    var el = document.getElementById('f-lect-q-' + ql);
+    if (el && el.value.trim()) qs[ql] = el.value.trim();
+  });
+  if (Object.keys(qs).length === 0) return '';
+  if (Object.keys(qs).length === 1) {
+    var only = qs[Object.keys(qs)[0]];
+    if (only.startsWith('http')) return only;
+  }
+  return JSON.stringify(qs);
+}
+async function uploadLectureFile(file, lid, progressEl, barEl, textEl) {
+  var ext = file.name.split('.').pop();
+  var path = 'files/' + lid + '/' + Date.now() + '.' + ext;
+  if (progressEl) { progressEl.style.display = 'flex'; textEl.textContent = '0%'; barEl.style.width = '0%'; }
+  var { data: { session } } = await sb.auth.getSession();
+  var token = session?.access_token || '';
+  return new Promise(function(resolve) {
+    var xhr = new XMLHttpRequest();
+    xhr.open('POST', SUPABASE_URL + '/storage/v1/object/files/' + path);
+    xhr.setRequestHeader('authorization', 'Bearer ' + token);
+    xhr.setRequestHeader('x-upsert', 'true');
+    xhr.upload.onprogress = function(e) {
+      if (!e.lengthComputable) return;
+      var pct = Math.round((e.loaded / e.total) * 100);
+      if (barEl) barEl.style.width = pct + '%';
+      if (textEl) textEl.textContent = pct + '%';
+    };
+    xhr.onload = function() {
+      if (xhr.status >= 200 && xhr.status < 300) {
+        if (textEl) textEl.textContent = 'Complete';
+        if (barEl) barEl.style.width = '100%';
+        resolve(SUPABASE_URL + '/storage/v1/object/public/files/' + path);
+      } else {
+        alert('Upload error');
+        if (progressEl) progressEl.style.display = 'none';
+        resolve(null);
+      }
+    };
+    xhr.onerror = function() { alert('Network error'); if (progressEl) progressEl.style.display = 'none'; resolve(null); };
+    xhr.send(file);
+  });
+}
+async function uploadLecturePdf(file, lid, progressEl, barEl, textEl) {
+  var ext = file.name.split('.').pop();
+  var path = 'files/' + lid + '/pdf/' + Date.now() + '.' + ext;
+  if (progressEl) { progressEl.style.display = 'flex'; textEl.textContent = '0%'; barEl.style.width = '0%'; }
+  var { data: { session } } = await sb.auth.getSession();
+  var token = session?.access_token || '';
+  return new Promise(function(resolve) {
+    var xhr = new XMLHttpRequest();
+    xhr.open('POST', SUPABASE_URL + '/storage/v1/object/files/' + path);
+    xhr.setRequestHeader('authorization', 'Bearer ' + token);
+    xhr.setRequestHeader('x-upsert', 'true');
+    xhr.upload.onprogress = function(e) {
+      if (!e.lengthComputable) return;
+      var pct = Math.round((e.loaded / e.total) * 100);
+      if (barEl) barEl.style.width = pct + '%';
+      if (textEl) textEl.textContent = pct + '%';
+    };
+    xhr.onload = function() {
+      if (xhr.status >= 200 && xhr.status < 300) {
+        if (textEl) textEl.textContent = 'Complete';
+        if (barEl) barEl.style.width = '100%';
+        resolve(SUPABASE_URL + '/storage/v1/object/public/files/' + path);
+      } else {
+        alert('Upload error');
+        if (progressEl) progressEl.style.display = 'none';
+        resolve(null);
+      }
+    };
+    xhr.onerror = function() { alert('Network error'); if (progressEl) progressEl.style.display = 'none'; resolve(null); };
+    xhr.send(file);
+  });
+}
+async function saveLecture(lid) {
+  const vidFile = document.getElementById('f-lect-video-file').files?.[0];
+  let video_url = collectVideoUrl();
+  if (vidFile) {
+    const p = await uploadVideo(vidFile, lid, document.getElementById('f-lect-upload-progress'), document.getElementById('f-lect-upload-bar'), document.getElementById('f-lect-upload-text'));
+    if (!p) return;
+    var qualityLabels = ['1080p','720p','480p','360p','Auto'];
+    var qs = {};
+    qualityLabels.forEach(function(ql) { var el = document.getElementById('f-lect-q-' + ql); if (el && el.value.trim()) qs[ql] = el.value.trim(); });
+    qs['Original'] = p;
+    video_url = JSON.stringify(qs);
+  }
+  var fileUrl = document.getElementById('f-lect-file-url').value.trim();
+  var fileEl = document.getElementById('f-lect-file-upload').files?.[0];
+  if (fileEl) {
+    var fp = await uploadLectureFile(fileEl, lid, document.getElementById('f-lect-file-progress'), document.getElementById('f-lect-file-bar'), document.getElementById('f-lect-file-text'));
+    if (fp) fileUrl = fp;
+  }
+  var pdfUrl = document.getElementById('f-lect-pdf-url').value.trim();
+  var pdfEl = document.getElementById('f-lect-pdf-upload').files?.[0];
+  if (pdfEl) {
+    var pp = await uploadLecturePdf(pdfEl, lid, document.getElementById('f-lect-pdf-progress'), document.getElementById('f-lect-pdf-bar'), document.getElementById('f-lect-pdf-text'));
+    if (pp) pdfUrl = pp;
+  }
+  const data = { lesson_id: lid, title: document.getElementById('f-lect-title').value, content: document.getElementById('f-lect-content').value, math: document.getElementById('f-lect-math').value, type: document.getElementById('f-lect-type').value, sort_order: parseInt(document.getElementById('f-lect-order').value) || 0 };
+  if (video_url) data.video_url = video_url;
+  if (fileUrl) data.file_url = fileUrl;
+  if (pdfUrl) data.pdf_url = pdfUrl;
+  const { error } = await sb.from('lectures').insert(data);
+  if (error) { alert('Error: ' + error.message); return; }
+  hideModal(); manageContent(_contentLid);
+}
+async function editLectureForm(id) { const { data: lec } = await sb.from('lectures').select('*').eq('id', id).single(); if (!lec) return; showModal(lectureFormHtml(lec) + '<div style="display:flex;gap:8px;margin-top:16px"><button class="btn btn-primary" onclick="updateLecture(' + id + ')">Update</button><button class="btn btn-ghost" onclick="hideModal();manageContent(' + _contentLid + ')">Cancel</button></div>'); toggleLectureType(); }
+async function updateLecture(id) {
+  const vidFile = document.getElementById('f-lect-video-file').files?.[0];
+  let video_url = collectVideoUrl();
+  if (vidFile) {
+    const p = await uploadVideo(vidFile, id, document.getElementById('f-lect-upload-progress'), document.getElementById('f-lect-upload-bar'), document.getElementById('f-lect-upload-text'));
+    if (!p) return;
+    var qualityLabels = ['1080p','720p','480p','360p','Auto'];
+    var qs = {};
+    qualityLabels.forEach(function(ql) { var el = document.getElementById('f-lect-q-' + ql); if (el && el.value.trim()) qs[ql] = el.value.trim(); });
+    qs['Original'] = p;
+    video_url = JSON.stringify(qs);
+  }
+  var fileUrl = document.getElementById('f-lect-file-url').value.trim();
+  var fileEl = document.getElementById('f-lect-file-upload').files?.[0];
+  if (fileEl) {
+    var fp = await uploadLectureFile(fileEl, id, document.getElementById('f-lect-file-progress'), document.getElementById('f-lect-file-bar'), document.getElementById('f-lect-file-text'));
+    if (fp) fileUrl = fp;
+  }
+  var pdfUrl = document.getElementById('f-lect-pdf-url').value.trim();
+  var pdfEl = document.getElementById('f-lect-pdf-upload').files?.[0];
+  if (pdfEl) {
+    var pp = await uploadLecturePdf(pdfEl, id, document.getElementById('f-lect-pdf-progress'), document.getElementById('f-lect-pdf-bar'), document.getElementById('f-lect-pdf-text'));
+    if (pp) pdfUrl = pp;
+  }
+  const data = { title: document.getElementById('f-lect-title').value, content: document.getElementById('f-lect-content').value, math: document.getElementById('f-lect-math').value, type: document.getElementById('f-lect-type').value, sort_order: parseInt(document.getElementById('f-lect-order').value) || 0 };
+  if (video_url) data.video_url = video_url;
+  if (fileUrl) data.file_url = fileUrl;
+  if (pdfUrl) data.pdf_url = pdfUrl;
+  const { error } = await sb.from('lectures').update(data).eq('id', id);
+  if (error) { alert('Error: ' + error.message); return; }
+  hideModal(); manageContent(_contentLid);
+}
+async function deleteLecture(id) { if (!confirm('Delete this lecture?')) return; const { error } = await sb.from('lectures').delete().eq('id', id); if (error) { alert('Error: ' + error.message); return; } hideModal(); manageContent(_contentLid); }
+async function createHW(lid) {
+  const { error: insErr } = await sb.from('homework').insert({ lesson_id: lid });
+  if (insErr) {
+    if (insErr.message && insErr.message.includes('duplicate')) { manageContent(_contentLid); return; }
+    alert('Error: ' + insErr.message); return;
+  }
+  manageContent(_contentLid);
+}
+async function createExam(lid) {
+  const { error: insErr } = await sb.from('exams').insert({ lesson_id: lid });
+  if (insErr) {
+    if (insErr.message && insErr.message.includes('duplicate')) { manageContent(_contentLid); return; }
+    alert('Error: ' + insErr.message); return;
+  }
+  manageContent(_contentLid);
+}
+
+function questionOptsHtml(opts, correct, optImages) {
+  const items = opts && opts.length ? opts : ['', '', '', ''];
+  const imgs = optImages || [];
+  return items.map((o, i) =>
+    '<div class="opt-row"><input type="radio" name="f-q-correct" value="' + i + '"' + (i === correct ? ' checked' : '') + ' title="Correct answer">' +
+    '<input class="opt-input" value="' + esc(o) + '" placeholder="Option ' + String.fromCharCode(65 + i) + '">' +
+    (imgs[i] ? '<img class="opt-img" src="' + SUPABASE_URL + '/storage/v1/object/public/question-images/' + esc(imgs[i]) + '" onclick="window.open(this.src)">' : '') +
+    '<button type="button" class="opt-img-btn" onclick="uploadOptImage(this,' + i + ')" title="Add image to option">📷</button>' +
+    (i >= 2 ? '<button class="opt-del" onclick="this.parentElement.remove()">&times;</button>' : '') +
+    '</div>'
+  ).join('');
+}
+
+let _optImagePaths = [];
+let _qImagePath = null;
+
+function uploadImageToStorage(file, prefix, idx, onProgress) {
+  return new Promise(async (resolve) => {
+    const ext = file.name.split('.').pop();
+    const path = prefix + '_' + Date.now() + (idx !== undefined ? '_' + idx : '') + '.' + ext;
+    const { data: { session } } = await sb.auth.getSession();
+    const token = session?.access_token || '';
+    const xhr = new XMLHttpRequest();
+    xhr.open('POST', SUPABASE_URL + '/storage/v1/object/question-images/' + path);
+    xhr.setRequestHeader('authorization', 'Bearer ' + token);
+    xhr.setRequestHeader('x-upsert', 'true');
+    if (onProgress && xhr.upload) xhr.upload.onprogress = onProgress;
+    xhr.onload = function() {
+      if (xhr.status >= 200 && xhr.status < 300) resolve(path);
+      else resolve(null);
+    };
+    xhr.onerror = function() { resolve(null); };
+    xhr.send(file);
+  });
+}
+
+function uploadOptImage(btn, idx) {
+  const inp = document.createElement('input');
+  inp.type = 'file'; inp.accept = 'image/*';
+  inp.onchange = async function() {
+    const file = inp.files?.[0]; if (!file) return;
+    btn.textContent = '0%';
+    const path = await uploadImageToStorage(file, 'opt', idx, function(e) {
+      if (e.lengthComputable) btn.textContent = Math.round(e.loaded / e.total * 100) + '%';
+    });
+    if (path) {
+      btn.textContent = '✅';
+      btn.className = 'opt-img-btn has-image';
+      _optImagePaths[idx] = path;
+      const existing = btn.parentElement.querySelector('.opt-img');
+      if (existing) existing.src = SUPABASE_URL + '/storage/v1/object/public/question-images/' + path;
+      else {
+        const img = document.createElement('img');
+        img.className = 'opt-img';
+        img.src = SUPABASE_URL + '/storage/v1/object/public/question-images/' + path;
+        img.onclick = function() { window.open(this.src); };
+        btn.parentElement.insertBefore(img, btn);
+      }
+    } else { btn.textContent = '❌'; setTimeout(() => { btn.textContent = '📷'; btn.className = 'opt-img-btn'; }, 2000); }
+  };
+  inp.click();
+}
+
+function uploadQuestionImage(btn) {
+  const inp = document.createElement('input');
+  inp.type = 'file'; inp.accept = 'image/*';
+  inp.onchange = async function() {
+    const file = inp.files?.[0]; if (!file) return;
+    btn.textContent = '0%';
+    const path = await uploadImageToStorage(file, 'q', undefined, function(e) {
+      if (e.lengthComputable) btn.textContent = Math.round(e.loaded / e.total * 100) + '%';
+    });
+    if (path) {
+      btn.textContent = '✅ Image added';
+      _qImagePath = path;
+      const prev = document.getElementById('f-q-img-preview');
+      if (prev) prev.innerHTML = '<img class="q-img-preview" src="' + SUPABASE_URL + '/storage/v1/object/public/question-images/' + path + '" onclick="window.open(this.src)">';
+    } else { btn.textContent = '❌ Error'; setTimeout(() => { btn.textContent = '📷 Add Image'; }, 2000); }
+  };
+  inp.click();
+}
+
+function qFormHtml(title, q, opts, correct, sort_order, math, qImage, optImages) {
+  _qImagePath = qImage || null;
+  _optImagePaths = optImages ? [...optImages] : [];
+  return '<h2>' + title + '</h2>' +
+    '<label>Question <span style="font-weight:400;text-transform:none;letter-spacing:0;font-size:.75rem;color:var(--muted)">(use $$...$$ for LaTeX, paste image anywhere)</span></label><input id="f-q-q" value="' + esc(q) + '">' +
+    '<div style="display:flex;align-items:center;gap:8px;margin:-4px 0 8px"><button type="button" class="btn-word-paste" onclick="uploadQuestionImage(this)">📷 Add Image</button><span id="f-q-img-preview">' + (qImage ? '<img class="q-img-preview" src="' + SUPABASE_URL + '/storage/v1/object/public/question-images/' + esc(qImage) + '" onclick="window.open(this.src)">' : '') + '</span></div>' +
+    '<label>Math (LaTeX) <span style="font-weight:400;text-transform:none;letter-spacing:0;font-size:.75rem;color:var(--muted)">(one equation per line for multiple equations)</span></label>' +
+    '<div class="math-toolbar"><button type="button" class="btn-word-paste" onclick="toggleWordPasteBox()">📋 Paste from Word</button></div>' +
+    '<div id="f-q-word-paste-box"></div>' +
+    '<div class="math-field-wrap">' +
+    '<textarea id="f-q-math" rows="4" placeholder="\\frac{-b \\pm \\sqrt{b^2 - 4ac}}{2a}" oninput="previewMath()" onpaste="handleMathFieldPaste(event)">' + esc(math || '') + '</textarea>' +
+    '</div>' +
+    '<div class="math-hint">Pasting from Word auto-converts symbols to LaTeX. Use "Paste from Word" to preview before inserting.</div>' +
+    '<div class="modal-math-preview" id="f-q-math-preview"></div>' +
+    '<label>Answer Options <span style="font-weight:400;text-transform:none;letter-spacing:0;font-size:.75rem;color:var(--muted)">(click radio for correct, 📷 for image)</span></label>' +
+    '<div id="f-q-opts-list" style="margin:4px 0">' + questionOptsHtml(opts, correct, _optImagePaths) + '</div>' +
+    '<button class="btn btn-sm btn-ghost" onclick="addOptRow()" style="margin-bottom:8px">+ Add Option</button>' +
+    '<label>Sort Order</label><input id="f-q-order" type="number" value="' + (sort_order||1) + '" style="width:80px">' +
+    '<div class="admin-modal-footer">';
+}
+function parseQOpts() {
+  const inputs = document.querySelectorAll('.opt-input');
+  const opts = [];
+  inputs.forEach(inp => { const v = inp.value.trim(); if (v) opts.push(v); });
+  const radios = document.querySelectorAll('input[name="f-q-correct"]');
+  let correct = 0;
+  radios.forEach((r, i) => { if (r.checked) correct = i; });
+  return { options: opts, correct: correct, image_url: _qImagePath, option_images: _optImagePaths };
+}
+function addOptRow() {
+  const list = document.getElementById('f-q-opts-list');
+  if (!list) return;
+  const i = list.children.length;
+  const div = document.createElement('div');
+  div.className = 'opt-row';
+  div.innerHTML = '<input type="radio" name="f-q-correct" value="' + i + '" title="Correct answer">' +
+    '<input class="opt-input" placeholder="Option ' + String.fromCharCode(65 + i) + '">' +
+    '<button type="button" class="opt-img-btn" onclick="uploadOptImage(this,' + i + ')" title="Add image to option">📷</button>' +
+    '<button class="opt-del" onclick="this.parentElement.remove()">&times;</button>';
+  list.appendChild(div);
+}
+function renderMathPreview(el, val) {
+  if (!el) return;
+  if (!val.trim()) { el.style.display = 'none'; return; }
+  const lines = val.split('\n').map(l => l.trim()).filter(Boolean);
+  el.innerHTML = lines.map(line => {
+    try {
+      if (typeof katex !== 'undefined') {
+        return '<div class="kp-line">' + katex.renderToString(line, { displayMode: true, throwOnError: false }) + '</div>';
+      }
+      return '<div class="kp-line">$$' + esc(line) + '$$</div>';
+    } catch (e) {
+      return '<div class="kp-line" style="color:var(--error);font-size:.8125rem">Invalid LaTeX: ' + esc(line) + '</div>';
+    }
+  }).join('');
+  el.style.display = 'block';
+}
+
+function previewMath() {
+  const el = document.getElementById('f-q-math-preview');
+  const val = document.getElementById('f-q-math')?.value || '';
+  renderMathPreview(el, val);
+}
+
+function convertWordMathToLatex(raw) {
+  if (!raw) return '';
+  let s = raw;
+  s = s.replace(/\u00A0/g, ' ').replace(/[\u200B-\u200F\uFEFF]/g, '');
+  const fractionMap = {
+    '½': '\\frac{1}{2}', '⅓': '\\frac{1}{3}', '⅔': '\\frac{2}{3}',
+    '¼': '\\frac{1}{4}', '¾': '\\frac{3}{4}', '⅕': '\\frac{1}{5}',
+    '⅖': '\\frac{2}{5}', '⅗': '\\frac{3}{5}', '⅘': '\\frac{4}{5}',
+    '⅙': '\\frac{1}{6}', '⅚': '\\frac{5}{6}', '⅛': '\\frac{1}{8}',
+    '⅜': '\\frac{3}{8}', '⅝': '\\frac{5}{8}', '⅞': '\\frac{7}{8}'
+  };
+  for (const [ch, tex] of Object.entries(fractionMap)) s = s.split(ch).join(tex);
+  const supMap = { '⁰':'0','¹':'1','²':'2','³':'3','⁴':'4','⁵':'5','⁶':'6','⁷':'7','⁸':'8','⁹':'9','⁺':'+','⁻':'-','ⁿ':'n' };
+  s = s.replace(/([A-Za-z0-9\)\]])([⁰¹²³⁴⁵⁶⁷⁸⁹⁺⁻ⁿ]+)/g, (m, base, sup) => {
+    const mapped = sup.split('').map(c => supMap[c] || c).join('');
+    return base + '^{' + mapped + '}';
+  });
+  const subMap = { '₀':'0','₁':'1','₂':'2','₃':'3','₄':'4','₅':'5','₆':'6','₇':'7','₈':'8','₉':'9' };
+  s = s.replace(/([A-Za-z0-9\)\]])([₀₁₂₃₄₅₆₇₈₉]+)/g, (m, base, sub) => {
+    const mapped = sub.split('').map(c => subMap[c] || c).join('');
+    return base + '_{' + mapped + '}';
+  });
+  s = s.replace(/∜\(([^()]+)\)/g, '\\sqrt[4]{$1}');
+  s = s.replace(/∛\(([^()]+)\)/g, '\\sqrt[3]{$1}');
+  s = s.replace(/√\(([^()]+)\)/g, '\\sqrt{$1}');
+  s = s.replace(/∜([A-Za-z0-9]+)/g, '\\sqrt[4]{$1}');
+  s = s.replace(/∛([A-Za-z0-9]+)/g, '\\sqrt[3]{$1}');
+  s = s.replace(/√([A-Za-z0-9]+)/g, '\\sqrt{$1}');
+  const symbolMap = {
+    '×': '\\times ', '÷': '\\div ', '·': '\\cdot ', '∙': '\\cdot ',
+    '≤': '\\leq ', '≥': '\\geq ', '≠': '\\neq ', '≈': '\\approx ', '≡': '\\equiv ',
+    '≅': '\\cong ', '≃': '\\simeq ', '∝': '\\propto ',
+    '±': '\\pm ', '∓': '\\mp ',
+    'π': '\\pi ', 'θ': '\\theta ', 'α': '\\alpha ', 'β': '\\beta ', 'γ': '\\gamma ',
+    'δ': '\\delta ', 'ε': '\\varepsilon ', 'λ': '\\lambda ', 'μ': '\\mu ',
+    'σ': '\\sigma ', 'τ': '\\tau ', 'φ': '\\phi ', 'ω': '\\omega ',
+    'Δ': '\\Delta ', 'Σ': '\\sum ', 'Π': '\\prod ', 'Ω': '\\Omega ',
+    '∞': '\\infty ', '∫': '\\int ', '∬': '\\iint ', '∂': '\\partial ',
+    '∇': '\\nabla ', '∀': '\\forall ', '∃': '\\exists ',
+    '∈': '\\in ', '∉': '\\notin ', '⊂': '\\subset ', '⊆': '\\subseteq ',
+    '⊃': '\\supset ', '⊇': '\\supseteq ', '∪': '\\cup ', '∩': '\\cap ',
+    '∅': '\\emptyset ', '∧': '\\wedge ', '∨': '\\vee ',
+    '→': '\\rightarrow ', '←': '\\leftarrow ', '⇒': '\\Rightarrow ',
+    '⇐': '\\Leftarrow ', '↔': '\\leftrightarrow ', '⇔': '\\Leftrightarrow ',
+    '∴': '\\therefore ', '∵': '\\because ',
+    '⊥': '\\perp ', '∥': '\\parallel ', '∠': '\\angle ',
+    '°': '^{\\circ}', '√': '\\sqrt', '∛': '\\sqrt[3]', '∜': '\\sqrt[4]',
+    'ℕ': '\\mathbb{N}', 'ℤ': '\\mathbb{Z}', 'ℚ': '\\mathbb{Q}', 'ℝ': '\\mathbb{R}', 'ℂ': '\\mathbb{C}'
+  };
+  for (const [ch, tex] of Object.entries(symbolMap)) s = s.split(ch).join(tex);
+  s = s.split('\n').map(line => line.replace(/[ \t]+/g, ' ').trim()).join('\n');
+  return s;
+}
+
+function handleMathFieldPaste(event) {
+  const cd = event.clipboardData || window.clipboardData;
+  if (!cd) return;
+  const text = cd.getData('text/plain');
+  if (!text) return;
+  if (/[√×÷≤≥≠±πθαβγΔδΣΠ∞∫∂∈∉⊂⊆∪∩→⇒↔°½⅓⅔¼¾⁰¹²³⁴⁵⁶⁷⁸⁹₀₁₂₃₄₅₆₇₈₉]/.test(text)) {
+    event.preventDefault();
+    const converted = convertWordMathToLatex(text);
+    const ta = event.target;
+    const start = ta.selectionStart, end = ta.selectionEnd;
+    ta.value = ta.value.slice(0, start) + converted + ta.value.slice(end);
+    ta.selectionStart = ta.selectionEnd = start + converted.length;
+    previewMath();
+  }
+}
+
+function toggleWordPasteBox() {
+  const box = document.getElementById('f-q-word-paste-box');
+  if (!box) return;
+  if (box.children.length > 0) { box.innerHTML = ''; return; }
+  box.innerHTML =
+    '<div class="word-paste-box">' +
+      '<div class="wpb-title">Paste equation from Word here<button type="button" class="wpb-close" onclick="toggleWordPasteBox()">&times;</button></div>' +
+      '<textarea id="f-wpb-input" placeholder="Paste the equation copied from Word (e.g. from Equation Editor)..." oninput="wordPasteBoxPreview()"></textarea>' +
+      '<div class="modal-math-preview" id="f-wpb-preview"></div>' +
+      '<div class="wpb-actions">' +
+        '<button type="button" class="btn btn-primary btn-sm" onclick="insertWordPasteResult()">Insert into Math field</button>' +
+        '<button type="button" class="btn btn-ghost btn-sm" onclick="toggleWordPasteBox()">Cancel</button>' +
+      '</div>' +
+    '</div>';
+}
+
+function wordPasteBoxPreview() {
+  const input = document.getElementById('f-wpb-input');
+  const preview = document.getElementById('f-wpb-preview');
+  if (!input || !preview) return;
+  const converted = convertWordMathToLatex(input.value);
+  renderMathPreview(preview, converted);
+}
+
+function insertWordPasteResult() {
+  const input = document.getElementById('f-wpb-input');
+  const mathField = document.getElementById('f-q-math');
+  if (!input || !mathField) return;
+  const converted = convertWordMathToLatex(input.value);
+  if (!converted.trim()) return;
+  const sep = mathField.value.trim() ? '\n' : '';
+  mathField.value = mathField.value + sep + converted;
+  previewMath();
+  toggleWordPasteBox();
+  mathField.focus();
+}
+function addHWQForm(hwId) { _qImagePath = null; _optImagePaths = []; showModal(qFormHtml('Add Homework Question', '', null, 0, 1, '') + '<button class="btn btn-primary" onclick="saveHWQ(' + hwId + ')">Save</button><button class="btn btn-ghost" onclick="manageContent(' + _contentLid + ')">Cancel</button></div>'); previewMath(); }
+async function saveHWQ(hwId) { const p = parseQOpts(); const payload = { homework_id: hwId, question: document.getElementById('f-q-q').value, options: p.options, correct: p.correct, sort_order: parseInt(document.getElementById('f-q-order').value) || 0, math: document.getElementById('f-q-math').value }; if (p.image_url) payload.image_url = p.image_url; if (p.option_images && p.option_images.some(Boolean)) payload.option_images = p.option_images; const { error } = await sb.from('hw_questions').insert(payload); if (error) { alert('Error: ' + error.message); return; } hideModal(); manageContent(_contentLid); }
+async function editHWQForm(id) { const { data: q } = await sb.from('hw_questions').select('*').eq('id', id).single(); if (!q) return; showModal(qFormHtml('Edit Homework Question', q.question, q.options, q.correct, q.sort_order, q.math, q.image_url, q.option_images) + '<button class="btn btn-primary" onclick="updateHWQ(' + id + ')">Update</button><button class="btn btn-ghost" onclick="manageContent(' + _contentLid + ')">Cancel</button></div>'); setTimeout(previewMath, 100); }
+async function updateHWQ(id) { const p = parseQOpts(); const payload = { question: document.getElementById('f-q-q').value, options: p.options, correct: p.correct, sort_order: parseInt(document.getElementById('f-q-order').value) || 0, math: document.getElementById('f-q-math').value }; if (p.image_url) payload.image_url = p.image_url; if (p.option_images && p.option_images.some(Boolean)) payload.option_images = p.option_images; const { error } = await sb.from('hw_questions').update(payload).eq('id', id); if (error) { alert('Error: ' + error.message); return; } hideModal(); manageContent(_contentLid); }
+async function deleteHWQ(id) { if (!confirm('Delete this question?')) return; const { error } = await sb.from('hw_questions').delete().eq('id', id); if (error) { alert('Error: ' + error.message); return; } manageContent(_contentLid); }
+
+function addExamQForm(examId) { _qImagePath = null; _optImagePaths = []; showModal(qFormHtml('Add Exam Question', '', null, 0, 1, '') + '<button class="btn btn-primary" onclick="saveExamQ(' + examId + ')">Save</button><button class="btn btn-ghost" onclick="manageContent(' + _contentLid + ')">Cancel</button></div>'); previewMath(); }
+async function saveExamQ(examId) { const p = parseQOpts(); const payload = { exam_id: examId, question: document.getElementById('f-q-q').value, options: p.options, correct: p.correct, sort_order: parseInt(document.getElementById('f-q-order').value) || 0, math: document.getElementById('f-q-math').value }; if (p.image_url) payload.image_url = p.image_url; if (p.option_images && p.option_images.some(Boolean)) payload.option_images = p.option_images; const { error } = await sb.from('exam_questions').insert(payload); if (error) { alert('Error: ' + error.message); return; } hideModal(); manageContent(_contentLid); }
+async function editExamQForm(id) { const { data: q } = await sb.from('exam_questions').select('*').eq('id', id).single(); if (!q) return; showModal(qFormHtml('Edit Exam Question', q.question, q.options, q.correct, q.sort_order, q.math, q.image_url, q.option_images) + '<button class="btn btn-primary" onclick="updateExamQ(' + id + ')">Update</button><button class="btn btn-ghost" onclick="manageContent(' + _contentLid + ')">Cancel</button></div>'); setTimeout(previewMath, 100); }
+async function updateExamQ(id) { const p = parseQOpts(); const payload = { question: document.getElementById('f-q-q').value, options: p.options, correct: p.correct, sort_order: parseInt(document.getElementById('f-q-order').value) || 0, math: document.getElementById('f-q-math').value }; if (p.image_url) payload.image_url = p.image_url; if (p.option_images && p.option_images.some(Boolean)) payload.option_images = p.option_images; const { error } = await sb.from('exam_questions').update(payload).eq('id', id); if (error) { alert('Error: ' + error.message); return; } hideModal(); manageContent(_contentLid); }
+async function deleteExamQ(id) { if (!confirm('Delete this question?')) return; const { error } = await sb.from('exam_questions').delete().eq('id', id); if (error) { alert('Error: ' + error.message); return; } manageContent(_contentLid); }
+
+// ========== IMAGE EXAM QUESTIONS ==========
+let _imgQPath = null;
+function uploadExamImgImage(btn) {
+  const inp = document.createElement('input');
+  inp.type = 'file'; inp.accept = 'image/*';
+  inp.onchange = async function() {
+    const file = inp.files?.[0]; if (!file) return;
+    btn.textContent = '0%'; btn.disabled = true;
+    const path = await uploadImageToStorage(file, 'imgq', undefined, function(e) {
+      if (e.lengthComputable) btn.textContent = Math.round(e.loaded / e.total * 100) + '%';
+    });
+    if (path) {
+      btn.textContent = '✅ Image ready';
+      _imgQPath = path;
+      const prev = document.getElementById('f-imgq-preview');
+      if (prev) prev.innerHTML = '<img src="' + SUPABASE_URL + '/storage/v1/object/public/question-images/' + path + '" style="max-width:100%;max-height:300px;border-radius:var(--radius);border:1px solid var(--border);cursor:pointer" onclick="window.open(this.src)">';
+    } else { btn.textContent = '❌ Error'; setTimeout(() => { btn.textContent = '📷 Upload Image'; btn.disabled = false; }, 2000); }
+  };
+  inp.click();
+}
+function imgQFormHtml(title, imgUrl, correct, explanation) {
+  _imgQPath = imgUrl || null;
+  return '<h2>' + title + '</h2>' +
+    '<label>Question Image (paste or upload)</label>' +
+    '<div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:10px">' +
+    '<button type="button" class="btn-word-paste" onclick="uploadExamImgImage(this)">📷 Upload Image</button>' +
+    '<span style="font-size:.75rem;color:var(--muted)">or paste image directly</span></div>' +
+    '<div id="f-imgq-preview" style="margin-bottom:10px">' + (imgUrl ? '<img src="' + SUPABASE_URL + '/storage/v1/object/public/question-images/' + esc(imgUrl) + '" style="max-width:100%;max-height:300px;border-radius:var(--radius);border:1px solid var(--border);cursor:pointer" onclick="window.open(this.src)">' : '') + '</div>' +
+    '<label>Correct Answer</label>' +
+    '<select id="f-imgq-correct" style="width:100%;padding:10px 14px;border:1.5px solid var(--border);border-radius:var(--radius);margin-bottom:10px;font-size:.875rem;background:var(--bg);color:var(--ink);box-sizing:border-box">' +
+    '<option value="A"' + (correct === 'A' ? ' selected' : '') + '>A</option>' +
+    '<option value="B"' + (correct === 'B' ? ' selected' : '') + '>B</option>' +
+    '<option value="C"' + (correct === 'C' ? ' selected' : '') + '>C</option>' +
+    '<option value="D"' + (correct === 'D' ? ' selected' : '') + '>D</option>' +
+    '</select>' +
+    '<label>Explanation (optional)</label>' +
+    '<textarea id="f-imgq-expl" style="width:100%;padding:10px 14px;border:1.5px solid var(--border);border-radius:var(--radius);margin-bottom:10px;font-size:.875rem;background:var(--bg);color:var(--ink);box-sizing:border-box;resize:vertical;min-height:60px">' + esc(explanation || '') + '</textarea>' +
+    '<div class="admin-modal-footer">';
+}
+function addExamImgQForm(examId) {
+  showModal(imgQFormHtml('Add Image Question', null, 'A', '') + '<button class="btn btn-primary" onclick="saveExamImgQ(' + examId + ')">Save</button><button class="btn btn-ghost" onclick="manageContent(' + _contentLid + ')">Cancel</button></div>');
+}
+async function saveExamImgQ(examId) {
+  if (!_imgQPath) { alert('Please upload an image first.'); return; }
+  const { error } = await sb.from('exam_image_questions').insert({
+    exam_id: examId, image_url: _imgQPath,
+    correct: document.getElementById('f-imgq-correct').value,
+    explanation: document.getElementById('f-imgq-expl').value || '',
+    sort_order: 0
+  });
+  if (error) { alert('Error: ' + error.message); return; }
+  hideModal(); manageContent(_contentLid);
+}
+async function editExamImgQForm(id) {
+  const { data: q } = await sb.from('exam_image_questions').select('*').eq('id', id).single();
+  if (!q) return;
+  showModal(imgQFormHtml('Edit Image Question', q.image_url, q.correct, q.explanation) + '<button class="btn btn-primary" onclick="updateExamImgQ(' + id + ')">Update</button><button class="btn btn-ghost" onclick="manageContent(' + _contentLid + ')">Cancel</button></div>');
+}
+async function updateExamImgQ(id) {
+  if (!_imgQPath) { alert('Image missing.'); return; }
+  const { error } = await sb.from('exam_image_questions').update({
+    image_url: _imgQPath,
+    correct: document.getElementById('f-imgq-correct').value,
+    explanation: document.getElementById('f-imgq-expl').value || ''
+  }).eq('id', id);
+  if (error) { alert('Error: ' + error.message); return; }
+  hideModal(); manageContent(_contentLid);
+}
+async function deleteExamImgQ(id) {
+  if (!confirm('Delete this image question?')) return;
+  const { error } = await sb.from('exam_image_questions').delete().eq('id', id);
+  if (error) { alert('Error: ' + error.message); return; }
+  manageContent(_contentLid);
+}
+
+// ========== HOMEWORK IMAGE QUESTIONS ==========
+function addHWImgQForm(hwId) {
+  showModal(imgQFormHtml('Add Image Question', null, 'A', '') + '<button class="btn btn-primary" onclick="saveHWImgQ(' + hwId + ')">Save</button><button class="btn btn-ghost" onclick="manageContent(' + _contentLid + ')">Cancel</button></div>');
+}
+async function saveHWImgQ(hwId) {
+  if (!_imgQPath) { alert('Please upload an image first.'); return; }
+  const { error } = await sb.from('hw_image_questions').insert({
+    homework_id: hwId, image_url: _imgQPath,
+    correct: document.getElementById('f-imgq-correct').value,
+    explanation: document.getElementById('f-imgq-expl').value || '',
+    sort_order: 0
+  });
+  if (error) { alert('Error: ' + error.message); return; }
+  hideModal(); manageContent(_contentLid);
+}
+async function editHWImgQForm(id) {
+  const { data: q } = await sb.from('hw_image_questions').select('*').eq('id', id).single();
+  if (!q) return;
+  showModal(imgQFormHtml('Edit Image Question', q.image_url, q.correct, q.explanation) + '<button class="btn btn-primary" onclick="updateHWImgQ(' + id + ')">Update</button><button class="btn btn-ghost" onclick="manageContent(' + _contentLid + ')">Cancel</button></div>');
+}
+async function updateHWImgQ(id) {
+  if (!_imgQPath) { alert('Image missing.'); return; }
+  const { error } = await sb.from('hw_image_questions').update({
+    image_url: _imgQPath,
+    correct: document.getElementById('f-imgq-correct').value,
+    explanation: document.getElementById('f-imgq-expl').value || ''
+  }).eq('id', id);
+  if (error) { alert('Error: ' + error.message); return; }
+  hideModal(); manageContent(_contentLid);
+}
+async function deleteHWImgQ(id) {
+  if (!confirm('Delete this image question?')) return;
+  const { error } = await sb.from('hw_image_questions').delete().eq('id', id);
+  if (error) { alert('Error: ' + error.message); return; }
+  manageContent(_contentLid);
+}
+let _allStudentData = null;
+async function loadAdminStudents() {
+  const [profilesR, coursesR] = await Promise.all([
+    sb.from('profiles').select('*, progress:progress(*)').eq('role', 'student'),
+    sb.from('courses').select('*, lessons:lessons(*)').order('sort_order')
+  ]);
+  const profiles = profilesR.data || [];
+  const courses = coursesR.data || [];
+  _allStudentData = { profiles, courses };
+  renderStudents('', profiles, courses);
+}
+function renderStudents(search, profiles, courses) {
+  const q = search.toLowerCase();
+  const filtered = profiles.filter(p => (p.name||'').toLowerCase().includes(q) || (p.id||'').toLowerCase().includes(q));
+  let html = '<div class="admin-header"><h1>Students</h1><div style="display:flex;gap:8px"><input class="search-input" style="width:200px" placeholder="Search by name..." oninput="filterStudents(this.value)"><button class="btn btn-ghost btn-sm" onclick="exportCSV()">Export CSV</button></div></div>';
+  if (filtered.length === 0) {
+    html += '<div class="empty-state"><div class="empty-icon">👤</div><h3>No students found</h3><p>Students will appear here once they sign up and start learning.</p></div>';
+  } else {
+    html += '<div class="data-table-wrap"><table class="data-table"><thead><tr><th>Student</th><th>Progress</th><th>Completed</th><th style="text-align:right">Actions</th></tr></thead><tbody>';
+    filtered.forEach(p => {
+      const name = p.name || 'Unknown';
+      const prog = p.progress || [];
+      const totalLessons = courses.reduce((acc, c) => acc + (c.lessons||[]).length, 0);
+      const completedLessons = prog.filter(p => p.exam_completed).length;
+      const pct = totalLessons > 0 ? Math.round(completedLessons / totalLessons * 100) : 0;
+      const avgHw = prog.filter(p => p.hw_score != null).reduce((s, p) => s + p.hw_score, 0);
+      const avgHwCount = prog.filter(p => p.hw_score != null).length;
+      const hwAvg = avgHwCount > 0 ? Math.round(avgHw / avgHwCount) : null;
+      html += '<tr><td><div class="student-name">' + esc(name) + '</div><span class="cell-mono" style="color:var(--muted);font-size:.75rem">' + p.id.slice(0,8) + '</span></td>';
+      html += '<td><div style="display:flex;align-items:center;gap:8px"><div style="flex:1;max-width:120px;height:6px;background:var(--border);border-radius:99px;overflow:hidden"><div style="height:100%;width:' + pct + '%;background:var(--primary);border-radius:99px;transition:width .3s"></div></div><span class="cell-mono">' + pct + '%</span></div></td>';
+      html += '<td><span class="cell-mono">' + completedLessons + '/' + totalLessons + '</span>' + (hwAvg !== null ? '<br><span style="font-size:.75rem;color:var(--muted)">Avg HW: ' + hwAvg + '%</span>' : '') + '</td>';
+      html += '<td style="text-align:right"><span class="tag tag-' + (pct >= 80 ? 'success' : pct >= 40 ? 'warning' : 'neutral') + '">' + (pct >= 80 ? 'On track' : pct >= 40 ? 'Progressing' : 'Getting started') + '</span></td></tr>';
+    });
+    html += '</tbody></table></div>';
+  }
+  document.getElementById('admin-page-students').innerHTML = html;
+}
+function filterStudents(val) {
+  if (!_allStudentData) return;
+  renderStudents(val, _allStudentData.profiles, _allStudentData.courses);
+}
+function exportCSV() {
+  if (!_allStudentData) return;
+  const { profiles, courses } = _allStudentData;
+  const allLessons = [];
+  let csv = 'Student,';
+  courses.forEach(c => c.lessons?.sort((a,b) => (a.sort_order||0)-(b.sort_order||0)).forEach(l => { allLessons.push(l); csv += l.title + ',HW,Exam,'; }));
+  csv += '\n';
+  profiles.forEach(p => {
+    const prog = p.progress || [];
+    csv += (p.name || 'Unknown') + ',';
+    allLessons.forEach(l => {
+      const pp = prog.find(pr => pr.lesson_id === l.id);
+      if (pp?.exam_completed) csv += '✓,' + (pp.hw_score ?? '—') + ',' + (pp.exam_score ?? '—') + ',';
+      else csv += '—,' + (pp?.hw_score ?? '—') + ',' + (pp?.exam_score ?? '—') + ',';
+    });
+    csv += '\n';
+  });
+  const blob = new Blob([csv], { type: 'text/csv' });
+  const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = 'student_progress.csv'; a.click();
+}
+
+// ========== ADMINS ==========
+async function loadAdminAdmins() {
+  const { data: admins } = await sb.from('profiles').select('*').eq('role', 'admin');
+  let html = '<div class="admin-header"><h1>Admins</h1><button class="btn btn-primary" onclick="addAdminForm()">+ Add Admin</button></div>';
+  if (!admins || admins.length === 0) {
+    html += '<div class="empty-state"><div class="empty-icon">🔒</div><h3>No admins yet</h3><p>Add users with admin role to manage the platform.</p></div>';
+  } else {
+    admins.forEach(a => {
+      html += '<div class="admin-card"><div class="admin-row"><div><strong>' + esc(a.name) + '</strong></div>';
+      if (a.id !== adminUser.id) html += '<button class="btn btn-danger btn-sm" onclick="removeAdmin(\'' + a.id + '\')">Remove</button>';
+      else html += '<span style="font-size:.8125rem;color:var(--muted)">(you)</span>';
+      html += '</div></div>';
+    });
+  }
+  document.getElementById('admin-page-admins').innerHTML = html;
+}
+function addAdminForm() {
+  showModal('<h2>Add Admin</h2><p style="font-size:.875rem;color:var(--muted);margin-bottom:12px">Enter the email of a registered user to make them admin.</p><label>Email</label><input id="f-admin-email"><div class="admin-modal-footer"><button class="btn btn-primary" onclick="saveAdmin()">Add Admin</button><button class="btn btn-ghost" onclick="hideModal()">Cancel</button></div>');
+}
+async function saveAdmin() {
+  const email = document.getElementById('f-admin-email').value.trim();
+  if (!email) return;
+  alert("To add an admin, first find the student ID in the Students page.\n\nThen run this SQL in Supabase:\nUPDATE profiles SET role='admin' WHERE id='USER_UUID';");
+  hideModal();
+  loadAdminAdmins();
+}
+async function removeAdmin(id) {
+  if (!confirm('Remove admin privileges from this user?')) return;
+  const { error } = await sb.from('profiles').update({ role: 'student' }).eq('id', id);
+  if (error) { alert('Error: ' + error.message); return; }
+  loadAdminAdmins();
+}
+
+// ========== QUESTION CATEGORIES ==========
+let _currentCatPage = null;
+
+function loadAdminCategories() {
+  _currentCatPage = 'categories';
+  renderCategoryList();
+}
+
+async function renderCategoryList() {
+  var { data: cats } = await sb.from('question_categories').select('*, category_questions:category_questions(id)').order('name');
+  var html = '<div class="admin-header"><h1>Question Categories</h1><div class="admin-header-actions"><button class="btn btn-primary" onclick="addCategoryForm()">+ New Category</button></div></div>';
+  html += '<p style="font-size:.8125rem;color:var(--muted);margin-bottom:20px;line-height:1.5">Create reusable question banks. Add questions once, then import them into any exam or homework.</p>';
+  if (!cats || cats.length === 0) {
+    html += '<div class="empty-state"><div class="empty-icon">📂</div><h3>No categories yet</h3><p>Create your first question category to reuse questions across exams and homework.</p></div>';
+  } else {
+    html += '<div class="cat-grid">';
+    cats.forEach(function(c) {
+      var count = (c.category_questions||[]).length;
+      html += '<div class="cat-card" onclick="viewCategoryDetail(' + c.id + ')">';
+      html += '<div class="cat-name">' + esc(c.name) + '</div>';
+      if (c.description) html += '<div class="cat-desc">' + esc(c.description) + '</div>';
+      html += '<div class="cat-count">📝 ' + count + ' question' + (count !== 1 ? 's' : '') + '</div>';
+      html += '<div class="cat-actions"><button class="btn btn-ghost btn-sm" onclick="event.stopPropagation();editCategoryForm(' + c.id + ')">Edit</button><button class="btn btn-danger btn-sm" onclick="event.stopPropagation();deleteCategory(' + c.id + ')">×</button></div>';
+      html += '</div>';
+    });
+    html += '</div>';
+  }
+  document.getElementById('admin-page-categories').innerHTML = html;
+}
+
+function addCategoryForm() {
+  showModal('<h2>New Category</h2><label>Name</label><input id="f-cat-name" placeholder="e.g. Algebra, Geometry, Calculus"><label>Description (optional)</label><textarea id="f-cat-desc" placeholder="Describe what this category covers"></textarea><div class="admin-modal-footer"><button class="btn btn-primary" onclick="saveCategory()">Create</button><button class="btn btn-ghost" onclick="hideModal()">Cancel</button></div>');
+}
+async function saveCategory() {
+  var name = document.getElementById('f-cat-name').value.trim(); if (!name) return;
+  await sb.from('question_categories').insert({ name: name, description: document.getElementById('f-cat-desc').value });
+  hideModal(); renderCategoryList();
+}
+async function editCategoryForm(id) {
+  var { data: c } = await sb.from('question_categories').select('*').eq('id', id).single(); if (!c) return;
+  showModal('<h2>Edit Category</h2><label>Name</label><input id="f-cat-name" value="' + esc(c.name) + '"><label>Description</label><textarea id="f-cat-desc">' + esc(c.description || '') + '</textarea><div class="admin-modal-footer"><button class="btn btn-primary" onclick="updateCategory(' + id + ')">Update</button><button class="btn btn-ghost" onclick="hideModal()">Cancel</button></div>');
+}
+async function updateCategory(id) {
+  await sb.from('question_categories').update({ name: document.getElementById('f-cat-name').value, description: document.getElementById('f-cat-desc').value }).eq('id', id);
+  hideModal(); renderCategoryList();
+}
+async function deleteCategory(id) {
+  if (!confirm('Delete this category and all its questions?')) return;
+  await sb.from('question_categories').delete().eq('id', id);
+  renderCategoryList();
+}
+
+// Category detail view
+async function viewCategoryDetail(catId) {
+  var { data: cat } = await sb.from('question_categories').select('*, category_questions:category_questions(*)').eq('id', catId).single();
+  if (!cat) return;
+  var qs = (cat.category_questions||[]).sort((a,b)=>(a.sort_order||0)-(b.sort_order||0));
+  var html = '<div style="display:flex;align-items:center;gap:12px;margin-bottom:16px">';
+  html += '<button class="btn btn-ghost btn-sm" onclick="renderCategoryList()" style="flex-shrink:0">← Back</button>';
+  html += '<h2 style="margin:0">' + esc(cat.name) + '</h2>';
+  html += '<span style="font-size:.75rem;color:var(--muted)">' + qs.length + ' question' + (qs.length !== 1 ? 's' : '') + '</span>';
+  html += '<div style="flex:1"></div>';
+  html += '<button class="btn btn-ghost btn-sm" onclick="addCatQForm(' + catId + ')">+ Add Question</button>';
+  html += '</div>';
+  html += '<p style="font-size:.8125rem;color:var(--muted);margin-bottom:16px">' + esc(cat.description || '') + '</p>';
+  html += '<div class="qs-list">';
+  if (qs.length === 0) {
+    html += '<div style="text-align:center;padding:24px;color:var(--muted);font-size:.8125rem">No questions in this category.</div>';
+  } else {
+    qs.forEach(function(q) {
+      var typeLabel = q.question_type === 'image' ? '<span class="q-meta-tag imgq">🖼 image</span>' : '<span class="q-meta-tag math">∑ text</span>';
+      var text = q.question_type === 'image' ? 'Image Question' : esc(q.question);
+      html += '<div class="q-row"><div class="q-info"><span class="q-text">' + text + '</span><span class="q-meta">' + typeLabel + (q.question_type === 'standard' ? ' · ' + q.options.length + ' opts · ' + String.fromCharCode(65 + (q.correct||0)) : ' · correct: ' + q.correct_letter) + (q.math ? ' · math' : '') + '</span></div><span class="q-actions"><button class="btn btn-ghost btn-sm" onclick="editCatQForm(' + q.id + ',' + catId + ')">Edit</button><button class="btn btn-danger btn-sm" onclick="deleteCatQ(' + q.id + ',' + catId + ')">×</button></span></div>';
+    });
+  }
+  html += '</div>';
+  showModal(html);
+}
+
+// Category question CRUD
+function addCatQForm(catId) {
+  var h = '<h2>Add Category Question</h2>';
+  h += '<label>Type</label><select id="f-catq-type" onchange="toggleCatQType()"><option value="standard">Standard (text + options)</option><option value="image">Image (A/B/C/D) — supports paste</option></select>';
+  h += '<div id="f-catq-standard">';
+  h += '<label>Question</label><input id="f-catq-q" placeholder="Question text">';
+  h += '<label>Options <span style="font-weight:400;text-transform:none;letter-spacing:0;font-size:.75rem;color:var(--muted)">(one per line)</span></label><textarea id="f-catq-opts" rows="4" placeholder="Option A&#10;Option B&#10;Option C&#10;Option D"></textarea>';
+  h += '<label>Correct Option Index (0-based)</label><input id="f-catq-correct" type="number" value="0" min="0" style="width:80px">';
+  h += '<label>Math (LaTeX)</label><textarea id="f-catq-math" rows="2"></textarea>';
+  h += '</div>';
+  h += '<div id="f-catq-image" style="display:none">';
+  h += '<label>Question Image</label>';
+  h += '<div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:10px">';
+  h += '<button type="button" class="btn-word-paste" onclick="uploadCatQImage(this)">📷 Upload Image</button>';
+  h += '<span style="font-size:.75rem;color:var(--muted)">or paste image directly</span></div>';
+  h += '<div id="f-imgq-preview" style="margin-bottom:10px"></div>';
+  h += '<label>Correct Answer</label><select id="f-imgq-correct"><option value="A">A</option><option value="B">B</option><option value="C">C</option><option value="D">D</option></select>';
+  h += '<label>Explanation</label><textarea id="f-imgq-expl" rows="2"></textarea>';
+  h += '</div>';
+  h += '<div class="admin-modal-footer"><button class="btn btn-primary" onclick="saveCatQ(' + catId + ')">Save</button><button class="btn btn-ghost" onclick="hideModal()">Cancel</button></div>';
+  showModal(h);
+}
+function toggleCatQType() { var t = document.getElementById('f-catq-type').value; document.getElementById('f-catq-standard').style.display = t === 'standard' ? 'block' : 'none'; document.getElementById('f-catq-image').style.display = t === 'image' ? 'block' : 'none'; }
+function uploadCatQImage(btn) { _imgQPath = null; uploadExamImgImage(btn); }
+async function saveCatQ(catId) {
+  var type = document.getElementById('f-catq-type').value;
+  var payload = { category_id: catId, question_type: type, sort_order: 0 };
+  if (type === 'standard') {
+    var optsText = document.getElementById('f-catq-opts').value.trim();
+    payload.question = document.getElementById('f-catq-q').value;
+    payload.options = optsText ? optsText.split('\n').map(function(l) { return l.trim(); }).filter(Boolean) : ['A','B','C','D'];
+    payload.correct = parseInt(document.getElementById('f-catq-correct').value) || 0;
+    payload.math = document.getElementById('f-catq-math').value || '';
+  } else {
+    if (!_imgQPath) { alert('Please upload or paste an image first.'); return; }
+    payload.image_url = _imgQPath;
+    payload.correct_letter = document.getElementById('f-imgq-correct').value;
+    payload.explanation = document.getElementById('f-imgq-expl').value || '';
+    payload.question = 'Image Question';
+  }
+  await sb.from('category_questions').insert(payload);
+  hideModal(); viewCategoryDetail(catId);
+}
+async function editCatQForm(id, catId) {
+  var { data: q } = await sb.from('category_questions').select('*').eq('id', id).single();
+  if (!q) return;
+  if (q.question_type === 'standard') {
+    var optsStr = (q.options||[]).join('\n');
+    var h = '<h2>Edit Category Question</h2><label>Question</label><input id="f-catq-q" value="' + esc(q.question) + '">';
+    h += '<label>Options (one per line)</label><textarea id="f-catq-opts" rows="4">' + esc(optsStr) + '</textarea>';
+    h += '<label>Correct Option Index</label><input id="f-catq-correct" type="number" value="' + (q.correct||0) + '" style="width:80px">';
+    h += '<label>Math (LaTeX)</label><textarea id="f-catq-math" rows="2">' + esc(q.math||'') + '</textarea>';
+    h += '<div class="admin-modal-footer"><button class="btn btn-primary" onclick="updateCatQ(' + id + ',' + catId + ',\'standard\')">Update</button><button class="btn btn-ghost" onclick="hideModal()">Cancel</button></div>';
+    showModal(h);
+  } else {
+    _imgQPath = q.image_url || null;
+    var h2 = '<h2>Edit Category Question</h2>';
+    h2 += '<label>Question Image</label>';
+    h2 += '<div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:10px">';
+    h2 += '<button type="button" class="btn-word-paste" onclick="uploadCatQImage(this)">📷 Upload Image</button>';
+    h2 += '<span style="font-size:.75rem;color:var(--muted)">or paste image directly</span></div>';
+    h2 += '<div id="f-imgq-preview" style="margin-bottom:10px">' + (q.image_url ? '<img src="' + SUPABASE_URL + '/storage/v1/object/public/question-images/' + esc(q.image_url) + '" style="max-width:100%;max-height:300px;border-radius:var(--radius);border:1px solid var(--border);cursor:pointer" onclick="window.open(this.src)">' : '') + '</div>';
+    h2 += '<label>Correct Answer</label><select id="f-imgq-correct">';
+    for (var ci = 0; ci < 4; ci++) { var l = ['A','B','C','D'][ci]; h2 += '<option value="' + l + '"' + (q.correct_letter === l ? ' selected' : '') + '>' + l + '</option>'; }
+    h2 += '</select>';
+    h2 += '<label>Explanation</label><textarea id="f-imgq-expl" rows="2">' + esc(q.explanation||'') + '</textarea>';
+    h2 += '<div class="admin-modal-footer"><button class="btn btn-primary" onclick="updateCatQ(' + id + ',' + catId + ',\'image\')">Update</button><button class="btn btn-ghost" onclick="hideModal()">Cancel</button></div>';
+    showModal(h2);
+  }
+}
+async function updateCatQ(id, catId, type) {
+  var payload = {};
+  if (type === 'standard') {
+    var optsText = document.getElementById('f-catq-opts').value.trim();
+    payload.question = document.getElementById('f-catq-q').value;
+    payload.options = optsText ? optsText.split('\n').map(function(l) { return l.trim(); }).filter(Boolean) : ['A','B','C','D'];
+    payload.correct = parseInt(document.getElementById('f-catq-correct').value) || 0;
+    payload.math = document.getElementById('f-catq-math').value || '';
+  } else {
+    if (!_imgQPath) { alert('Image missing.'); return; }
+    payload.image_url = _imgQPath;
+    payload.correct_letter = document.getElementById('f-imgq-correct').value;
+    payload.explanation = document.getElementById('f-imgq-expl').value || '';
+  }
+  await sb.from('category_questions').update(payload).eq('id', id);
+  hideModal(); viewCategoryDetail(catId);
+}
+async function deleteCatQ(id, catId) {
+  if (!confirm('Delete this question?')) return;
+  await sb.from('category_questions').delete().eq('id', id);
+  viewCategoryDetail(catId);
+}
+
+// Import from category picker (shown in content editor)
+async function showCategoryPicker(targetType, targetId) {
+  var { data: cats } = await sb.from('question_categories').select('*, category_questions:category_questions(id)').order('name');
+  var html = '<h2>Import from Category</h2>';
+  html += '<p style="font-size:.8125rem;color:var(--muted);margin:-8px 0 16px">Select a category to browse its questions.</p>';
+  if (!cats || cats.length === 0) {
+    html += '<p style="text-align:center;padding:24px;color:var(--muted)">No categories found. Create categories first.</p>';
+    html += '<div class="admin-modal-footer"><button class="btn btn-ghost" onclick="hideModal()">Close</button></div>';
+    showModal(html);
+    return;
+  }
+  html += '<div class="cat-grid">';
+  cats.forEach(function(c) {
+    var count = (c.category_questions||[]).length;
+    html += '<div class="cat-card" onclick="showCategoryQuestions(' + c.id + ',\'' + targetType + '\',' + targetId + ',\'' + esc(c.name) + '\')">';
+    html += '<div class="cat-name">' + esc(c.name) + '</div>';
+    html += '<div class="cat-count">📝 ' + count + ' question' + (count !== 1 ? 's' : '') + '</div>';
+    html += '</div>';
+  });
+  html += '</div>';
+  html += '<div class="admin-modal-footer"><button class="btn btn-ghost" onclick="hideModal()">Cancel</button></div>';
+  showModal(html);
+}
+async function showCategoryQuestions(catId, targetType, targetId, catName) {
+  var { data: qs } = await sb.from('category_questions').select('*').eq('category_id', catId).order('sort_order');
+  var html = '<h2>' + esc(catName) + ' — Select Questions to Import</h2>';
+  html += '<p style="font-size:.8125rem;color:var(--muted);margin:-8px 0 16px">Check the questions you want to import into this ' + targetType + '.</p>';
+  if (!qs || qs.length === 0) {
+    html += '<p style="text-align:center;padding:24px;color:var(--muted)">Category is empty.</p>';
+    html += '<div class="admin-modal-footer"><button class="btn btn-ghost" onclick="hideModal()">Close</button></div>';
+    showModal(html);
+    return;
+  }
+  html += '<div style="max-height:450px;overflow-y:auto;border:1px solid var(--border);border-radius:var(--radius)">';
+  qs.forEach(function(q, idx) {
+    html += '<div class="ci-row">';
+    html += '<input type="checkbox" class="cat-q-check" value="' + idx + '" checked>';
+    if (q.question_type === 'standard') {
+      var preview = esc(q.question || 'Standard Question');
+      if (preview.length > 80) preview = preview.substring(0, 80) + '…';
+      html += '<div class="ci-body"><div class="ci-text" title="' + esc(q.question || '') + '">' + preview + '</div>';
+      html += '<div class="ci-meta">∑ ' + (q.math ? 'LaTeX' : 'no math') + ' · ' + (q.options||[]).length + ' options</div></div>';
+    } else {
+      html += '<div class="ci-body"><div class="ci-img-wrap"><img src="' + SUPABASE_URL + '/storage/v1/object/public/question-images/' + esc(q.image_url) + '" onclick="window.open(this.src)" title="Click to enlarge"></div>';
+      html += '<div class="ci-meta">🖼 Image · Correct: ' + (q.correct_letter || 'A') + (q.explanation ? ' · ℹ has explanation' : '') + '</div></div>';
+    }
+    html += '</div>';
+  });
+  html += '</div>';
+  html += '<div class="ci-actions">';
+  html += '<button class="btn btn-primary btn-sm" onclick="importSelectedCategoryQs(' + catId + ',\'' + targetType + '\',' + targetId + ')">Import Selected</button>';
+  html += '<button class="btn btn-ghost btn-sm" onclick="showCategoryPicker(\'' + targetType + '\',' + targetId + ')">← Back to Categories</button>';
+  html += '<button class="btn btn-ghost btn-sm" onclick="hideModal()">Cancel</button></div>';
+  showModal(html);
+}
+async function importSelectedCategoryQs(catId, targetType, targetId) {
+  var checks = document.querySelectorAll('.cat-q-check:checked');
+  if (checks.length === 0) { alert('Select at least one question.'); return; }
+  var indices = Array.from(checks).map(function(c) { return parseInt(c.value); });
+  var { data: qs } = await sb.from('category_questions').select('*').eq('category_id', catId).order('sort_order');
+  if (!qs) return;
+  var fk = targetType === 'exam' ? 'exam_id' : 'homework_id';
+  var inserted = 0;
+  for (var i = 0; i < indices.length; i++) {
+    var q = qs[indices[i]];
+    if (!q) continue;
+    if (q.question_type === 'standard') {
+      var payload = { question: q.question, options: q.options, correct: q.correct, math: q.math || '', image_url: q.image_url || '', option_images: q.option_images || [], sort_order: i + 1 };
+      payload[fk] = targetId;
+      if (targetType === 'exam') await sb.from('exam_questions').insert(payload);
+      else await sb.from('hw_questions').insert(payload);
+    } else {
+      var payload2 = { image_url: q.image_url, correct: q.correct_letter || 'A', explanation: q.explanation || '', sort_order: i + 1 };
+      payload2[fk] = targetId;
+      if (targetType === 'exam') await sb.from('exam_image_questions').insert(payload2);
+      else await sb.from('hw_image_questions').insert(payload2);
+    }
+    inserted++;
+  }
+  hideModal();
+  alert('Imported ' + inserted + ' question(s) successfully.');
+  manageContent(_contentLid);
+}
+
+// ========== WORD IMPORT ==========
+async function importWordExam(examId, input) {
+  const file = input.files?.[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = async function(e) {
+    const arrayBuffer = e.target.result;
+    try {
+      const result = await mammoth.extractRawText({ arrayBuffer: arrayBuffer });
+      const text = result.value;
+      if (!text.trim()) { alert('No text found in the Word file.'); return; }
+      const questions = parseWordText(text);
+      if (questions.length === 0) { alert('Could not detect any questions. Make sure questions are numbered (1., 2., etc.) with options (a., b., etc.) and correct answers marked with * or ✓.'); return; }
+      showWordPreview(questions, examId);
+    } catch (err) {
+      alert('Error reading Word file: ' + err.message);
+    }
+  };
+  reader.readAsArrayBuffer(file);
+  input.value = '';
+}
+
+function parseWordText(text) {
+  const lines = text.split('\n').map(l => l.trim()).filter(Boolean);
+  const questions = [];
+  let current = null;
+  const qRegex = /^(?:(\d+)[.)\]-])\s*(.+)/;
+  const optRegex = /^([a-zA-Z])[.)\])]\s*(.*)/;
+  const optParenRegex = /^\(?([a-zA-Z])\)\s*(.*)/;
+  const ansKeyRegex = /^(?:answer|key|solution|answers|keys|correct|الإجابات|الحل|المفتاح)/i;
+
+  let inAnswerKey = false, errors = [];
+  for (let li = 0; li < lines.length; li++) {
+    const line = lines[li];
+    if (ansKeyRegex.test(line) && /[:\-]/.test(line)) { inAnswerKey = true; continue; }
+    if (inAnswerKey && /^\d/.test(line)) {
+      const m = line.match(/^(\d+)[.)\]]?\s*[-–:]\s*([a-zA-Z])/);
+      if (m) {
+        const num = parseInt(m[1]), ans = m[2].toLowerCase();
+        const q = questions.find(q => q.number === num);
+        if (q) q.correct = ans.charCodeAt(0) - 97;
+      }
+      continue;
+    }
+    if (inAnswerKey) continue;
+
+    const qMatch = line.match(qRegex);
+    if (qMatch) {
+      if (current && current.options.length >= 2) {
+        if (current.correct === -1) { current.correct = 0; errors.push('Q' + current.number + ': no correct marker, defaulting to a'); }
+        questions.push(current);
+      }
+      current = { number: parseInt(qMatch[1]), question: qMatch[2].trim(), options: [], correct: -1 };
+      continue;
+    }
+    if (!current) continue;
+
+    // Try option matching with * / ✓ stripped
+    const cleanLine = line.replace(/^[*✓✔]\s*/, '');
+    const isCorrect = line !== cleanLine;
+    let optMatch = cleanLine.match(optRegex) || cleanLine.match(optParenRegex);
+    if (optMatch) {
+      current.options.push({ text: optMatch[2].trim(), letter: optMatch[1].toLowerCase(), correct: isCorrect });
+      if (isCorrect) current.correct = optMatch[1].toLowerCase().charCodeAt(0) - 97;
+      continue;
+    }
+    // True/False: line is literally "True" or "False"
+    if (/^(true|false)$/i.test(line) && current.options.length < 2) {
+      current.options.push({ text: line, letter: String.fromCharCode(97 + current.options.length), correct: isCorrect || /^true/i.test(line) });
+      continue;
+    }
+    // Continuation
+    if (current.options.length === 0) current.question += ' ' + line;
+    else current.options[current.options.length - 1].text += ' ' + line;
+  }
+  if (current && current.options.length >= 2) {
+    if (current.correct === -1) { current.correct = 0; errors.push('Q' + current.number + ': no correct marker, defaulting to a'); }
+    questions.push(current);
+  }
+  if (errors.length) console.warn('Parser warnings:\n' + errors.join('\n'));
+  return questions.map((q, i) => ({
+    question: q.question,
+    options: q.options.map(o => o.text),
+    correct: Math.min(q.correct, q.options.length - 1),
+    sort_order: i + 1
+  }));
+}
+
+function showWordPreview(questions, examId) {
+  let html = '<h2>📄 Import from Word — Preview</h2>';
+  html += '<p style="font-size:.8125rem;color:var(--muted);margin:-8px 0 12px">Found ' + questions.length + ' question(s). Review and click Save to add them to the exam.</p>';
+  html += '<div class="word-import-list">';
+  questions.forEach((q, i) => {
+    html += '<div class="wi-item"><div class="wi-q">' + (i + 1) + '. ' + esc(q.question) + '</div><div class="wi-opts">';
+    q.options.forEach((o, oi) => {
+      const prefix = String.fromCharCode(65 + oi);
+      const cls = oi === q.correct ? ' wi-correct' : '';
+      html += '<span class="' + cls + '">' + prefix + '. ' + esc(o) + (oi === q.correct ? ' ✓' : '') + '</span>';
+    });
+    html += '</div></div>';
+  });
+  html += '</div>';
+  html += '<div class="admin-modal-footer"><button class="btn btn-primary" onclick="saveWordExam(' + examId + ')">Save All (' + questions.length + ')</button><button class="btn btn-ghost" onclick="hideModal()">Cancel</button></div>';
+  showModal(html);
+  window._wordQuestions = questions;
+}
+
+async function saveWordExam(examId) {
+  const questions = window._wordQuestions || [];
+  if (!questions.length) return;
+  const { data: existing } = await sb.from('exam_questions').select('sort_order').eq('exam_id', examId).order('sort_order', { ascending: false }).limit(1);
+  let nextOrder = (existing?.[0]?.sort_order || 0) + 1;
+  for (const q of questions) {
+    const { error } = await sb.from('exam_questions').insert({
+      exam_id: examId,
+      question: q.question,
+      options: q.options,
+      correct: q.correct,
+      sort_order: nextOrder++
+    });
+    if (error) { console.error('Insert error:', error); }
+  }
+  window._wordQuestions = null;
+  hideModal();
+  manageContent(_contentLid);
+}
+
+function esc(s) { if (!s) return ''; return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;'); }
+
+// Global paste handler for image pasting into question/option inputs
+document.addEventListener('paste', function(e) {
+  if (!document.getElementById('admin-modal')?.classList.contains('show')) return;
+  var items = e.clipboardData && e.clipboardData.items;
+  if (!items) return;
+  for (var i = 0; i < items.length; i++) {
+    if (items[i].type.startsWith('image/')) {
+      e.preventDefault();
+      var file = items[i].getAsFile();
+      if (!file) return;
+      var target = document.activeElement;
+      var isImgQ = !!document.getElementById('f-imgq-preview');
+      var isQuestion = target && target.id === 'f-q-q';
+      var isOption = target && target.classList.contains('opt-input');
+      if (!isImgQ && !isQuestion && !isOption) return;
+      if (isImgQ) {
+        var progEl = document.getElementById('f-imgq-progress') || (function() {
+          var p = document.createElement('div');
+          p.id = 'f-imgq-progress';
+          p.style.cssText = 'height:4px;background:var(--border);border-radius:99px;overflow:hidden;margin-bottom:4px';
+          p.innerHTML = '<div id="f-imgq-progress-bar" style="height:100%;width:0%;background:var(--primary);border-radius:99px;transition:width .15s"></div>';
+          var prev = document.getElementById('f-imgq-preview');
+          if (prev) prev.parentNode.insertBefore(p, prev);
+          return p;
+        })();
+        var bar = document.getElementById('f-imgq-progress-bar');
+        uploadImageToStorage(file, 'imgq', undefined, function(e) {
+          if (e.lengthComputable && bar) bar.style.width = Math.round(e.loaded / e.total * 100) + '%';
+        }).then(function(path) {
+          if (!path) return;
+          _imgQPath = path;
+          var prev = document.getElementById('f-imgq-preview');
+          if (prev) prev.innerHTML = '<img src="' + SUPABASE_URL + '/storage/v1/object/public/question-images/' + path + '" style="max-width:100%;max-height:300px;border-radius:var(--radius);border:1px solid var(--border);cursor:pointer" onclick="window.open(this.src)">';
+        });
+        return;
+      }
+      var prefix = isQuestion ? 'q' : 'opt';
+      var optIdx = undefined;
+      if (isOption) {
+        var rows = document.getElementById('admin-modal-body') && document.getElementById('admin-modal-body').querySelectorAll('.opt-row');
+        if (rows) {
+          for (var r = 0; r < rows.length; r++) {
+            if (rows[r].contains(target)) { optIdx = r; break; }
+          }
+        }
+      }
+      var progBtn = isQuestion ? null : (optIdx !== undefined ? document.querySelector('.opt-row:nth-child(' + (optIdx+1) + ') .opt-img-btn') : null);
+      if (isQuestion) {
+        var pq = document.getElementById('f-q-img-preview');
+        if (pq) pq.innerHTML = '<div style="height:4px;background:var(--border);border-radius:99px;overflow:hidden;margin-bottom:4px"><div id="f-q-upload-progress" style="height:100%;width:0%;background:var(--primary);border-radius:99px;transition:width .15s"></div></div>';
+      }
+      uploadImageToStorage(file, prefix, optIdx, function(e) {
+        if (!e.lengthComputable) return;
+        var pct = Math.round(e.loaded / e.total * 100);
+        if (progBtn) progBtn.textContent = pct + '%';
+        var pqBar = document.getElementById('f-q-upload-progress');
+        if (pqBar) pqBar.style.width = pct + '%';
+      }).then(function(path) {
+        if (!path) { return; }
+        if (optIdx !== undefined) {
+          _optImagePaths[optIdx] = path;
+          var row = target.closest('.opt-row');
+          if (row) {
+            var btn = row.querySelector('.opt-img-btn');
+            if (btn) { btn.textContent = '\u2705'; btn.className = 'opt-img-btn has-image'; }
+            var img = row.querySelector('.opt-img');
+            if (!img) {
+              img = document.createElement('img');
+              img.className = 'opt-img';
+              img.onclick = function() { window.open(this.src); };
+              var ref = row.querySelector('.opt-img-btn');
+              row.insertBefore(img, ref);
+            }
+            img.src = SUPABASE_URL + '/storage/v1/object/public/question-images/' + path;
+          }
+        } else {
+          _qImagePath = path;
+          var prev = document.getElementById('f-q-img-preview');
+          if (prev) prev.innerHTML = '<img class="q-img-preview" src="' + SUPABASE_URL + '/storage/v1/object/public/question-images/' + path + '" onclick="window.open(this.src)">';
+        }
+      });
+      return;
+    }
+  }
+});
+
+// Check session on load
+(async function() {
+  const { data: { session } } = await sb.auth.getSession();
+  if (session) {
+    const { data: profile } = await sb.from('profiles').select('*').eq('id', session.user.id).single();
+    if (profile && profile.role === 'admin') {
+      adminUser = session.user; adminProfile = profile;
+      document.getElementById('admin-login').classList.add('hidden');
+      document.getElementById('admin-dashboard').classList.remove('hidden');
+      loadAdminPage('dashboard');
+    }
+  }
+})();
+</script>
+</body>
+</html>

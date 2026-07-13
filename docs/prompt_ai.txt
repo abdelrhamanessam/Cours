@@ -1,0 +1,33 @@
+Reformat the following exam questions into the exact format below.
+
+For each question:
+- Read the question
+- Determine which option is the CORRECT answer
+- Place * before the correct option
+
+Format:
+{N}. {question text}
+{letter}. {option}
+{letter}. {option}
+{letter}. {option}
+{letter}. {option}
+*{letter}. {correct option}
+
+Example input:
+"If a=3 and b=4, what is a+b? a)6 b)7 c)8 d)9"
+
+Example output:
+1. If a=3 and b=4, what is a+b?
+a. 6
+b. 7
+c. 8
+*d. 9
+
+Rules:
+- Preserve ALL math symbols exactly: ^ √ ∫ π θ Σ Δ ≤ ≥ ≠ ± ∞ × ÷ √ ² ³ (do not change to LaTeX)
+- Do NOT add dollar signs or LaTeX
+- Do NOT add solutions or explanations
+- Each question starts with number + period + space: 1.  2.  3.
+- Each option: letter + period + space: a.  b.  c.  d.
+- Correct answer gets * before the letter: *d. 9
+- Blank line between questions
