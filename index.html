@@ -30,6 +30,7 @@
     <div class="nv1" id="nv1">
       <a href="#" class="nv-link active" onclick="showView('platform')">Dashboard</a>
       <a href="#" class="nv-link" onclick="showView('courses')">Courses</a>
+      <a href="#" class="nv-link" onclick="showView('community')">Community</a>
       <a href="#" class="nv-link" onclick="showView('profile')">Profile</a>
       <a href="#" class="nv-link" onclick="showView('review')">Review</a>
       <div class="nv-cta" id="auth-status"></div>
@@ -305,6 +306,30 @@
   </div>
 </div>
 </div>
+
+<!-- ============ COMMUNITY VIEW ============ -->
+<div id="view-community" class="community-view" style="display:none">
+<div class="cm-header container">
+  <div>
+    <h1>Community</h1>
+    <p>Ask questions, share solutions, and learn together</p>
+  </div>
+  <button class="btn btn-primary" onclick="showCreatePost()">+ New Post</button>
+</div>
+<div class="container">
+  <div class="cm-bar" id="cm-bar">
+    <button class="cm-filter active" data-filter="latest" onclick="setCommunityFilter('latest',this)">Latest</button>
+    <button class="cm-filter" data-filter="most_liked" onclick="setCommunityFilter('most_liked',this)">Most Liked</button>
+    <button class="cm-filter" data-filter="solved" onclick="setCommunityFilter('solved',this)">Solved</button>
+    <button class="cm-filter" data-filter="unsolved" onclick="setCommunityFilter('unsolved',this)">Unsolved</button>
+    <select class="cm-filter-select" id="cm-lesson-filter" onchange="applyCommunityFilters()"><option value="">All Lessons</option></select>
+  </div>
+  <div class="cm-list" id="cm-list">
+    <div class="cm-shimmer"></div><div class="cm-shimmer"></div><div class="cm-shimmer"></div>
+  </div>
+</div>
+</div>
+<!-- END COMMUNITY VIEW -->
 
 <!-- ============ PROFILE VIEW ============ -->
 <div id="view-profile" class="profile-view" style="display:none">

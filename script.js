@@ -769,7 +769,7 @@ function closeMobileNav() {
 }
 function showView(view, data) {
   closeMobileNav();
-  document.querySelectorAll('.landing-view, .platform-view, .courses-view, .quiz-view, .content-view, .profile-view, .review-view').forEach(v => v.style.display = 'none');
+  document.querySelectorAll('.landing-view, .platform-view, .courses-view, .quiz-view, .content-view, .profile-view, .review-view, .community-view').forEach(v => v.style.display = 'none');
   if (view === 'landing') document.getElementById('view-landing').style.display = 'block';
   else if (view === 'platform') { document.getElementById('view-platform').style.display = 'block'; renderPlatform(); }
   else if (view === 'courses') { document.getElementById('view-courses').style.display = 'block'; renderCourses(); }
@@ -777,6 +777,7 @@ function showView(view, data) {
   else if (view === 'content') { document.getElementById('view-content').style.display = 'block'; renderContentPage(data).catch(()=>{}); }
   else if (view === 'profile') { document.getElementById('view-profile').style.display = 'block'; renderProfile(); }
   else if (view === 'review') { document.getElementById('view-review').style.display = 'block'; renderReviewPage(); }
+  else if (view === 'community') { document.getElementById('view-community').style.display = 'block'; showCommunity(); }
   window.scrollTo({ top: 0, behavior: 'smooth' });
 }
 
@@ -956,6 +957,8 @@ function lessonsHTML(c) {
         var examTotal = l.امتحان.questions.length + l.امتحان.imageQuestions.length;
         h += '<div class="course-section-row exam" onclick="event.stopPropagation();startExam(' + lid + ')"><span class="cs-num">&#9733;</span><span class="cs-title">' + examTotal + ' questions - Pass: ' + l.امتحان.passScore + '%</span><span class="cs-type cs-exam">Exam</span><span class="cs-open" style="color:var(--success)">Start &rarr;</span></div>';
       }
+      h += '</div>';
+      h += '<div class="cs-group"><div class="cs-group-head">Community</div><div class="course-section-row" onclick="event.stopPropagation();showTopCommunityQuestions(' + lid + ',\'' + esc(l.title) + '\')"><span class="cs-num">&#9733;</span><span class="cs-title">Top questions from students about this lesson</span><span class="cs-type cs-community">Community</span><span class="cs-open">View &rarr;</span></div></div>';
       h += '</div></div>';
     }
   });
@@ -1839,4 +1842,355 @@ async function startFinalExam(lid) {
   if (txt) txt.textContent = '0/' + qs.length;
   showView('quiz');
   renderAllQuestions();
+}
+
+// ============ COMMUNITY SYSTEM ============
+var _cmFilter = 'latest';
+var _cmPosts = [];
+var _cmUserLikes = {};
+
+function timeAgo(d) {
+  if (!d) return '';
+  var sec = Math.floor((Date.now() - new Date(d).getTime()) / 1000);
+  if (sec < 60) return 'just now';
+  var min = Math.floor(sec / 60);
+  if (min < 60) return min + 'm ago';
+  var hr = Math.floor(min / 60);
+  if (hr < 24) return hr + 'h ago';
+  var day = Math.floor(hr / 24);
+  if (day < 30) return day + 'd ago';
+  return new Date(d).toLocaleDateString();
+}
+
+function getLessonName(lid) {
+  for (var ci = 0; ci < COURSES.length; ci++) {
+    for (var li = 0; li < COURSES[ci].lessons.length; li++) {
+      if (COURSES[ci].lessons[li].id === lid) return COURSES[ci].lessons[li].title;
+    }
+  }
+  return 'Lesson';
+}
+
+async function showCommunity() {
+  showView('community');
+  var list = document.getElementById('cm-list');
+  if (!list) return;
+  list.innerHTML = '<div class="cm-shimmer"></div><div class="cm-shimmer"></div><div class="cm-shimmer"></div>';
+  // Populate lesson filter
+  var sel = document.getElementById('cm-lesson-filter');
+  if (sel && sel.options.length <= 1) {
+    for (var ci = 0; ci < COURSES.length; ci++) {
+      for (var li = 0; li < COURSES[ci].lessons.length; li++) {
+        var l = COURSES[ci].lessons[li];
+        var opt = document.createElement('option');
+        opt.value = l.id; opt.textContent = COURSES[ci].title + ' — ' + l.title;
+        sel.appendChild(opt);
+      }
+    }
+  }
+  await loadCommunityPosts();
+}
+
+async function loadCommunityPosts() {
+  try {
+    if (!currentUser) { document.getElementById('cm-list').innerHTML = '<div class="cm-empty"><div class="cm-empty-icon">🔒</div><h3>Sign in to access the community</h3><p>Log in to ask questions and see posts from your level.</p></div>'; return; }
+    var { data: posts } = await sb.from('community_posts').select('*, profiles!community_posts_user_id_fkey(name), likes:community_likes(count), comments:community_comments(count)').order('created_at', { ascending: false });
+    if (!posts || posts.length === 0) { document.getElementById('cm-list').innerHTML = '<div class="cm-empty"><div class="cm-empty-icon">📭</div><h3>No posts yet</h3><p>Be the first to ask a question!</p></div>'; return; }
+    _cmPosts = posts;
+    var { data: myLikes } = await sb.from('community_likes').select('post_id').eq('user_id', currentUser.id);
+    _cmUserLikes = {};
+    if (myLikes) myLikes.forEach(function(l) { _cmUserLikes[l.post_id] = true; });
+    applyCommunityFilters();
+  } catch(e) { console.error('Load posts error:', e); }
+}
+
+function setCommunityFilter(filter, btn) {
+  _cmFilter = filter;
+  document.querySelectorAll('.cm-filter').forEach(function(b) { b.classList.remove('active'); });
+  if (btn) btn.classList.add('active');
+  applyCommunityFilters();
+}
+
+function applyCommunityFilters() {
+  var filtered = _cmPosts.slice();
+  var lessonVal = (document.getElementById('cm-lesson-filter')?.value || '');
+  if (lessonVal) filtered = filtered.filter(function(p) { return String(p.lesson_id) === lessonVal; });
+  if (_cmFilter === 'most_liked') filtered.sort(function(a,b) { return (b.likes?.[0]?.count||0) - (a.likes?.[0]?.count||0); });
+  else if (_cmFilter === 'solved') filtered = filtered.filter(function(p) { return p.is_solved; });
+  else if (_cmFilter === 'unsolved') filtered = filtered.filter(function(p) { return !p.is_solved; });
+  else filtered.sort(function(a,b) { return new Date(b.created_at).getTime() - new Date(a.created_at).getTime(); });
+  renderCommunityPosts(filtered);
+}
+
+function renderCommunityPosts(posts) {
+  var list = document.getElementById('cm-list');
+  if (!list) return;
+  if (!posts || posts.length === 0) {
+    list.innerHTML = '<div class="cm-empty"><div class="cm-empty-icon">📭</div><h3>No posts found</h3><p>Try changing the filters or create a new post.</p></div>';
+    return;
+  }
+  var html = '';
+  posts.forEach(function(p) {
+    var likeCount = p.likes?.[0]?.count || 0;
+    var commentCount = p.comments?.[0]?.count || 0;
+    var liked = _cmUserLikes[p.id] ? ' liked' : '';
+    var avatarL = (p.profiles?.name || 'U')[0].toUpperCase();
+    var pinned = p.is_pinned ? '<span class="cm-badge cm-badge-pinned">📌 Pinned</span>' : '';
+    var solved = p.is_solved ? '<span class="cm-badge cm-badge-solved">✓ Solved</span>' : '';
+    var lessonName = getLessonName(p.lesson_id);
+    html += '<div class="cm-card' + (p.is_pinned ? ' cm-card-pinned' : '') + '" onclick="showPostDetail(' + p.id + ')">';
+    html += '<div class="cm-card-top"><div class="cm-card-title"><a href="#" onclick="event.stopPropagation();showPostDetail(' + p.id + ')">' + esc(p.title) + '</a></div><div style="display:flex;gap:4px;flex-shrink:0">' + pinned + solved + '</div></div>';
+    html += '<div class="cm-card-body">' + esc(p.description.substring(0, 200)) + '</div>';
+    html += '<div class="cm-card-meta"><div class="cm-card-author"><div class="cm-card-avatar">' + avatarL + '</div>' + esc(p.profiles?.name || 'User') + '</div><span>·</span><span>' + esc(lessonName) + '</span><span>·</span><span>' + timeAgo(p.created_at) + '</span>';
+    html += '<div class="cm-card-stats"><span class="cm-card-stat' + liked + '">' + (liked ? '♥' : '♡') + ' ' + likeCount + '</span><span class="cm-card-stat">💬 ' + commentCount + '</span></div></div>';
+    html += '</div>';
+  });
+  list.innerHTML = html;
+}
+
+async function showCreatePost() {
+  if (!currentUser) { alert('Please log in first.'); return; }
+  var h = '<h2 style="margin-bottom:16px">New Post</h2>';
+  h += '<label style="font-size:.8125rem;font-weight:600;color:var(--muted);display:block;margin-bottom:4px">Lesson</label><select id="f-post-lesson" class="auth-input">';
+  for (var ci = 0; ci < COURSES.length; ci++) {
+    for (var li = 0; li < COURSES[ci].lessons.length; li++) {
+      var l = COURSES[ci].lessons[li];
+      h += '<option value="' + l.id + '">' + esc(COURSES[ci].title) + ' — ' + esc(l.title) + '</option>';
+    }
+  }
+  h += '</select>';
+  h += '<label style="font-size:.8125rem;font-weight:600;color:var(--muted);display:block;margin-bottom:4px">Title</label><input id="f-post-title" class="auth-input" placeholder="What\'s your question?" maxlength="200">';
+  h += '<label style="font-size:.8125rem;font-weight:600;color:var(--muted);display:block;margin-bottom:4px">Description</label><textarea id="f-post-desc" class="auth-input" rows="4" placeholder="Explain your question in detail..." maxlength="10000"></textarea>';
+  h += '<label style="font-size:.8125rem;font-weight:600;color:var(--muted);display:block;margin-bottom:4px">Image (optional)</label><input id="f-post-img" type="file" accept="image/*" class="auth-input" style="padding:8px">';
+  h += '<div class="admin-modal-footer"><button class="btn btn-primary" onclick="submitPost()">Post</button><button class="btn btn-ghost" onclick="hideModal()">Cancel</button></div>';
+  showModal(h);
+}
+
+async function submitPost() {
+  var lessonId = document.getElementById('f-post-lesson')?.value;
+  var title = document.getElementById('f-post-title')?.value.trim();
+  var desc = document.getElementById('f-post-desc')?.value.trim();
+  if (!title || title.length < 3) { alert('Title must be at least 3 characters.'); return; }
+  if (!desc) { alert('Please add a description.'); return; }
+  var { data: banned } = await sb.from('banned_words').select('word');
+  if (banned) {
+    for (var b = 0; b < banned.length; b++) {
+      if (title.toLowerCase().includes(banned[b].word.toLowerCase()) || desc.toLowerCase().includes(banned[b].word.toLowerCase())) {
+        alert('Your post contains inappropriate language and cannot be published.'); return;
+      }
+    }
+  }
+  var image_url = null;
+  var imgFile = document.getElementById('f-post-img')?.files?.[0];
+  if (imgFile) {
+    var compressed = await compressImage(imgFile, 1200, 0.8);
+    var path = 'community_' + Date.now() + '.jpg';
+    var { data: { session } } = await sb.auth.getSession();
+    var token = session?.access_token || '';
+    var xhr = new XMLHttpRequest();
+    xhr.open('POST', SUPABASE_URL + '/storage/v1/object/question-images/' + path);
+    xhr.setRequestHeader('authorization', 'Bearer ' + token);
+    xhr.setRequestHeader('x-upsert', 'true');
+    await new Promise(function(resolve) {
+      xhr.onload = function() { if (xhr.status >= 200 && xhr.status < 300) image_url = path; resolve(); };
+      xhr.onerror = function() { resolve(); };
+      xhr.send(compressed);
+    });
+  }
+  var { error } = await sb.from('community_posts').insert({ user_id: currentUser.id, lesson_id: lessonId, title: title, description: desc, image_url: image_url });
+  if (error) { alert('Error: ' + error.message); return; }
+  hideModal();
+  await loadCommunityPosts();
+}
+
+async function showPostDetail(postId) {
+  var { data: post } = await sb.from('community_posts').select('*, profiles!community_posts_user_id_fkey(name)').eq('id', postId).single();
+  if (!post) { alert('Post not found.'); return; }
+  var { count: likeCount } = await sb.from('community_likes').select('id', { count: 'exact', head: true }).eq('post_id', postId);
+  var liked = _cmUserLikes[postId] ? ' liked' : '';
+  var isOwner = currentUser && currentUser.id === post.user_id;
+  var isTeacher = currentUser && (userProfile?.role === 'teacher');
+  var avatarL = (post.profiles?.name || 'U')[0].toUpperCase();
+  var pinned = post.is_pinned ? '<span class="cm-badge cm-badge-pinned">📌 Pinned</span>' : '';
+  var solved = post.is_solved ? '<span class="cm-badge cm-badge-solved">✓ Solved</span>' : '';
+
+  var h = '<div class="cm-post-modal">';
+  h += '<div style="display:flex;align-items:flex-start;justify-content:space-between;gap:12px;margin-bottom:8px"><h2 style="font-size:1.25rem;font-weight:700;letter-spacing:-.02em;flex:1">' + esc(post.title) + '</h2><div style="display:flex;gap:4px;flex-shrink:0">' + pinned + solved + '</div></div>';
+  h += '<div style="display:flex;align-items:center;gap:8px;margin-bottom:16px;font-size:.8125rem;color:var(--muted)"><div class="cm-card-avatar" style="width:28px;height:28px;font-size:.6875rem">' + avatarL + '</div><span style="font-weight:600;color:var(--ink)">' + esc(post.profiles?.name || 'User') + '</span><span>·</span><span>' + esc(getLessonName(post.lesson_id)) + '</span><span>·</span><span>' + timeAgo(post.created_at) + '</span></div>';
+  if (post.image_url) h += '<img class="cm-post-img" src="' + SUPABASE_URL + '/storage/v1/object/public/question-images/' + esc(post.image_url) + '" onclick="window.open(this.src)">';
+  h += '<div class="cm-post-body">' + esc(post.description) + '</div>';
+
+  h += '<div class="cm-post-actions">';
+  h += '<button class="cm-action-btn' + liked + '" onclick="toggleLike(' + postId + ',this)">' + (liked ? '♥' : '♡') + ' <span id="cm-like-count-' + postId + '">' + (likeCount||0) + '</span></button>';
+  if (isOwner && !post.is_solved) h += '<button class="cm-action-btn" onclick="toggleSolved(' + postId + ')">✓ Mark as Solved</button>';
+  if (isOwner && post.is_solved) h += '<button class="cm-action-btn solved" onclick="toggleSolved(' + postId + ')">✓ Solved</button>';
+  if (isTeacher && !post.is_pinned) h += '<button class="cm-action-btn" onclick="togglePin(' + postId + ')">📌 Pin</button>';
+  if (isTeacher && post.is_pinned) h += '<button class="cm-action-btn" onclick="togglePin(' + postId + ')">📌 Unpin</button>';
+  h += '<button class="cm-action-btn danger" onclick="reportPostModal(' + postId + ')">🚩 Report</button>';
+  h += '</div>';
+
+  h += '<div class="cm-comment-section"><h3 style="font-size:.9375rem;font-weight:700;margin-bottom:12px">Comments</h3>';
+  h += '<div class="cm-comment-form"><textarea id="f-new-comment-' + postId + '" placeholder="Write a comment..." rows="2"></textarea><button class="btn btn-primary btn-sm" style="align-self:flex-end;flex-shrink:0" onclick="addComment(' + postId + ',null)">Post</button></div>';
+  h += '<div id="cm-comments-' + postId + '"><div style="text-align:center;padding:24px;color:var(--muted);font-size:.875rem">Loading comments...</div></div></div>';
+  h += '</div>';
+  showModal(h);
+  loadComments(postId);
+}
+
+async function loadComments(postId) {
+  var { data: comments } = await sb.from('community_comments').select('*, profiles!community_comments_user_id_fkey(name)').eq('post_id', postId).order('created_at', { ascending: true });
+  var container = document.getElementById('cm-comments-' + postId);
+  if (!container) return;
+  if (!comments || comments.length === 0) { container.innerHTML = '<div style="text-align:center;padding:24px;color:var(--muted);font-size:.875rem">No comments yet. Be the first!</div>'; return; }
+  container.innerHTML = renderCommentTree(comments, null, postId);
+}
+
+function renderCommentTree(comments, parentId, postId) {
+  var children = comments.filter(function(c) { return c.parent_id === parentId; });
+  if (children.length === 0) return '';
+  var html = '';
+  children.forEach(function(c) {
+    var isTeacher = currentUser && (userProfile?.role === 'teacher');
+    var isOwner = currentUser && currentUser.id === c.user_id;
+    var avatarL = (c.profiles?.name || 'U')[0].toUpperCase();
+    var verified = c.is_verified_answer ? '<span class="cm-verified-badge">✓ Verified Answer</span>' : '';
+    html += '<div class="cm-comment">';
+    html += '<div class="cm-comment-avatar">' + avatarL + '</div>';
+    html += '<div class="cm-comment-body"><div class="cm-comment-header"><span class="cm-comment-author">' + esc(c.profiles?.name || 'User') + '</span>' + verified + '<span class="cm-comment-time">' + timeAgo(c.created_at) + '</span></div>';
+    html += '<div class="cm-comment-text">' + esc(c.content) + '</div>';
+    html += '<div class="cm-comment-actions">';
+    html += '<button onclick="showReplyForm(' + c.id + ',' + postId + ')">Reply</button>';
+    if (isTeacher && !c.is_verified_answer) html += '<button onclick="markVerifiedAnswer(' + c.id + ',' + postId + ')" style="color:var(--success)">✓ Verify</button>';
+    if (isOwner || isTeacher) html += '<button onclick="deleteComment(' + c.id + ',' + postId + ')" style="color:var(--error)">Delete</button>';
+    html += '</div>';
+    var depth = 0;
+    var pc = c;
+    while (pc.parent_id) { depth++; var found = comments.find(function(x) { return x.id === pc.parent_id; }); if (!found) break; pc = found; }
+    if (depth < 2) {
+      var replies = renderCommentTree(comments, c.id, postId);
+      if (replies) html += '<div class="cm-replies">' + replies + '</div>';
+    }
+    html += '<div id="cm-reply-form-' + c.id + '" style="display:none" class="cm-comment-form" style="margin-top:8px;margin-bottom:8px"><textarea id="f-reply-' + c.id + '" placeholder="Write a reply..." rows="1"></textarea><button class="btn btn-sm btn-primary" style="align-self:flex-end" onclick="addComment(' + postId + ',' + c.id + ')">Reply</button></div>';
+    html += '</div></div>';
+  });
+  return html;
+}
+
+function showReplyForm(commentId, postId) {
+  var el = document.getElementById('cm-reply-form-' + commentId);
+  if (el) el.style.display = el.style.display === 'none' ? 'flex' : 'none';
+}
+
+async function addComment(postId, parentId) {
+  var inputId = parentId ? 'f-reply-' + parentId : 'f-new-comment-' + postId;
+  var content = document.getElementById(inputId)?.value?.trim();
+  if (!content) { alert('Please write something.'); return; }
+  var { data: banned } = await sb.from('banned_words').select('word');
+  if (banned) {
+    for (var b = 0; b < banned.length; b++) {
+      if (content.toLowerCase().includes(banned[b].word.toLowerCase())) { alert('Your comment contains inappropriate language.'); return; }
+    }
+  }
+  var { error } = await sb.from('community_comments').insert({ post_id: postId, user_id: currentUser.id, content: content, parent_id: parentId || null });
+  if (error) { alert('Error: ' + error.message); return; }
+  document.getElementById(inputId).value = '';
+  var { data: post } = await sb.from('community_posts').select('user_id').eq('id', postId).single();
+  if (post && post.user_id !== currentUser.id) {
+    var notifType = parentId ? 'reply' : 'comment';
+    await sb.from('notifications').insert({ user_id: post.user_id, type: notifType, post_id: postId, actor_id: currentUser.id }).catch(function(){});
+  }
+  loadComments(postId);
+}
+
+async function toggleLike(postId, btn) {
+  if (!currentUser) { alert('Please log in.'); return; }
+  if (_cmUserLikes[postId]) {
+    await sb.from('community_likes').delete().eq('user_id', currentUser.id).eq('post_id', postId);
+    delete _cmUserLikes[postId];
+    if (btn) { btn.classList.remove('liked'); btn.innerHTML = '♡ <span id="cm-like-count-' + postId + '">' + (parseInt(btn.textContent.match(/\d+/)?.[0] || '1') - 1) + '</span>'; }
+  } else {
+    var { error } = await sb.from('community_likes').insert({ user_id: currentUser.id, post_id: postId });
+    if (error && error.code === '23505') return;
+    _cmUserLikes[postId] = true;
+    if (btn) { btn.classList.add('liked'); btn.innerHTML = '♥ <span id="cm-like-count-' + postId + '">' + (parseInt(btn.textContent.match(/\d+/)?.[0] || '0') + 1) + '</span>'; }
+    var { data: post } = await sb.from('community_posts').select('user_id').eq('id', postId).single();
+    if (post && post.user_id !== currentUser.id) {
+      await sb.from('notifications').insert({ user_id: post.user_id, type: 'like', post_id: postId, actor_id: currentUser.id }).catch(function(){});
+    }
+  }
+}
+
+async function toggleSolved(postId) {
+  if (!currentUser) return;
+  var { data: post } = await sb.from('community_posts').select('is_solved').eq('id', postId).single();
+  if (!post) return;
+  await sb.from('community_posts').update({ is_solved: !post.is_solved }).eq('id', postId);
+  hideModal();
+  showPostDetail(postId);
+}
+
+async function togglePin(postId) {
+  if (!currentUser || userProfile?.role !== 'teacher') return;
+  var { data: post } = await sb.from('community_posts').select('is_pinned').eq('id', postId).single();
+  if (!post) return;
+  await sb.from('community_posts').update({ is_pinned: !post.is_pinned }).eq('id', postId);
+  hideModal();
+  showPostDetail(postId);
+}
+
+async function markVerifiedAnswer(commentId, postId) {
+  if (!currentUser || userProfile?.role !== 'teacher') return;
+  await sb.from('community_comments').update({ is_verified_answer: true }).eq('id', commentId);
+  var { data: c } = await sb.from('community_comments').select('user_id').eq('id', commentId).single();
+  if (c && c.user_id !== currentUser.id) {
+    await sb.from('notifications').insert({ user_id: c.user_id, type: 'verified_answer', post_id: postId, actor_id: currentUser.id }).catch(function(){});
+  }
+  loadComments(postId);
+}
+
+async function deleteComment(commentId, postId) {
+  if (!confirm('Delete this comment?')) return;
+  await sb.from('community_comments').delete().eq('id', commentId);
+  loadComments(postId);
+}
+
+function reportPostModal(postId) {
+  var h = '<h2 style="margin-bottom:12px">Report Post</h2>';
+  h += '<p style="font-size:.875rem;color:var(--muted);margin-bottom:12px">Why are you reporting this post?</p>';
+  h += '<div class="cm-report-form"><textarea id="f-report-reason" placeholder="Provide a reason..." rows="3"></textarea></div>';
+  h += '<div class="admin-modal-footer"><button class="btn btn-primary" onclick="submitReport(' + postId + ')">Submit Report</button><button class="btn btn-ghost" onclick="hideModal()">Cancel</button></div>';
+  showModal(h);
+}
+
+async function submitReport(postId) {
+  var reason = document.getElementById('f-report-reason')?.value?.trim();
+  if (!reason) { alert('Please provide a reason.'); return; }
+  var { error } = await sb.from('community_reports').insert({ user_id: currentUser.id, post_id: postId, reason: reason });
+  if (error) { alert('Error: ' + error.message); return; }
+  hideModal();
+  alert('Report submitted. Our team will review it shortly.');
+}
+
+async function showTopCommunityQuestions(lid, title) {
+  var { data: posts } = await sb.from('community_posts').select('*, likes:community_likes(count), comments:community_comments(count)').eq('lesson_id', lid).order('created_at', { ascending: false });
+  if (!posts || posts.length === 0) { alert('No community questions for this lesson yet.'); return; }
+  posts.sort(function(a,b) {
+    var aScore = (a.likes?.[0]?.count||0) * 2 + (a.comments?.[0]?.count||0);
+    var bScore = (b.likes?.[0]?.count||0) * 2 + (b.comments?.[0]?.count||0);
+    return bScore - aScore;
+  });
+  var topQ = posts.slice(0, 5);
+  var h = '<h2 style="margin-bottom:16px">Top Questions — ' + esc(title) + '</h2>';
+  for (var i = 0; i < topQ.length; i++) {
+    var p = topQ[i];
+    var lc = p.likes?.[0]?.count || 0;
+    var cc = p.comments?.[0]?.count || 0;
+    var solved = p.is_solved ? ' ✓' : '';
+    h += '<div style="padding:12px;border:1px solid var(--border);border-radius:var(--radius);margin-bottom:8px;cursor:pointer" onclick="hideModal();showPostDetail(' + p.id + ')">';
+    h += '<div style="font-weight:600;font-size:.875rem;margin-bottom:4px">' + esc(p.title) + solved + '</div>';
+    h += '<div style="font-size:.75rem;color:var(--muted)">♥ ' + lc + ' · 💬 ' + cc + '</div>';
+    h += '</div>';
+  }
+  h += '<div class="admin-modal-footer"><button class="btn btn-ghost" onclick="hideModal()">Close</button></div>';
+  showModal(h);
 }
