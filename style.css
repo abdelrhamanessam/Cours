@@ -757,6 +757,18 @@ details[open] .rv-mistake-summary::before{transform:rotate(90deg)}
 /* Responsive — shared narrow-screen adjustments */
 @media(max-width:600px){
   .container{padding:0 16px}
+  /* Hero */
+  .hero-split{flex-direction:column;gap:32px;text-align:center}
+  .hero-text-col{text-align:center}
+  .hero-desc{margin-left:auto;margin-right:auto}
+  .hero-actions{justify-content:center}
+  .hero-img-col{width:auto}
+  .hero-img-frame{width:200px;height:200px}
+  /* Landing sections */
+  .section{padding:56px 0}
+  .section-header{margin-bottom:40px}
+  .steps-grid{grid-template-columns:1fr;gap:24px}
+  .features-grid{grid-template-columns:1fr}
   /* Video player */
   .vp-bottom{padding:2px 6px 6px;gap:2px}
   .vp-timeline-wrap{padding:0 6px}
@@ -772,6 +784,7 @@ details[open] .rv-mistake-summary::before{transform:rotate(90deg)}
   .pv-name{font-size:1.25rem}
   .pv-stats{padding:16px 0}
   .pv-stat-num{font-size:1.125rem}
+  .pv-body .container{max-width:100%}
   /* Review page */
   .rv-hero{padding:24px 16px}
   .rv-hero h2{font-size:1.125rem}
@@ -779,17 +792,31 @@ details[open] .rv-mistake-summary::before{transform:rotate(90deg)}
   .rv-rank-bar-wrap{min-width:0}
   .rv-mistake-answers{flex-direction:column;gap:6px}
   .rv-mistake-card{padding:10px 12px}
+  .rv-body .container{max-width:100%}
   /* Quiz page */
   .quiz-question h2{font-size:1.0625rem}
   .quiz-option{padding:12px 14px;font-size:.9375rem}
   .quiz-result{padding:24px 16px}
   .quiz-result .result-score{font-size:2.25rem}
+  .quiz-body .container{max-width:100%}
   /* Dashboard / Platform */
   .dash-stats{grid-template-columns:repeat(2,1fr)}
   .pf-stats{grid-template-columns:1fr;gap:8px}
   .dash-table th,.dash-table td{padding:8px 10px;font-size:.75rem}
   .dc-course{padding:10px 12px}
+  /* Admin */
+  .admin-layout{flex-direction:column}
+  .admin-sidebar{width:100%;position:static;display:flex;flex-wrap:wrap;gap:2px;margin-bottom:8px}
+  .admin-sidebar a{padding:8px 12px;font-size:.8125rem;flex:1 0 auto;justify-content:center}
+  .admin-sidebar a svg{width:14px;height:14px}
+  .admin-header{flex-direction:column;align-items:stretch;gap:8px}
+  .admin-header h1{font-size:1rem}
+  .admin-header-actions{flex-wrap:wrap}
   /* General */
   .courses-header{flex-direction:column;gap:12px}
+}
+@media(max-width:480px){
+  .hero-img-frame{width:160px;height:160px}
+  .hero-text-col h1{font-size:clamp(1.8rem,7vw,2.2rem)}
 }
 
