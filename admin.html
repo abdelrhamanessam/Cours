@@ -908,7 +908,24 @@ async function saveLesson(courseId) {
   hideModal();
   loadAdminCourses();
 }
-async function deleteLesson(id) { if (!confirm('Delete this lesson and all its content?')) return; const { error } = await sb.from('lessons').delete().eq('id', id); if (error) { alert('Error: ' + error.message); return; } loadAdminCourses(); }
+async function renumberSortOrder(table, filterCol, filterVal) {
+  var { data } = await sb.from(table).select('id, sort_order').eq(filterCol, filterVal).order('sort_order');
+  if (!data) return;
+  for (var i = 0; i < data.length; i++) {
+    if (data[i].sort_order !== i) {
+      await sb.from(table).update({ sort_order: i }).eq('id', data[i].id);
+    }
+  }
+}
+async function deleteLesson(id) {
+  if (!confirm('Delete this lesson and all its content?')) return;
+  var { data: lesson } = await sb.from('lessons').select('course_id').eq('id', id).single();
+  if (!lesson) return;
+  const { error } = await sb.from('lessons').delete().eq('id', id);
+  if (error) { alert('Error: ' + error.message); return; }
+  await renumberSortOrder('lessons', 'course_id', lesson.course_id);
+  loadAdminCourses();
+}
 
 async function duplicateLesson(id, courseId) {
   const { data: orig } = await sb.from('lessons').select('*').eq('id', id).single();
@@ -1703,13 +1720,13 @@ function addHWQForm(hwId) { _qImagePath = null; _optImagePaths = []; _qExplImage
 async function saveHWQ(hwId) { const p = parseQOpts(); const payload = { homework_id: hwId, question: document.getElementById('f-q-q').value, options: p.options, correct: p.correct, sort_order: parseInt(document.getElementById('f-q-order').value) || 0, math: document.getElementById('f-q-math').value, explanation: p.explanation, explanation_image_url: p.explanation_image_url }; if (p.image_url) payload.image_url = p.image_url; if (p.option_images && p.option_images.some(Boolean)) payload.option_images = p.option_images; const { error } = await sb.from('hw_questions').insert(payload); if (error) { alert('Error: ' + error.message); return; } hideModal(); manageContent(_contentLid); }
 async function editHWQForm(id) { const { data: q } = await sb.from('hw_questions').select('*').eq('id', id).single(); if (!q) return; showModal(qFormHtml('Edit Homework Question', q.question, q.options, q.correct, q.sort_order, q.math, q.image_url, q.option_images, q.explanation, q.explanation_image_url) + '<button class="btn btn-primary" onclick="updateHWQ(' + id + ')">Update</button><button class="btn btn-ghost" onclick="manageContent(' + _contentLid + ')">Cancel</button></div>'); setTimeout(previewMath, 100); }
 async function updateHWQ(id) { const p = parseQOpts(); const payload = { question: document.getElementById('f-q-q').value, options: p.options, correct: p.correct, sort_order: parseInt(document.getElementById('f-q-order').value) || 0, math: document.getElementById('f-q-math').value, explanation: p.explanation, explanation_image_url: p.explanation_image_url }; if (p.image_url) payload.image_url = p.image_url; if (p.option_images && p.option_images.some(Boolean)) payload.option_images = p.option_images; const { error } = await sb.from('hw_questions').update(payload).eq('id', id); if (error) { alert('Error: ' + error.message); return; } hideModal(); manageContent(_contentLid); }
-async function deleteHWQ(id) { if (!confirm('Delete this question?')) return; const { error } = await sb.from('hw_questions').delete().eq('id', id); if (error) { alert('Error: ' + error.message); return; } manageContent(_contentLid); }
+async function deleteHWQ(id) { if (!confirm('Delete this question?')) return; var { data: q } = await sb.from('hw_questions').select('homework_id').eq('id', id).single(); if (!q) return; const { error } = await sb.from('hw_questions').delete().eq('id', id); if (error) { alert('Error: ' + error.message); return; } await renumberSortOrder('hw_questions', 'homework_id', q.homework_id); manageContent(_contentLid); }
 
 function addExamQForm(examId) { _qImagePath = null; _optImagePaths = []; _qExplImagePath = null; showModal(qFormHtml('Add Exam Question', '', null, 0, 1, '', null, [], '', null) + '<button class="btn btn-primary" onclick="saveExamQ(' + examId + ')">Save</button><button class="btn btn-ghost" onclick="manageContent(' + _contentLid + ')">Cancel</button></div>'); previewMath(); }
 async function saveExamQ(examId) { const p = parseQOpts(); const payload = { exam_id: examId, question: document.getElementById('f-q-q').value, options: p.options, correct: p.correct, sort_order: parseInt(document.getElementById('f-q-order').value) || 0, math: document.getElementById('f-q-math').value, explanation: p.explanation, explanation_image_url: p.explanation_image_url }; if (p.image_url) payload.image_url = p.image_url; if (p.option_images && p.option_images.some(Boolean)) payload.option_images = p.option_images; const { error } = await sb.from('exam_questions').insert(payload); if (error) { alert('Error: ' + error.message); return; } hideModal(); manageContent(_contentLid); }
 async function editExamQForm(id) { const { data: q } = await sb.from('exam_questions').select('*').eq('id', id).single(); if (!q) return; showModal(qFormHtml('Edit Exam Question', q.question, q.options, q.correct, q.sort_order, q.math, q.image_url, q.option_images, q.explanation, q.explanation_image_url) + '<button class="btn btn-primary" onclick="updateExamQ(' + id + ')">Update</button><button class="btn btn-ghost" onclick="manageContent(' + _contentLid + ')">Cancel</button></div>'); setTimeout(previewMath, 100); }
 async function updateExamQ(id) { const p = parseQOpts(); const payload = { question: document.getElementById('f-q-q').value, options: p.options, correct: p.correct, sort_order: parseInt(document.getElementById('f-q-order').value) || 0, math: document.getElementById('f-q-math').value, explanation: p.explanation, explanation_image_url: p.explanation_image_url }; if (p.image_url) payload.image_url = p.image_url; if (p.option_images && p.option_images.some(Boolean)) payload.option_images = p.option_images; const { error } = await sb.from('exam_questions').update(payload).eq('id', id); if (error) { alert('Error: ' + error.message); return; } hideModal(); manageContent(_contentLid); }
-async function deleteExamQ(id) { if (!confirm('Delete this question?')) return; const { error } = await sb.from('exam_questions').delete().eq('id', id); if (error) { alert('Error: ' + error.message); return; } manageContent(_contentLid); }
+async function deleteExamQ(id) { if (!confirm('Delete this question?')) return; var { data: q } = await sb.from('exam_questions').select('exam_id').eq('id', id).single(); if (!q) return; const { error } = await sb.from('exam_questions').delete().eq('id', id); if (error) { alert('Error: ' + error.message); return; } await renumberSortOrder('exam_questions', 'exam_id', q.exam_id); manageContent(_contentLid); }
 
 // ========== IMAGE EXAM QUESTIONS ==========
 let _imgQPath = null;
@@ -1786,8 +1803,11 @@ async function updateExamImgQ(id) {
 }
 async function deleteExamImgQ(id) {
   if (!confirm('Delete this image question?')) return;
+  var { data: q } = await sb.from('exam_image_questions').select('exam_id').eq('id', id).single();
+  if (!q) return;
   const { error } = await sb.from('exam_image_questions').delete().eq('id', id);
   if (error) { alert('Error: ' + error.message); return; }
+  await renumberSortOrder('exam_image_questions', 'exam_id', q.exam_id);
   manageContent(_contentLid);
 }
 
@@ -1825,8 +1845,11 @@ async function updateHWImgQ(id) {
 }
 async function deleteHWImgQ(id) {
   if (!confirm('Delete this image question?')) return;
+  var { data: q } = await sb.from('hw_image_questions').select('homework_id').eq('id', id).single();
+  if (!q) return;
   const { error } = await sb.from('hw_image_questions').delete().eq('id', id);
   if (error) { alert('Error: ' + error.message); return; }
+  await renumberSortOrder('hw_image_questions', 'homework_id', q.homework_id);
   manageContent(_contentLid);
 }
 let _allStudentData = null;
