@@ -835,7 +835,7 @@ function lessonsHTML(c) {
     const fileBadges = Array.from(fileTypes).map(t => '<span class="cs-type cs-file cs-' + t.toLowerCase() + '">' + t + '</span>').join(' ');
     h += '<div class="lesson-row ' + (p?.completed ? 'done' : '') + ' ' + (unlocked ? '' : 'locked') + '" data-lid="' + lid + '" onclick="' + (unlocked ? 'event.stopPropagation();toggleLessonContent(' + lid + ')' : 'event.stopPropagation()') + '">';
     h += '<div class="lr-icon">' + (p?.completed ? '&#10003;' : unlocked ? lid : '&#128274;') + '</div>';
-    h += '<div class="lr-body"><div class="lr-title">' + l.title + ' ' + typeBadges + ' ' + fileBadges + '</div><div class="lr-meta">' + l.topic + (p?.score != null ? ' | ' + p.score + '%' : '') + '</div></div>';
+    h += '<div class="lr-body"><div class="lr-title">' + esc(l.title) + ' ' + typeBadges + ' ' + fileBadges + '</div><div class="lr-meta">' + esc(l.topic) + (p?.score != null ? ' | ' + p.score + '%' : '') + '</div></div>';
     h += '<span class="lr-arrow">' + (unlocked ? '&#9660;' : '') + '</span>';
     h += '</div>';
     if (unlocked) {
@@ -850,7 +850,7 @@ function lessonsHTML(c) {
           if (slabel) sFileSet.add(slabel);
         }
         var sFileBadges = Array.from(sFileSet).map(function(t) { return '<span class="cs-type cs-file cs-' + t.toLowerCase() + '">' + t + '</span>'; }).join('');
-        return '<div class="course-section-row" onclick="event.stopPropagation();showContent(' + lid + ',\'شرح\',\'' + s.title + '\')"><span class="cs-num">' + (l.شرح.indexOf(s)+1) + '</span><span class="cs-title">' + s.title + sFileBadges + '</span><span class="cs-type cs-' + s.type.toLowerCase() + '">' + s.type + '</span><span class="cs-open">Open &rarr;</span></div>';
+        return '<div class="course-section-row" onclick="event.stopPropagation();showContent(' + lid + ',\'شرح\',\'' + esc(s.title) + '\')"><span class="cs-num">' + (l.شرح.indexOf(s)+1) + '</span><span class="cs-title">' + esc(s.title) + sFileBadges + '</span><span class="cs-type cs-' + esc(s.type.toLowerCase()) + '">' + esc(s.type) + '</span><span class="cs-open">Open &rarr;</span></div>';
       }).join('');
       h += '</div><div class="cs-group"><div class="cs-group-head">Homework</div>';
       const hwDone = Progress[lid]?.hwScore != null;
@@ -990,11 +990,11 @@ content += '<div class="vp-help-overlay" id="vp-help-' + Date.now() + '" style="
   content += '<div class="lesson-step"><h3>' + item.title + '</h3><p>' + item.content + '</p>' + (item.math ? '<div class="math-block">$$' + esc(item.math) + '$$</div>' : '') + '</div>';
   if (item.file_url) {
     var fn = item.file_url.split('/').pop();
-    content += '<div class="file-download"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="20" height="20"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg><div class="fd-body"><a class="fd-link" href="' + esc(item.file_url) + '" target="_blank" download>' + esc(fn) + '</a><span class="fd-hint">Click to open or download</span></div></div>';
+    content += '<div class="file-download"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="20" height="20"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg><div class="fd-body"><a class="fd-link" href="' + esc(item.file_url) + '" target="_blank" rel="noopener noreferrer" download>' + esc(fn) + '</a><span class="fd-hint">Click to open or download</span></div></div>';
   }
   if (item.pdf_url) {
     var pfn = item.pdf_url.split('/').pop();
-    content += '<div class="pdf-section"><div class="pdf-header"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" width="18" height="18"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><path d="M9 15h6"/><path d="M12 12v6"/></svg><span>PDF Material</span><a class="pdf-dl-btn" href="' + esc(item.pdf_url) + '" target="_blank" download title="Download PDF"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="16" height="16"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg></a></div><div class="pdf-viewer"><iframe src="' + esc(item.pdf_url) + '#toolbar=0" class="pdf-iframe" loading="lazy" title="PDF Viewer"></iframe></div></div>';
+    content += '<div class="pdf-section"><div class="pdf-header"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" width="18" height="18"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><path d="M9 15h6"/><path d="M12 12v6"/></svg><span>PDF Material</span><a class="pdf-dl-btn" href="' + esc(item.pdf_url) + '" target="_blank" rel="noopener noreferrer" download title="Download PDF"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="16" height="16"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg></a></div><div class="pdf-viewer"><iframe src="' + esc(item.pdf_url) + '#toolbar=0" class="pdf-iframe" loading="lazy" title="PDF Viewer"></iframe></div></div>';
   }
   content += '<div class="lesson-nav"><button class="btn btn-ghost" onclick="showView(\'courses\')">&larr; Back to Courses</button></div></div>';
   el.innerHTML = content;

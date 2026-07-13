@@ -420,7 +420,7 @@ async function adminLogin() {
   const { data: profile } = await sb.from('profiles').select('*').eq('id', adminUser.id).single();
   if (!profile || profile.role !== 'admin') { await sb.auth.signOut(); errEl.textContent = 'Not authorized as admin'; return; }
   adminProfile = profile;
-  const { data: codeData } = await sb.from('site_config').select('value').eq('key', 'admin_secret_code').single();
+  const { data: codeData } = await sb.from('admin_config').select('value').eq('key', 'admin_secret_code').single();
   if (codeData && codeData.value) {
     document.getElementById('admin-login').classList.add('hidden');
     document.getElementById('admin-code-prompt').classList.remove('hidden');
@@ -440,7 +440,7 @@ async function verifyAdminCode() {
   const code = document.getElementById('admin-secret-input').value;
   const errEl = document.getElementById('admin-code-error'); errEl.textContent = '';
   if (!code) { errEl.textContent = 'Enter the admin code'; return; }
-  const { data: row } = await sb.from('site_config').select('value').eq('key', 'admin_secret_code').single();
+  const { data: row } = await sb.from('admin_config').select('value').eq('key', 'admin_secret_code').single();
   if (!row || code !== row.value) { errEl.textContent = 'Wrong code'; return; }
   document.getElementById('admin-code-prompt').classList.add('hidden');
   document.getElementById('admin-dashboard').classList.remove('hidden');
@@ -450,7 +450,7 @@ async function verifyAdminCode() {
 function cancelAdminCode() { sb.auth.signOut(); adminUser = null; document.getElementById('admin-code-prompt').classList.add('hidden'); document.getElementById('admin-login').classList.remove('hidden'); }
 
 async function showAdminCodeSettings() {
-  const { data: row } = await sb.from('site_config').select('value').eq('key', 'admin_secret_code').single();
+  const { data: row } = await sb.from('admin_config').select('value').eq('key', 'admin_secret_code').single();
   var has = row && row.value;
   showModal('<h3 style="margin-bottom:8px">Admin 2FA Code</h3>'
     + '<p style="color:var(--muted);font-size:.875rem;margin-bottom:12px">Set a secret code required after login.</p>'
@@ -463,13 +463,13 @@ async function saveAdminCode() {
   var val = document.getElementById('new-admin-code').value;
   var errEl = document.getElementById('admin-code-save-error'); if (errEl) errEl.textContent = '';
   if (!val) { if (errEl) errEl.textContent = 'Enter a code'; return; }
-  var { error } = await sb.from('site_config').upsert({ key: 'admin_secret_code', value: val }, { onConflict: 'key' });
+  var { error } = await sb.from('admin_config').upsert({ key: 'admin_secret_code', value: val }, { onConflict: 'key' });
   if (error) { if (errEl) errEl.textContent = error.message; return; }
   hideModal(); alert('Admin code saved!');
 }
 async function clearAdminCode() {
   if (!confirm('Remove admin code? Anyone with password can access admin.')) return;
-  var { error } = await sb.from('site_config').delete().eq('key', 'admin_secret_code');
+  var { error } = await sb.from('admin_config').delete().eq('key', 'admin_secret_code');
   if (error) { alert(error.message); return; }
   hideModal(); alert('Admin code removed.');
 }
@@ -1000,7 +1000,7 @@ async function manageContent(lid) {
     html += '<div class="qs-list">';
     (l.lectures||[]).sort((a,b)=>(a.sort_order||0)-(b.sort_order||0)).forEach((lec, li, arr) => {
       html += '<div class="q-row">';
-      html += '<div class="q-info"><span class="q-text">' + esc(lec.title) + '</span><span class="q-meta">' + lec.type + (lec.video_url ? ' · video' : '') + (lec.file_url ? ' · <a href="' + esc(lec.file_url) + '" target="_blank" style="color:var(--accent);text-decoration:underline">file</a>' : '') + (lec.pdf_url ? ' · <a href="' + esc(lec.pdf_url) + '" target="_blank" style="color:var(--error);text-decoration:underline">PDF</a>' : '') + '</span></div>';
+      html += '<div class="q-info"><span class="q-text">' + esc(lec.title) + '</span><span class="q-meta">' + lec.type + (lec.video_url ? ' · video' : '') + (lec.file_url ? ' · <a href="' + esc(lec.file_url) + '" target="_blank" rel="noopener noreferrer" style="color:var(--accent);text-decoration:underline">file</a>' : '') + (lec.pdf_url ? ' · <a href="' + esc(lec.pdf_url) + '" target="_blank" rel="noopener noreferrer" style="color:var(--error);text-decoration:underline">PDF</a>' : '') + '</span></div>';
       html += '<span class="q-actions">';
       if (li > 0) html += '<button class="move-btn" onclick="moveLecture(' + lec.id + ',' + lid + ',-1)" title="Move up">▲</button>';
       if (li < arr.length - 1) html += '<button class="move-btn" onclick="moveLecture(' + lec.id + ',' + lid + ',1)" title="Move down">▼</button>';
