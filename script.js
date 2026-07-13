@@ -1469,9 +1469,6 @@ function renderReport(lessonId, type, questions, result) {
       return;
     }
     const imgHtml = q.image_url ? '<div style="text-align:center;margin:8px 0"><img src="' + SU + q.image_url + '" style="max-width:100%;max-height:200px;border-radius:var(--radius);border:1px solid var(--border)"></div>' : '';
-      return;
-    }
-    const imgHtml = q.image_url ? '<div style="text-align:center;margin:8px 0"><img src="' + SU + q.image_url + '" style="max-width:100%;max-height:200px;border-radius:var(--radius);border:1px solid var(--border)"></div>' : '';
     report += '<div class="report-question ' + status + '" style="margin-top:20px;padding:16px;border:1px solid var(--border);border-radius:var(--radius);background:var(--surface)"><div class="q-number" style="margin-bottom:8px">Question ' + (i+1) + '</div><h2 style="font-size:1rem;margin-bottom:12px">' + q.q + '</h2>' + imgHtml + (q.math ? '<div class="math-block">$$' + esc(q.math) + '$$</div>' : '');
     q.opts.forEach((o, oi) => {
       let cls = '';
