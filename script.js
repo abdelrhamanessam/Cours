@@ -159,8 +159,26 @@ function updateAuthUI() {
   if (!el) return;
   if (currentUser && userProfile) {
     const init = (userProfile.name || 'U').charAt(0).toUpperCase();
-    var avatarHtml = userProfile.profile_pic ? '<img src="' + userProfile.profile_pic + '" alt="" style="width:100%;height:100%;object-fit:cover;border-radius:50%">' : init;
-    el.innerHTML = '<div class="avatar" onclick="showView(\'profile\')" title="Profile">' + avatarHtml + '</div><button class="btn btn-ghost btn-sm" onclick="signOut()">Sign Out</button>';
+    el.textContent = '';
+    var wrap = document.createElement('div');
+    wrap.className = 'avatar';
+    wrap.onclick = function() { showView('profile'); };
+    wrap.title = 'Profile';
+    if (userProfile.profile_pic) {
+      var img = document.createElement('img');
+      img.src = userProfile.profile_pic;
+      img.alt = '';
+      img.style.cssText = 'width:100%;height:100%;object-fit:cover;border-radius:50%';
+      wrap.appendChild(img);
+    } else {
+      wrap.textContent = init;
+    }
+    el.appendChild(wrap);
+    var btn = document.createElement('button');
+    btn.className = 'btn btn-ghost btn-sm';
+    btn.onclick = function() { signOut(); };
+    btn.textContent = 'Sign Out';
+    el.appendChild(btn);
   } else {
     el.innerHTML = '<button class="btn btn-primary btn-sm" onclick="showAuthModal()">Log In</button>';
   }
@@ -230,10 +248,14 @@ function renderProfile() {
   }
   const init = (userProfile?.name || 'U').charAt(0).toUpperCase();
   const avatarEl = document.getElementById('profile-avatar');
+  avatarEl.textContent = '';
   if (userProfile?.profile_pic) {
-    avatarEl.innerHTML = '<img src="' + userProfile.profile_pic + '" alt="Profile photo">';
+    var img = document.createElement('img');
+    img.src = userProfile.profile_pic;
+    img.alt = 'Profile photo';
+    avatarEl.appendChild(img);
   } else {
-    avatarEl.innerHTML = init;
+    avatarEl.textContent = init;
   }
   document.getElementById('profile-name').textContent = userProfile?.name || 'User';
   document.getElementById('profile-email').textContent = currentUser.email || '';
@@ -263,34 +285,38 @@ function uploadProfilePic(event) {
   const file = event.target.files[0];
   if (!file || !currentUser) return;
   const ext = file.name.split('.').pop().toLowerCase().replace(/[^a-z0-9]/g, '');
-  const path = 'profiles/' + currentUser.id + '.' + ext;
+  const path = 'profiles/' + currentUser.id + '/' + Date.now() + '.' + ext;
   const formData = new FormData();
   formData.append('file', file);
-  const xhr = new XMLHttpRequest();
-  xhr.open('POST', SUPABASE_URL + '/storage/v1/object/question-images/' + path);
-  xhr.setRequestHeader('Authorization', 'Bearer ' + SUPABASE_ANON_KEY);
-  xhr.upload.onprogress = function(e) {
-    if (e.lengthComputable) {
-      var pct = Math.round(e.loaded / e.total * 100);
-      document.getElementById('profile-avatar').innerHTML = '<span style="font-size:.75rem;font-weight:600">' + pct + '%</span>';
-    }
-  };
-  xhr.onload = function() {
-    if (xhr.status === 200) {
-      const url = SUPABASE_URL + '/storage/v1/object/public/question-images/' + path;
-      sb.from('profiles').update({ profile_pic: url }).eq('id', currentUser.id).then(function(res) {
-        if (res.error) { alert('Failed to save photo: ' + res.error.message); return; }
-        if (userProfile) userProfile.profile_pic = url;
+  sb.auth.getSession().then(function(ses) {
+    var token = ses.data.session ? ses.data.session.access_token : SUPABASE_ANON_KEY;
+    const xhr = new XMLHttpRequest();
+    xhr.open('POST', SUPABASE_URL + '/storage/v1/object/question-images/' + path);
+    xhr.setRequestHeader('Authorization', 'Bearer ' + token);
+    xhr.upload.onprogress = function(e) {
+      if (e.lengthComputable) {
+        var pct = Math.round(e.loaded / e.total * 100);
+        var pel = document.getElementById('profile-avatar');
+        if (pel) pel.textContent = pct + '%';
+      }
+    };
+    xhr.onload = function() {
+      if (xhr.status === 200) {
+        const url = SUPABASE_URL + '/storage/v1/object/public/question-images/' + path;
+        sb.from('profiles').update({ profile_pic: url }).eq('id', currentUser.id).then(function(res) {
+          if (res.error) { alert('Failed to save photo: ' + res.error.message); return; }
+          if (userProfile) userProfile.profile_pic = url;
+          renderProfile();
+          updateAuthUI();
+        });
+      } else {
+        alert('Upload failed: ' + xhr.statusText);
         renderProfile();
-        updateAuthUI();
-      });
-    } else {
-      alert('Upload failed: ' + xhr.statusText);
-      renderProfile();
-    }
-  };
-  xhr.onerror = function() { alert('Upload failed'); renderProfile(); };
-  xhr.send(formData);
+      }
+    };
+    xhr.onerror = function() { alert('Upload failed'); renderProfile(); };
+    xhr.send(formData);
+  });
 }
 
 // ============ SMART REVIEW ============
@@ -1055,10 +1081,7 @@ function vpInit(src, wrap) {
         if (!signed) throw new Error('No signed URL');
         url = signed.signedUrl;
       }
-      var resp = await fetch(url);
-      if (!resp.ok) throw new Error('Fetch failed');
-      var blob = await resp.blob();
-      video.src = URL.createObjectURL(blob);
+      video.src = url;
       setLoading(false);
     } catch(e) { setLoading(false); showError(); }
   }
@@ -1478,7 +1501,7 @@ function goToNextLesson(lid) {
     }, 60);
   }, 60);
 }
-function esc(s) { if (!s) return ''; return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;'); }
+function esc(s) { if (!s) return ''; return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;').replace(/`/g,'&#96;'); }
 
 function getNextLessonId(lid) {
   for (let ci = 0; ci < COURSES.length; ci++) {

@@ -357,6 +357,18 @@
 <script src="script.js"></script>
 <script>
 // Load teacher settings from DB for the hero
+function sanitizeHtml(str) {
+  if (!str) return '';
+  return str.replace(/<script[\s\S]*?<\/script>/gi, '')
+    .replace(/<iframe[\s\S]*?<\/iframe>/gi, '')
+    .replace(/<object[\s\S]*?<\/object>/gi, '')
+    .replace(/<embed[\s\S]*?<\/embed>/gi, '')
+    .replace(/<style[\s\S]*?<\/style>/gi, '')
+    .replace(/\s+on\w+\s*=\s*"[^"]*"/gi, '')
+    .replace(/\s+on\w+\s*=\s*'[^']*'/gi, '')
+    .replace(/\s+on\w+\s*=\s*\S+/gi, '')
+    .replace(/javascript\s*:/gi, '');
+}
 (function loadHeroSettings() {
   if (!window.supabase) return;
   try {
@@ -371,11 +383,12 @@
       if (cfg.teacher_title) document.getElementById('ht-title-text').textContent = cfg.teacher_title;
       if (cfg.teacher_image) {
         var ph = document.getElementById('hero-teacher-img');
-        ph.innerHTML = '<img src="' + cfg.teacher_image + '" alt="Mr Essam" class="hero-img-loaded">';
+        var safeUrl = String(cfg.teacher_image).replace(/[<>"']/g, '');
+        ph.innerHTML = '<img src="' + safeUrl + '" alt="Mr Essam" class="hero-img-loaded">';
         ph.classList.add('loaded');
       }
       if (cfg.hero_tag) document.getElementById('ht-tag').textContent = cfg.hero_tag;
-      if (cfg.hero_title) document.getElementById('ht-title').innerHTML = cfg.hero_title;
+      if (cfg.hero_title) document.getElementById('ht-title').innerHTML = sanitizeHtml(cfg.hero_title);
       if (cfg.hero_desc) document.getElementById('ht-desc').textContent = cfg.hero_desc;
     }).catch(function() {});
   } catch(e) {}
