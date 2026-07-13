@@ -212,6 +212,8 @@ footer .legal{border-top:1px solid oklch(0.25 0 0);padding-top:24px;display:flex
 /* ============ PLATFORM VIEWS ============ */
 .platform-view{display:none;padding-top:var(--nav-h);min-height:100vh}
 .landing-view{display:none}
+.content-view{display:none;padding-top:var(--nav-h);min-height:100vh}
+.community-view{display:none;padding-top:var(--nav-h);min-height:100vh}
 
 /* Dashboard */
 .dashboard-header{background:var(--surface);border-bottom:1px solid var(--border);padding:32px 0}
