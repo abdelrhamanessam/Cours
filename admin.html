@@ -1000,7 +1000,7 @@ async function manageContent(lid) {
     html += '<div class="qs-list">';
     (l.lectures||[]).sort((a,b)=>(a.sort_order||0)-(b.sort_order||0)).forEach((lec, li, arr) => {
       html += '<div class="q-row">';
-      html += '<div class="q-info"><span class="q-text">' + esc(lec.title) + '</span><span class="q-meta">' + lec.type + (lec.video_url ? ' · video' : '') + (lec.file_url ? ' · <a href="' + esc(lec.file_url) + '" target="_blank" rel="noopener noreferrer" style="color:var(--accent);text-decoration:underline">file</a>' : '') + (lec.pdf_url ? ' · <a href="' + esc(lec.pdf_url) + '" target="_blank" rel="noopener noreferrer" style="color:var(--error);text-decoration:underline">PDF</a>' : '') + '</span></div>';
+      html += '<div class="q-info"><span class="q-text">' + esc(lec.title) + '</span><span class="q-meta">' + lec.type + (lec.video_url ? ' · video' : '') + (lec.file_url ? ' · <a href="' + esc(lec.file_url) + '" target="_blank" rel="noopener noreferrer" style="color:var(--accent);text-decoration:underline">file</a>' : '') + (lec.pdf_url ? ' · <a href="' + esc(lec.pdf_url) + '" target="_blank" rel="noopener noreferrer" style="color:var(--error);text-decoration:underline">PDF</a>' : '') + (lec.image_url ? ' · image' : '') + '</span></div>';
       html += '<span class="q-actions">';
       if (li > 0) html += '<button class="move-btn" onclick="moveLecture(' + lec.id + ',' + lid + ',-1)" title="Move up">▲</button>';
       if (li < arr.length - 1) html += '<button class="move-btn" onclick="moveLecture(' + lec.id + ',' + lid + ',1)" title="Move down">▼</button>';
@@ -1141,7 +1141,7 @@ function lectureFormHtml(lec) {
   const type = lec ? lec.type : 'Video';
   const order = lec ? (lec.sort_order||0) : 1;
   const vid = lec ? esc(lec.video_url||'') : '';
-  const typeOpts = ['Video','Reading','Worksheet'].map(t => '<option' + (type===t?' selected':'') + '>' + t + '</option>').join('');
+  const typeOpts = ['Video','Reading','Worksheet','Image'].map(t => '<option' + (type===t?' selected':'') + '>' + t + '</option>').join('');
   // Parse existing qualities from video_url
   var qualities = [];
   try { var qParsed = JSON.parse(vid); if (typeof qParsed === 'object') { for (var k in qParsed) qualities.push({ label: k, src: esc(qParsed[k]) }); } } catch(e) {}
@@ -1172,6 +1172,15 @@ function lectureFormHtml(lec) {
   html += '<div class="lf-field" style="margin-top:8px"><label class="st-label">File URL <span class="st-label-note">(or enter a direct link)</span></label><input id="f-lect-file-url" class="st-input" value="' + fileUrl + '" placeholder="https://..."></div>';
   html += '</div>';
   var pdfUrl = lec ? esc(lec.pdf_url||'') : '';
+  // Image upload section for Image type
+  var imgUrl = lec ? esc(lec.image_url||'') : '';
+  html += '<div id="f-lect-image-section" class="lf-video-section" style="' + (type!=='Image'?'display:none':'') + '">';
+  html += '<div class="lf-video-header"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" width="16" height="16"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>Lecture Image</div>';
+  html += '<div class="lf-upload-row"><label class="lf-upload-btn"><input id="f-lect-image-file" type="file" accept="image/*">Upload Image</label><span class="lf-upload-hint">PNG, JPG, WebP</span></div>';
+  html += '<div class="upload-progress" id="f-lect-image-progress" style="display:none"><div class="upload-progress-bar"><div class="upload-progress-fill" id="f-lect-image-bar"></div></div><span class="upload-progress-text" id="f-lect-image-text">0%</span></div>';
+  html += '<div class="lf-field" style="margin-top:8px"><label class="st-label">Image URL <span class="st-label-note">(or enter a direct link)</span></label><input id="f-lect-image-url" class="st-input" value="' + imgUrl + '" placeholder="https://..."></div>';
+  if (imgUrl) html += '<div style="margin-top:8px"><img src="' + imgUrl + '" style="max-width:100%;max-height:200px;border-radius:8px;border:1px solid var(--border)"></div>';
+  html += '</div>';
   html += '<div id="f-lect-pdf-section" class="lf-video-section" style="margin-top:12px">';
   html += '<div class="lf-video-header"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" width="16" height="16"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><path d="M9 15h6"/><path d="M12 12v6"/></svg>PDF Material</div>';
   html += '<div class="lf-upload-row"><label class="lf-upload-btn"><input id="f-lect-pdf-upload" type="file" accept=".pdf">Upload PDF</label><span class="lf-upload-hint">or enter a URL below</span></div>';
@@ -1182,9 +1191,12 @@ function lectureFormHtml(lec) {
   return html;
 }
 function toggleLectureType() {
-  var isVideo = document.getElementById('f-lect-type').value === 'Video';
+  var t = document.getElementById('f-lect-type').value;
+  var isVideo = t === 'Video';
+  var isImage = t === 'Image';
   document.getElementById('f-lect-video-section').style.display = isVideo ? 'block' : 'none';
-  document.getElementById('f-lect-file-section').style.display = isVideo ? 'none' : 'block';
+  document.getElementById('f-lect-file-section').style.display = (isVideo || isImage) ? 'none' : 'block';
+  document.getElementById('f-lect-image-section').style.display = isImage ? 'block' : 'none';
   document.getElementById('f-lect-pdf-section').style.display = 'block';
 }
 async function uploadVideo(file, lessonId, progressEl, barEl, textEl) {
@@ -1324,10 +1336,20 @@ async function saveLecture(lid) {
     var pp = await uploadLecturePdf(pdfEl, lid, document.getElementById('f-lect-pdf-progress'), document.getElementById('f-lect-pdf-bar'), document.getElementById('f-lect-pdf-text'));
     if (pp) pdfUrl = pp;
   }
+  var imgUrl = document.getElementById('f-lect-image-url').value.trim();
+  var imgEl = document.getElementById('f-lect-image-file').files?.[0];
+  if (imgEl) {
+    var compressed = await compressImage(imgEl, 1200, 0.85);
+    var path = 'lectures/' + lid + '/' + Date.now() + '.jpg';
+    var { data: { session } } = await sb.auth.getSession();
+    var { data: upData } = await sb.storage.from('question-images').upload(path, compressed, { upsert: true, contentType: 'image/jpeg' });
+    if (upData) imgUrl = SUPABASE_URL + '/storage/v1/object/public/question-images/' + path;
+  }
   const data = { lesson_id: lid, title: document.getElementById('f-lect-title').value, content: document.getElementById('f-lect-content').value, math: document.getElementById('f-lect-math').value, type: document.getElementById('f-lect-type').value, sort_order: parseInt(document.getElementById('f-lect-order').value) || 0 };
   if (video_url) data.video_url = video_url;
   if (fileUrl) data.file_url = fileUrl;
   if (pdfUrl) data.pdf_url = pdfUrl;
+  if (imgUrl) data.image_url = imgUrl;
   const { error } = await sb.from('lectures').insert(data);
   if (error) { alert('Error: ' + error.message); return; }
   hideModal(); manageContent(_contentLid);
@@ -1357,10 +1379,20 @@ async function updateLecture(id) {
     var pp = await uploadLecturePdf(pdfEl, id, document.getElementById('f-lect-pdf-progress'), document.getElementById('f-lect-pdf-bar'), document.getElementById('f-lect-pdf-text'));
     if (pp) pdfUrl = pp;
   }
+  var imgUrl = document.getElementById('f-lect-image-url').value.trim();
+  var imgEl = document.getElementById('f-lect-image-file').files?.[0];
+  if (imgEl) {
+    var compressed = await compressImage(imgEl, 1200, 0.85);
+    var path = 'lectures/' + id + '/' + Date.now() + '.jpg';
+    var { data: { session } } = await sb.auth.getSession();
+    var { data: upData } = await sb.storage.from('question-images').upload(path, compressed, { upsert: true, contentType: 'image/jpeg' });
+    if (upData) imgUrl = SUPABASE_URL + '/storage/v1/object/public/question-images/' + path;
+  }
   const data = { title: document.getElementById('f-lect-title').value, content: document.getElementById('f-lect-content').value, math: document.getElementById('f-lect-math').value, type: document.getElementById('f-lect-type').value, sort_order: parseInt(document.getElementById('f-lect-order').value) || 0 };
   if (video_url) data.video_url = video_url;
   if (fileUrl) data.file_url = fileUrl;
   if (pdfUrl) data.pdf_url = pdfUrl;
+  if (imgUrl) data.image_url = imgUrl;
   const { error } = await sb.from('lectures').update(data).eq('id', id);
   if (error) { alert('Error: ' + error.message); return; }
   hideModal(); manageContent(_contentLid);
@@ -1398,6 +1430,7 @@ function questionOptsHtml(opts, correct, optImages) {
 
 let _optImagePaths = [];
 let _qImagePath = null;
+let _qExplImagePath = null;
 
 function compressImage(file, maxW, quality) {
   return new Promise(function(resolve) {
@@ -1492,8 +1525,26 @@ function uploadQuestionImage(btn) {
   };
   inp.click();
 }
+function uploadQExplImage(btn) {
+  const inp = document.createElement('input');
+  inp.type = 'file'; inp.accept = 'image/*';
+  inp.onchange = async function() {
+    const file = inp.files?.[0]; if (!file) return;
+    btn.textContent = '0%';
+    const path = await uploadImageToStorage(file, 'qexpl', undefined, function(e) {
+      if (e.lengthComputable) btn.textContent = Math.round(e.loaded / e.total * 100) + '%';
+    });
+    if (path) {
+      btn.textContent = '✅ Image added';
+      _qExplImagePath = path;
+      const prev = document.getElementById('f-q-expl-img-preview');
+      if (prev) prev.innerHTML = '<img class="q-img-preview" src="' + SUPABASE_URL + '/storage/v1/object/public/question-images/' + path + '" onclick="window.open(this.src)">';
+    } else { btn.textContent = '❌ Error'; setTimeout(() => { btn.textContent = '📷 Add Explanation Image'; }, 2000); }
+  };
+  inp.click();
+}
 
-function qFormHtml(title, q, opts, correct, sort_order, math, qImage, optImages) {
+function qFormHtml(title, q, opts, correct, sort_order, math, qImage, optImages, explanation, explImage) {
   _qImagePath = qImage || null;
   _optImagePaths = optImages ? [...optImages] : [];
   return '<h2>' + title + '</h2>' +
@@ -1511,6 +1562,9 @@ function qFormHtml(title, q, opts, correct, sort_order, math, qImage, optImages)
     '<div id="f-q-opts-list" style="margin:4px 0">' + questionOptsHtml(opts, correct, _optImagePaths) + '</div>' +
     '<button class="btn btn-sm btn-ghost" onclick="addOptRow()" style="margin-bottom:8px">+ Add Option</button>' +
     '<label>Sort Order</label><input id="f-q-order" type="number" value="' + (sort_order||1) + '" style="width:80px">' +
+    '<label style="margin-top:12px">Explanation <span style="font-weight:400;text-transform:none;letter-spacing:0;font-size:.75rem;color:var(--muted)">(optional, shown after student answers)</span></label>' +
+    '<textarea id="f-q-expl" style="width:100%;padding:10px 14px;border:1.5px solid var(--border);border-radius:var(--radius);margin-bottom:8px;font-size:.875rem;background:var(--bg);color:var(--ink);box-sizing:border-box;resize:vertical;min-height:60px">' + esc(explanation || '') + '</textarea>' +
+    '<div style="display:flex;align-items:center;gap:8px;margin-bottom:8px"><button type="button" class="btn-word-paste" onclick="uploadQExplImage(this)">📷 Add Explanation Image</button><span id="f-q-expl-img-preview">' + (explImage ? '<img class="q-img-preview" src="' + SUPABASE_URL + '/storage/v1/object/public/question-images/' + esc(explImage) + '" onclick="window.open(this.src)">' : '') + '</span></div>' +
     '<div class="admin-modal-footer">';
 }
 function parseQOpts() {
@@ -1520,7 +1574,7 @@ function parseQOpts() {
   const radios = document.querySelectorAll('input[name="f-q-correct"]');
   let correct = 0;
   radios.forEach((r, i) => { if (r.checked) correct = i; });
-  return { options: opts, correct: correct, image_url: _qImagePath, option_images: _optImagePaths };
+  return { options: opts, correct: correct, image_url: _qImagePath, option_images: _optImagePaths, explanation: document.getElementById('f-q-expl')?.value || '', explanation_image_url: _qExplImagePath };
 }
 function addOptRow() {
   const list = document.getElementById('f-q-opts-list');
@@ -1663,20 +1717,21 @@ function insertWordPasteResult() {
   toggleWordPasteBox();
   mathField.focus();
 }
-function addHWQForm(hwId) { _qImagePath = null; _optImagePaths = []; showModal(qFormHtml('Add Homework Question', '', null, 0, 1, '') + '<button class="btn btn-primary" onclick="saveHWQ(' + hwId + ')">Save</button><button class="btn btn-ghost" onclick="manageContent(' + _contentLid + ')">Cancel</button></div>'); previewMath(); }
-async function saveHWQ(hwId) { const p = parseQOpts(); const payload = { homework_id: hwId, question: document.getElementById('f-q-q').value, options: p.options, correct: p.correct, sort_order: parseInt(document.getElementById('f-q-order').value) || 0, math: document.getElementById('f-q-math').value }; if (p.image_url) payload.image_url = p.image_url; if (p.option_images && p.option_images.some(Boolean)) payload.option_images = p.option_images; const { error } = await sb.from('hw_questions').insert(payload); if (error) { alert('Error: ' + error.message); return; } hideModal(); manageContent(_contentLid); }
-async function editHWQForm(id) { const { data: q } = await sb.from('hw_questions').select('*').eq('id', id).single(); if (!q) return; showModal(qFormHtml('Edit Homework Question', q.question, q.options, q.correct, q.sort_order, q.math, q.image_url, q.option_images) + '<button class="btn btn-primary" onclick="updateHWQ(' + id + ')">Update</button><button class="btn btn-ghost" onclick="manageContent(' + _contentLid + ')">Cancel</button></div>'); setTimeout(previewMath, 100); }
-async function updateHWQ(id) { const p = parseQOpts(); const payload = { question: document.getElementById('f-q-q').value, options: p.options, correct: p.correct, sort_order: parseInt(document.getElementById('f-q-order').value) || 0, math: document.getElementById('f-q-math').value }; if (p.image_url) payload.image_url = p.image_url; if (p.option_images && p.option_images.some(Boolean)) payload.option_images = p.option_images; const { error } = await sb.from('hw_questions').update(payload).eq('id', id); if (error) { alert('Error: ' + error.message); return; } hideModal(); manageContent(_contentLid); }
+function addHWQForm(hwId) { _qImagePath = null; _optImagePaths = []; _qExplImagePath = null; showModal(qFormHtml('Add Homework Question', '', null, 0, 1, '', null, [], '', null) + '<button class="btn btn-primary" onclick="saveHWQ(' + hwId + ')">Save</button><button class="btn btn-ghost" onclick="manageContent(' + _contentLid + ')">Cancel</button></div>'); previewMath(); }
+async function saveHWQ(hwId) { const p = parseQOpts(); const payload = { homework_id: hwId, question: document.getElementById('f-q-q').value, options: p.options, correct: p.correct, sort_order: parseInt(document.getElementById('f-q-order').value) || 0, math: document.getElementById('f-q-math').value, explanation: p.explanation, explanation_image_url: p.explanation_image_url }; if (p.image_url) payload.image_url = p.image_url; if (p.option_images && p.option_images.some(Boolean)) payload.option_images = p.option_images; const { error } = await sb.from('hw_questions').insert(payload); if (error) { alert('Error: ' + error.message); return; } hideModal(); manageContent(_contentLid); }
+async function editHWQForm(id) { const { data: q } = await sb.from('hw_questions').select('*').eq('id', id).single(); if (!q) return; showModal(qFormHtml('Edit Homework Question', q.question, q.options, q.correct, q.sort_order, q.math, q.image_url, q.option_images, q.explanation, q.explanation_image_url) + '<button class="btn btn-primary" onclick="updateHWQ(' + id + ')">Update</button><button class="btn btn-ghost" onclick="manageContent(' + _contentLid + ')">Cancel</button></div>'); setTimeout(previewMath, 100); }
+async function updateHWQ(id) { const p = parseQOpts(); const payload = { question: document.getElementById('f-q-q').value, options: p.options, correct: p.correct, sort_order: parseInt(document.getElementById('f-q-order').value) || 0, math: document.getElementById('f-q-math').value, explanation: p.explanation, explanation_image_url: p.explanation_image_url }; if (p.image_url) payload.image_url = p.image_url; if (p.option_images && p.option_images.some(Boolean)) payload.option_images = p.option_images; const { error } = await sb.from('hw_questions').update(payload).eq('id', id); if (error) { alert('Error: ' + error.message); return; } hideModal(); manageContent(_contentLid); }
 async function deleteHWQ(id) { if (!confirm('Delete this question?')) return; const { error } = await sb.from('hw_questions').delete().eq('id', id); if (error) { alert('Error: ' + error.message); return; } manageContent(_contentLid); }
 
-function addExamQForm(examId) { _qImagePath = null; _optImagePaths = []; showModal(qFormHtml('Add Exam Question', '', null, 0, 1, '') + '<button class="btn btn-primary" onclick="saveExamQ(' + examId + ')">Save</button><button class="btn btn-ghost" onclick="manageContent(' + _contentLid + ')">Cancel</button></div>'); previewMath(); }
-async function saveExamQ(examId) { const p = parseQOpts(); const payload = { exam_id: examId, question: document.getElementById('f-q-q').value, options: p.options, correct: p.correct, sort_order: parseInt(document.getElementById('f-q-order').value) || 0, math: document.getElementById('f-q-math').value }; if (p.image_url) payload.image_url = p.image_url; if (p.option_images && p.option_images.some(Boolean)) payload.option_images = p.option_images; const { error } = await sb.from('exam_questions').insert(payload); if (error) { alert('Error: ' + error.message); return; } hideModal(); manageContent(_contentLid); }
-async function editExamQForm(id) { const { data: q } = await sb.from('exam_questions').select('*').eq('id', id).single(); if (!q) return; showModal(qFormHtml('Edit Exam Question', q.question, q.options, q.correct, q.sort_order, q.math, q.image_url, q.option_images) + '<button class="btn btn-primary" onclick="updateExamQ(' + id + ')">Update</button><button class="btn btn-ghost" onclick="manageContent(' + _contentLid + ')">Cancel</button></div>'); setTimeout(previewMath, 100); }
-async function updateExamQ(id) { const p = parseQOpts(); const payload = { question: document.getElementById('f-q-q').value, options: p.options, correct: p.correct, sort_order: parseInt(document.getElementById('f-q-order').value) || 0, math: document.getElementById('f-q-math').value }; if (p.image_url) payload.image_url = p.image_url; if (p.option_images && p.option_images.some(Boolean)) payload.option_images = p.option_images; const { error } = await sb.from('exam_questions').update(payload).eq('id', id); if (error) { alert('Error: ' + error.message); return; } hideModal(); manageContent(_contentLid); }
+function addExamQForm(examId) { _qImagePath = null; _optImagePaths = []; _qExplImagePath = null; showModal(qFormHtml('Add Exam Question', '', null, 0, 1, '', null, [], '', null) + '<button class="btn btn-primary" onclick="saveExamQ(' + examId + ')">Save</button><button class="btn btn-ghost" onclick="manageContent(' + _contentLid + ')">Cancel</button></div>'); previewMath(); }
+async function saveExamQ(examId) { const p = parseQOpts(); const payload = { exam_id: examId, question: document.getElementById('f-q-q').value, options: p.options, correct: p.correct, sort_order: parseInt(document.getElementById('f-q-order').value) || 0, math: document.getElementById('f-q-math').value, explanation: p.explanation, explanation_image_url: p.explanation_image_url }; if (p.image_url) payload.image_url = p.image_url; if (p.option_images && p.option_images.some(Boolean)) payload.option_images = p.option_images; const { error } = await sb.from('exam_questions').insert(payload); if (error) { alert('Error: ' + error.message); return; } hideModal(); manageContent(_contentLid); }
+async function editExamQForm(id) { const { data: q } = await sb.from('exam_questions').select('*').eq('id', id).single(); if (!q) return; showModal(qFormHtml('Edit Exam Question', q.question, q.options, q.correct, q.sort_order, q.math, q.image_url, q.option_images, q.explanation, q.explanation_image_url) + '<button class="btn btn-primary" onclick="updateExamQ(' + id + ')">Update</button><button class="btn btn-ghost" onclick="manageContent(' + _contentLid + ')">Cancel</button></div>'); setTimeout(previewMath, 100); }
+async function updateExamQ(id) { const p = parseQOpts(); const payload = { question: document.getElementById('f-q-q').value, options: p.options, correct: p.correct, sort_order: parseInt(document.getElementById('f-q-order').value) || 0, math: document.getElementById('f-q-math').value, explanation: p.explanation, explanation_image_url: p.explanation_image_url }; if (p.image_url) payload.image_url = p.image_url; if (p.option_images && p.option_images.some(Boolean)) payload.option_images = p.option_images; const { error } = await sb.from('exam_questions').update(payload).eq('id', id); if (error) { alert('Error: ' + error.message); return; } hideModal(); manageContent(_contentLid); }
 async function deleteExamQ(id) { if (!confirm('Delete this question?')) return; const { error } = await sb.from('exam_questions').delete().eq('id', id); if (error) { alert('Error: ' + error.message); return; } manageContent(_contentLid); }
 
 // ========== IMAGE EXAM QUESTIONS ==========
 let _imgQPath = null;
+let _imgQExplPath = null;
 function uploadExamImgImage(btn) {
   const inp = document.createElement('input');
   inp.type = 'file'; inp.accept = 'image/*';
@@ -1695,8 +1750,27 @@ function uploadExamImgImage(btn) {
   };
   inp.click();
 }
-function imgQFormHtml(title, imgUrl, correct, explanation) {
+function uploadImgQExplImage(btn) {
+  const inp = document.createElement('input');
+  inp.type = 'file'; inp.accept = 'image/*';
+  inp.onchange = async function() {
+    const file = inp.files?.[0]; if (!file) return;
+    btn.textContent = '0%'; btn.disabled = true;
+    const path = await uploadImageToStorage(file, 'imgqexpl', undefined, function(e) {
+      if (e.lengthComputable) btn.textContent = Math.round(e.loaded / e.total * 100) + '%';
+    });
+    if (path) {
+      btn.textContent = '✅ Image ready';
+      _imgQExplPath = path;
+      const prev = document.getElementById('f-imgq-expl-img-preview');
+      if (prev) prev.innerHTML = '<img src="' + SUPABASE_URL + '/storage/v1/object/public/question-images/' + path + '" style="max-width:100%;max-height:200px;border-radius:var(--radius);border:1px solid var(--border);cursor:pointer" onclick="window.open(this.src)">';
+    } else { btn.textContent = '❌ Error'; setTimeout(() => { btn.textContent = '📷 Add Explanation Image'; btn.disabled = false; }, 2000); }
+  };
+  inp.click();
+}
+function imgQFormHtml(title, imgUrl, correct, explanation, explImageUrl) {
   _imgQPath = imgUrl || null;
+  _imgQExplPath = explImageUrl || null;
   return '<h2>' + title + '</h2>' +
     '<label>Question Image (paste or upload)</label>' +
     '<div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:10px">' +
@@ -1711,11 +1785,12 @@ function imgQFormHtml(title, imgUrl, correct, explanation) {
     '<option value="D"' + (correct === 'D' ? ' selected' : '') + '>D</option>' +
     '</select>' +
     '<label>Explanation (optional)</label>' +
-    '<textarea id="f-imgq-expl" style="width:100%;padding:10px 14px;border:1.5px solid var(--border);border-radius:var(--radius);margin-bottom:10px;font-size:.875rem;background:var(--bg);color:var(--ink);box-sizing:border-box;resize:vertical;min-height:60px">' + esc(explanation || '') + '</textarea>' +
+    '<textarea id="f-imgq-expl" style="width:100%;padding:10px 14px;border:1.5px solid var(--border);border-radius:var(--radius);margin-bottom:8px;font-size:.875rem;background:var(--bg);color:var(--ink);box-sizing:border-box;resize:vertical;min-height:60px">' + esc(explanation || '') + '</textarea>' +
+    '<div style="display:flex;align-items:center;gap:8px;margin-bottom:10px"><button type="button" class="btn-word-paste" onclick="uploadImgQExplImage(this)">📷 Add Explanation Image</button><span id="f-imgq-expl-img-preview">' + (explImageUrl ? '<img src="' + SUPABASE_URL + '/storage/v1/object/public/question-images/' + esc(explImageUrl) + '" style="max-width:100%;max-height:200px;border-radius:var(--radius);border:1px solid var(--border);cursor:pointer" onclick="window.open(this.src)">' : '') + '</span></div>' +
     '<div class="admin-modal-footer">';
 }
 function addExamImgQForm(examId) {
-  showModal(imgQFormHtml('Add Image Question', null, 'A', '') + '<button class="btn btn-primary" onclick="saveExamImgQ(' + examId + ')">Save</button><button class="btn btn-ghost" onclick="manageContent(' + _contentLid + ')">Cancel</button></div>');
+  showModal(imgQFormHtml('Add Image Question', null, 'A', '', null) + '<button class="btn btn-primary" onclick="saveExamImgQ(' + examId + ')">Save</button><button class="btn btn-ghost" onclick="manageContent(' + _contentLid + ')">Cancel</button></div>');
 }
 async function saveExamImgQ(examId) {
   if (!_imgQPath) { alert('Please upload an image first.'); return; }
@@ -1723,6 +1798,7 @@ async function saveExamImgQ(examId) {
     exam_id: examId, image_url: _imgQPath,
     correct: document.getElementById('f-imgq-correct').value,
     explanation: document.getElementById('f-imgq-expl').value || '',
+    explanation_image_url: _imgQExplPath || '',
     sort_order: 0
   });
   if (error) { alert('Error: ' + error.message); return; }
@@ -1731,14 +1807,15 @@ async function saveExamImgQ(examId) {
 async function editExamImgQForm(id) {
   const { data: q } = await sb.from('exam_image_questions').select('*').eq('id', id).single();
   if (!q) return;
-  showModal(imgQFormHtml('Edit Image Question', q.image_url, q.correct, q.explanation) + '<button class="btn btn-primary" onclick="updateExamImgQ(' + id + ')">Update</button><button class="btn btn-ghost" onclick="manageContent(' + _contentLid + ')">Cancel</button></div>');
+  showModal(imgQFormHtml('Edit Image Question', q.image_url, q.correct, q.explanation, q.explanation_image_url) + '<button class="btn btn-primary" onclick="updateExamImgQ(' + id + ')">Update</button><button class="btn btn-ghost" onclick="manageContent(' + _contentLid + ')">Cancel</button></div>');
 }
 async function updateExamImgQ(id) {
   if (!_imgQPath) { alert('Image missing.'); return; }
   const { error } = await sb.from('exam_image_questions').update({
     image_url: _imgQPath,
     correct: document.getElementById('f-imgq-correct').value,
-    explanation: document.getElementById('f-imgq-expl').value || ''
+    explanation: document.getElementById('f-imgq-expl').value || '',
+    explanation_image_url: _imgQExplPath || ''
   }).eq('id', id);
   if (error) { alert('Error: ' + error.message); return; }
   hideModal(); manageContent(_contentLid);
@@ -1752,7 +1829,7 @@ async function deleteExamImgQ(id) {
 
 // ========== HOMEWORK IMAGE QUESTIONS ==========
 function addHWImgQForm(hwId) {
-  showModal(imgQFormHtml('Add Image Question', null, 'A', '') + '<button class="btn btn-primary" onclick="saveHWImgQ(' + hwId + ')">Save</button><button class="btn btn-ghost" onclick="manageContent(' + _contentLid + ')">Cancel</button></div>');
+  showModal(imgQFormHtml('Add Image Question', null, 'A', '', null) + '<button class="btn btn-primary" onclick="saveHWImgQ(' + hwId + ')">Save</button><button class="btn btn-ghost" onclick="manageContent(' + _contentLid + ')">Cancel</button></div>');
 }
 async function saveHWImgQ(hwId) {
   if (!_imgQPath) { alert('Please upload an image first.'); return; }
@@ -1760,6 +1837,7 @@ async function saveHWImgQ(hwId) {
     homework_id: hwId, image_url: _imgQPath,
     correct: document.getElementById('f-imgq-correct').value,
     explanation: document.getElementById('f-imgq-expl').value || '',
+    explanation_image_url: _imgQExplPath || '',
     sort_order: 0
   });
   if (error) { alert('Error: ' + error.message); return; }
@@ -1768,14 +1846,15 @@ async function saveHWImgQ(hwId) {
 async function editHWImgQForm(id) {
   const { data: q } = await sb.from('hw_image_questions').select('*').eq('id', id).single();
   if (!q) return;
-  showModal(imgQFormHtml('Edit Image Question', q.image_url, q.correct, q.explanation) + '<button class="btn btn-primary" onclick="updateHWImgQ(' + id + ')">Update</button><button class="btn btn-ghost" onclick="manageContent(' + _contentLid + ')">Cancel</button></div>');
+  showModal(imgQFormHtml('Edit Image Question', q.image_url, q.correct, q.explanation, q.explanation_image_url) + '<button class="btn btn-primary" onclick="updateHWImgQ(' + id + ')">Update</button><button class="btn btn-ghost" onclick="manageContent(' + _contentLid + ')">Cancel</button></div>');
 }
 async function updateHWImgQ(id) {
   if (!_imgQPath) { alert('Image missing.'); return; }
   const { error } = await sb.from('hw_image_questions').update({
     image_url: _imgQPath,
     correct: document.getElementById('f-imgq-correct').value,
-    explanation: document.getElementById('f-imgq-expl').value || ''
+    explanation: document.getElementById('f-imgq-expl').value || '',
+    explanation_image_url: _imgQExplPath || ''
   }).eq('id', id);
   if (error) { alert('Error: ' + error.message); return; }
   hideModal(); manageContent(_contentLid);

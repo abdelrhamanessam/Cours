@@ -29,12 +29,12 @@ async function fetchCourses() {
     lessons: (c.lessons || []).sort((a,b) => (a.sort_order||0) - (b.sort_order||0)).map(l => ({
       id: l.id, title: l.title, topic: l.topic, desc: l.description,
       شرح: (l.lectures || []).sort((a,b) => (a.sort_order||0) - (b.sort_order||0)).map(lec => ({
-        title: lec.title, content: lec.content, math: lec.math, type: lec.type, video_url: lec.video_url || '', file_url: lec.file_url || '', pdf_url: lec.pdf_url || ''
+        title: lec.title, content: lec.content, math: lec.math, type: lec.type, video_url: lec.video_url || '', file_url: lec.file_url || '', pdf_url: lec.pdf_url || '', image_url: lec.image_url || ''
       })),
       واجب: {
         passScore: l.homework?.pass_score || 60,
-        questions: (l.homework?.hw_questions || []).sort((a,b) => (a.sort_order||0) - (b.sort_order||0)).map(q => ({ id: q.id, q: q.question, opts: q.options, correct: q.correct, math: q.math || '', image_url: q.image_url || '', option_images: q.option_images || [] })),
-        imageQuestions: (l.homework?.hw_image_questions || []).sort((a,b) => (a.sort_order||0) - (b.sort_order||0)).map(q => ({ id: q.id, imgQ: q.image_url, correct: q.correct, explanation: q.explanation || '' }))
+        questions: (l.homework?.hw_questions || []).sort((a,b) => (a.sort_order||0) - (b.sort_order||0)).map(q => ({ id: q.id, q: q.question, opts: q.options, correct: q.correct, math: q.math || '', image_url: q.image_url || '', option_images: q.option_images || [], explanation: q.explanation || '', explanation_image_url: q.explanation_image_url || '' })),
+        imageQuestions: (l.homework?.hw_image_questions || []).sort((a,b) => (a.sort_order||0) - (b.sort_order||0)).map(q => ({ id: q.id, imgQ: q.image_url, correct: q.correct, explanation: q.explanation || '', explanation_image_url: q.explanation_image_url || '' }))
       },
       امتحان: {
         passScore: l.exams?.pass_score || 60,
@@ -43,8 +43,8 @@ async function fetchCourses() {
         attemptPassScore: l.exams?.attempt_pass_score || 60,
         hasFinalExam: l.exams?.has_final_exam || false,
         questionsPerAttempt: l.exams?.questions_per_attempt || 0,
-        questions: (l.exams?.exam_questions || []).sort((a,b) => (a.sort_order||0) - (b.sort_order||0)).map(q => ({ id: q.id, q: q.question, opts: q.options, correct: q.correct, math: q.math || '', image_url: q.image_url || '', option_images: q.option_images || [] })),
-        imageQuestions: (l.exams?.exam_image_questions || []).sort((a,b) => (a.sort_order||0) - (b.sort_order||0)).map(q => ({ id: q.id, imgQ: q.image_url, correct: q.correct, explanation: q.explanation || '' }))
+        questions: (l.exams?.exam_questions || []).sort((a,b) => (a.sort_order||0) - (b.sort_order||0)).map(q => ({ id: q.id, q: q.question, opts: q.options, correct: q.correct, math: q.math || '', image_url: q.image_url || '', option_images: q.option_images || [], explanation: q.explanation || '', explanation_image_url: q.explanation_image_url || '' })),
+        imageQuestions: (l.exams?.exam_image_questions || []).sort((a,b) => (a.sort_order||0) - (b.sort_order||0)).map(q => ({ id: q.id, imgQ: q.image_url, correct: q.correct, explanation: q.explanation || '', explanation_image_url: q.explanation_image_url || '' }))
       }
     }))
   }));
@@ -495,7 +495,7 @@ async function startSmartReview() {
       // Collect all lesson questions with IDs
       var pool = [];
       (exam.questions || []).forEach(function(q) { pool.push({ id: q.id, type: 'standard', q: q.q, opts: q.opts, correct: q.correct, math: q.math, image_url: q.image_url, option_images: q.option_images }); });
-      (exam.imageQuestions || []).forEach(function(q) { pool.push({ id: q.id, type: 'image', imgQ: q.imgQ, correct: q.correct, explanation: q.explanation }); });
+      (exam.imageQuestions || []).forEach(function(q) { pool.push({ id: q.id, type: 'image', imgQ: q.imgQ, correct: q.correct, explanation: q.explanation, explanation_image_url: q.explanation_image_url }); });
       if (pool.length === 0) continue;
       // Find wrong question IDs from attempts (including previous review attempts)
       var lessonAttempts = attempts.filter(function(a) { return a.lesson_id === lesson.id && a.question_order && a.answers && a.answers.answers; });
@@ -548,7 +548,7 @@ async function startSmartReview() {
           allQs.push({ qid: qid, qtype: qtype, q: p.q, opts: p.opts, correct: p.correct, math: p.math || '', image_url: p.image_url || '', option_images: p.option_images || [], isImage: false, sourceLid: lesson.id });
         } else {
           var li = p.correct === 'A' ? 0 : p.correct === 'B' ? 1 : p.correct === 'C' ? 2 : p.correct === 'D' ? 3 : 0;
-          allQs.push({ qid: qid, qtype: qtype, q: '', opts: ['A', 'B', 'C', 'D'], correct: li, math: '', image_url: '', option_images: [], isImage: true, imgQ: p.imgQ, explanation: p.explanation || '', sourceLid: lesson.id });
+          allQs.push({ qid: qid, qtype: qtype, q: '', opts: ['A', 'B', 'C', 'D'], correct: li, math: '', image_url: '', option_images: [], isImage: true, imgQ: p.imgQ, explanation: p.explanation || '', explanation_image_url: p.explanation_image_url || '', sourceLid: lesson.id });
         }
         qOrder.push({ question_type: qtype, question_id: qid, source_lesson_id: lesson.id });
       });
@@ -1014,6 +1014,9 @@ async function renderContentPage(data) {
 content += '<div class="vp-help-overlay" id="vp-help-' + Date.now() + '" style="display:none"><div class="vp-help-box"><div class="vp-help-title">Keyboard Shortcuts</div><div class="vp-help-grid"><div class="vp-help-row"><span class="vp-help-key">Space</span><span>Play / Pause</span></div><div class="vp-help-row"><span class="vp-help-key">\u2190</span><span>Rewind 10s</span></div><div class="vp-help-row"><span class="vp-help-key">\u2192</span><span>Forward 10s</span></div><div class="vp-help-row"><span class="vp-help-key">\u2191</span><span>Volume up</span></div><div class="vp-help-row"><span class="vp-help-key">\u2193</span><span>Volume down</span></div><div class="vp-help-row"><span class="vp-help-key">F</span><span>Fullscreen</span></div><div class="vp-help-row"><span class="vp-help-key">M</span><span>Mute</span></div><div class="vp-help-row"><span class="vp-help-key">?</span><span>Show shortcuts</span></div></div><button class="vp-help-close" onclick="vpHideHelp(this)">Got it</button></div></div>';
     }
   }
+  if (item.type === 'Image' && item.image_url) {
+    content += '<div style="text-align:center;margin:20px 0"><img src="' + esc(item.image_url) + '" style="max-width:100%;border-radius:12px;border:1px solid var(--border);box-shadow:0 2px 12px rgba(0,0,0,0.08)" alt="' + esc(item.title) + '" loading="lazy"></div>';
+  }
   content += '<div class="lesson-step"><h3>' + item.title + '</h3><p>' + item.content + '</p>' + (item.math ? '<div class="math-block">$$' + esc(item.math) + '$$</div>' : '') + '</div>';
   if (item.file_url) {
     var fn = item.file_url.split('/').pop();
@@ -1235,7 +1238,7 @@ function startQuiz(lessonId, type) {
   if (imgQs) {
     imgQs.forEach(function(iq) {
       var letterIndex = iq.correct === 'A' ? 0 : iq.correct === 'B' ? 1 : iq.correct === 'C' ? 2 : iq.correct === 'D' ? 3 : 0;
-      qs.push({ q: '', opts: ['A', 'B', 'C', 'D'], correct: letterIndex, math: '', image_url: '', option_images: [], isImage: true, imgQ: iq.imgQ, explanation: iq.explanation });
+      qs.push({ q: '', opts: ['A', 'B', 'C', 'D'], correct: letterIndex, math: '', image_url: '', option_images: [], isImage: true, imgQ: iq.imgQ, explanation: iq.explanation, explanation_image_url: iq.explanation_image_url || '' });
     });
   }
   quizState = { lessonId, type, questions: qs, total: qs.length, answers: new Array(qs.length).fill(-1), submitted: false };
@@ -1461,7 +1464,11 @@ function renderReport(lessonId, type, questions, result) {
         report += '<div class="quiz-option ' + cls + '" style="cursor:default;margin-bottom:6px">' + l + lbl + '</div>';
       });
       if (q.explanation) report += '<div style="margin-top:8px;padding:8px 12px;background:var(--bg);border-radius:var(--radius);font-size:.8125rem;color:var(--muted)">💡 ' + esc(q.explanation) + '</div>';
+      if (q.explanation_image_url) report += '<div style="text-align:center;margin-top:8px"><img src="' + SU + esc(q.explanation_image_url) + '" style="max-width:100%;border-radius:var(--radius);border:1px solid var(--border);cursor:pointer" onclick="window.open(this.src)" loading="lazy"></div>';
       report += '</div>';
+      return;
+    }
+    const imgHtml = q.image_url ? '<div style="text-align:center;margin:8px 0"><img src="' + SU + q.image_url + '" style="max-width:100%;max-height:200px;border-radius:var(--radius);border:1px solid var(--border)"></div>' : '';
       return;
     }
     const imgHtml = q.image_url ? '<div style="text-align:center;margin:8px 0"><img src="' + SU + q.image_url + '" style="max-width:100%;max-height:200px;border-radius:var(--radius);border:1px solid var(--border)"></div>' : '';
@@ -1474,6 +1481,8 @@ function renderReport(lessonId, type, questions, result) {
       else if (oi === userAns) { cls = 'incorrect'; lbl = ' (Your answer)'; }
       report += '<div class="quiz-option ' + cls + '" style="cursor:default;margin-bottom:6px">' + optImg + o + lbl + '</div>';
     });
+    if (q.explanation) report += '<div style="margin-top:8px;padding:8px 12px;background:var(--bg);border-radius:var(--radius);font-size:.8125rem;color:var(--muted)">💡 ' + esc(q.explanation) + '</div>';
+    if (q.explanation_image_url) report += '<div style="text-align:center;margin-top:8px"><img src="' + SU + esc(q.explanation_image_url) + '" style="max-width:100%;border-radius:var(--radius);border:1px solid var(--border);cursor:pointer" onclick="window.open(this.src)" loading="lazy"></div>';
     report += '</div>';
   });
   report += '<div style="display:flex;gap:12px;justify-content:center;margin-top:24px">';
@@ -1497,7 +1506,7 @@ function viewHW(lid) {
   if (found.lesson.واجب.imageQuestions) {
     found.lesson.واجب.imageQuestions.forEach(function(iq) {
       var letterIndex = iq.correct === 'A' ? 0 : iq.correct === 'B' ? 1 : iq.correct === 'C' ? 2 : iq.correct === 'D' ? 3 : 0;
-      allQs.push({ q: '', opts: ['A', 'B', 'C', 'D'], correct: letterIndex, math: '', image_url: '', option_images: [], isImage: true, imgQ: iq.imgQ, explanation: iq.explanation });
+      allQs.push({ q: '', opts: ['A', 'B', 'C', 'D'], correct: letterIndex, math: '', image_url: '', option_images: [], isImage: true, imgQ: iq.imgQ, explanation: iq.explanation, explanation_image_url: iq.explanation_image_url || '' });
     });
   }
   showView('quiz');
@@ -1513,7 +1522,7 @@ function viewExam(lid) {
   if (found.lesson.امتحان.imageQuestions) {
     found.lesson.امتحان.imageQuestions.forEach(function(iq) {
       var letterIndex = iq.correct === 'A' ? 0 : iq.correct === 'B' ? 1 : iq.correct === 'C' ? 2 : iq.correct === 'D' ? 3 : 0;
-      allQs.push({ q: '', opts: ['A', 'B', 'C', 'D'], correct: letterIndex, math: '', image_url: '', option_images: [], isImage: true, imgQ: iq.imgQ, explanation: iq.explanation });
+      allQs.push({ q: '', opts: ['A', 'B', 'C', 'D'], correct: letterIndex, math: '', image_url: '', option_images: [], isImage: true, imgQ: iq.imgQ, explanation: iq.explanation, explanation_image_url: iq.explanation_image_url || '' });
     });
   }
   showView('quiz');
@@ -1643,7 +1652,7 @@ async function loadBatchQuestions(ids) {
       var iq = result['img_' + item.question_id];
       if (iq) {
         var li = iq.correct === 'A' ? 0 : iq.correct === 'B' ? 1 : iq.correct === 'C' ? 2 : iq.correct === 'D' ? 3 : 0;
-        qs.push({ q: '', opts: ['A', 'B', 'C', 'D'], correct: li, math: '', image_url: '', option_images: [], isImage: true, imgQ: iq.image_url, explanation: iq.explanation || '' });
+        qs.push({ q: '', opts: ['A', 'B', 'C', 'D'], correct: li, math: '', image_url: '', option_images: [], isImage: true, imgQ: iq.image_url, explanation: iq.explanation || '', explanation_image_url: iq.explanation_image_url || '' });
       }
     }
   });
