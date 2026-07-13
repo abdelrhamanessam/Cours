@@ -363,6 +363,8 @@
   <button class="btn btn-primary" onclick="verifyMFA()" style="width:100%;justify-content:center">Verify</button>
   <button class="btn btn-ghost btn-sm" onclick="cancelMFA()" style="width:100%;margin-top:8px;justify-content:center">Cancel</button>
   <p id="admin-mfa-error" style="color:var(--error);margin-top:12px;font-size:.875rem"></p>
+  <hr style="margin:16px 0;border:none;border-top:1px solid var(--border)">
+  <button class="btn btn-ghost btn-sm" onclick="resetAndBack()" style="width:100%;justify-content:center;color:var(--error);font-size:.8rem">Reset MFA &amp; go back</button>
 </div>
 
 <div id="admin-dashboard" class="admin-body hidden">
@@ -461,7 +463,7 @@ async function verifyMFA() {
 }
 function cancelMFA() { sb.auth.signOut(); adminUser = null; document.getElementById('admin-mfa').classList.add('hidden'); document.getElementById('admin-login').classList.remove('hidden'); }
 
-async function unenrollAllMFA() {
+async function unenrollAllMFA(fromScreen) {
   if (!confirm('Reset all MFA factors? You will need to set up MFA again.')) return;
   const { data } = await sb.auth.mfa.listFactors();
   for (const f of (data.all || [])) {
@@ -469,6 +471,16 @@ async function unenrollAllMFA() {
   }
   alert('MFA reset. Login again to re-enroll.');
   adminLogout();
+}
+async function resetAndBack() {
+  const { data } = await sb.auth.mfa.listFactors();
+  for (const f of (data.all || [])) {
+    if (f.status === 'verified') await sb.auth.mfa.unenroll({ factorId: f.id }).catch(() => {});
+  }
+  document.getElementById('admin-mfa').classList.add('hidden');
+  document.getElementById('admin-mfa-code').value = '';
+  document.getElementById('admin-mfa-error').textContent = '';
+  document.getElementById('admin-login').classList.remove('hidden');
 }
 
 async function enrollMFA() {
