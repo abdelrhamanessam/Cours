@@ -2330,7 +2330,7 @@ document.addEventListener('paste', function(e) {
   }
 });
 
-// Check session on load
+// Check session on load — always show login form, MFA handled after password
 (async function() {
   const { data: { session } } = await sb.auth.getSession();
   if (session) {
@@ -2338,20 +2338,15 @@ document.addEventListener('paste', function(e) {
     if (profile && profile.role === 'admin') {
       adminUser = session.user; adminProfile = profile;
       const { data: factors } = await sb.auth.mfa.listFactors();
-      const totpFactor = factors.all?.find(f => f.factor_type === 'totp' && f.status === 'verified');
-      if (totpFactor) {
-        const chal = await sb.auth.mfa.challenge({ factorId: totpFactor.id });
-        if (!chal.error) {
-          pendingMFAChallenge = chal.data;
-          document.getElementById('admin-mfa').classList.remove('hidden');
-          document.getElementById('admin-mfa-code').focus();
-          return;
-        }
+      const hasMFA = factors.all?.some(f => f.factor_type === 'totp' && f.status === 'verified');
+      if (hasMFA) {
+        await sb.auth.signOut();
+      } else {
+        document.getElementById('admin-login').classList.add('hidden');
+        document.getElementById('admin-dashboard').classList.remove('hidden');
+        document.getElementById('mfa-enroll-btn').style.display = '';
+        loadAdminPage('dashboard');
       }
-      document.getElementById('admin-login').classList.add('hidden');
-      document.getElementById('admin-dashboard').classList.remove('hidden');
-      document.getElementById('mfa-enroll-btn').style.display = '';
-      loadAdminPage('dashboard');
     }
   }
 })();
