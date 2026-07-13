@@ -356,24 +356,21 @@
   <p id="admin-login-error" style="color:var(--error);margin-top:12px;font-size:.875rem"></p>
 </div>
 
-<div id="admin-mfa" class="admin-login hidden">
-  <h1>Two-Factor Auth</h1>
-  <p style="color:var(--muted);font-size:.875rem;margin-bottom:20px">Enter the 6-digit code from your authenticator app</p>
-  <input type="text" id="admin-mfa-code" class="admin-input" placeholder="000000" maxlength="6" inputmode="numeric" pattern="[0-9]*" autocomplete="one-time-code">
-  <button class="btn btn-primary" onclick="verifyMFA()" style="width:100%;justify-content:center">Verify</button>
-  <button class="btn btn-ghost btn-sm" onclick="cancelMFA()" style="width:100%;margin-top:8px;justify-content:center">Cancel</button>
-  <p id="admin-mfa-error" style="color:var(--error);margin-top:12px;font-size:.875rem"></p>
-  <hr style="margin:16px 0;border:none;border-top:1px solid var(--border)">
-  <button class="btn btn-ghost btn-sm" onclick="resetAndBack()" style="width:100%;justify-content:center;color:var(--error);font-size:.8rem">Reset MFA &amp; go back</button>
+<div id="admin-code-prompt" class="admin-login hidden">
+  <h1>Admin Code Required</h1>
+  <p style="color:var(--muted);font-size:.875rem;margin-bottom:20px">Enter the admin secret code to continue</p>
+  <input type="password" id="admin-secret-input" class="admin-input" placeholder="Admin code" autocomplete="off">
+  <button class="btn btn-primary" onclick="verifyAdminCode()" style="width:100%;justify-content:center">Verify</button>
+  <button class="btn btn-ghost btn-sm" onclick="cancelAdminCode()" style="width:100%;margin-top:8px;justify-content:center">Cancel</button>
+  <p id="admin-code-error" style="color:var(--error);margin-top:12px;font-size:.875rem"></p>
 </div>
 
 <div id="admin-dashboard" class="admin-body hidden">
   <div class="container">
     <div class="admin-header">
       <h1>Admin Dashboard</h1>
-      <button class="btn btn-ghost btn-sm" onclick="enrollMFA()" id="mfa-enroll-btn" style="display:none">Setup MFA</button>
+      <button class="btn btn-ghost btn-sm" onclick="showAdminCodeSettings()" id="manage-code-btn" style="display:none">2FA Code</button>
       <button class="btn btn-ghost btn-sm" onclick="adminLogout()">Logout</button>
-      <button class="btn btn-ghost btn-sm" onclick="unenrollAllMFA()" style="color:var(--error)">Reset MFA</button>
     </div>
     <div class="admin-layout">
       <div class="admin-sidebar">
@@ -413,9 +410,6 @@ function showModal(html) { document.getElementById('admin-modal-body').innerHTML
 function hideModal() { document.getElementById('admin-modal').classList.remove('show'); }
 document.getElementById('admin-modal').onclick = function(e) { if (e.target === this) hideModal(); };
 
-let pendingMFAChallenge = null;
-let pendingEnrollFactorId = null;
-
 async function adminLogin() {
   const email = document.getElementById('admin-email').value;
   const pass = document.getElementById('admin-password').value;
@@ -426,81 +420,58 @@ async function adminLogin() {
   const { data: profile } = await sb.from('profiles').select('*').eq('id', adminUser.id).single();
   if (!profile || profile.role !== 'admin') { await sb.auth.signOut(); errEl.textContent = 'Not authorized as admin'; return; }
   adminProfile = profile;
-  const { data: factors } = await sb.auth.mfa.listFactors();
-  const totpFactor = factors.all?.find(f => f.factor_type === 'totp' && f.status === 'verified');
-  if (totpFactor) {
-    const chal = await sb.auth.mfa.challenge({ factorId: totpFactor.id });
-    if (chal.error) { await sb.auth.signOut(); errEl.textContent = chal.error.message; return; }
-    pendingMFAChallenge = chal.data;
+  const { data: codeData } = await sb.from('site_config').select('value').eq('key', 'admin_secret_code').single();
+  if (codeData && codeData.value) {
     document.getElementById('admin-login').classList.add('hidden');
-    document.getElementById('admin-mfa').classList.remove('hidden');
-    document.getElementById('admin-mfa-code').value = '';
-    document.getElementById('admin-mfa-error').textContent = '';
-    document.getElementById('admin-mfa-code').focus();
+    document.getElementById('admin-code-prompt').classList.remove('hidden');
+    document.getElementById('admin-secret-input').value = '';
+    document.getElementById('admin-code-error').textContent = '';
+    document.getElementById('admin-secret-input').focus();
     return;
   }
   document.getElementById('admin-login').classList.add('hidden');
   document.getElementById('admin-dashboard').classList.remove('hidden');
-  document.getElementById('mfa-enroll-btn').style.display = '';
+  document.getElementById('manage-code-btn').style.display = '';
   loadAdminPage('dashboard');
 }
-function adminLogout() { sb.auth.signOut(); adminUser = null; adminProfile = null; document.getElementById('admin-login').classList.remove('hidden'); document.getElementById('admin-dashboard').classList.add('hidden'); document.getElementById('admin-mfa').classList.add('hidden'); document.getElementById('mfa-enroll-btn').style.display = 'none'; }
+function adminLogout() { sb.auth.signOut(); adminUser = null; adminProfile = null; document.getElementById('admin-login').classList.remove('hidden'); document.getElementById('admin-dashboard').classList.add('hidden'); document.getElementById('admin-code-prompt').classList.add('hidden'); document.getElementById('manage-code-btn').style.display = 'none'; }
 
-async function verifyMFA() {
-  const code = document.getElementById('admin-mfa-code').value.replace(/\D/g, '');
-  const errEl = document.getElementById('admin-mfa-error'); errEl.textContent = '';
-  if (code.length !== 6) { errEl.textContent = 'Enter a valid 6-digit code'; return; }
-  if (!pendingMFAChallenge) { errEl.textContent = 'Session expired. Login again.'; cancelMFA(); return; }
-  const fid = pendingMFAChallenge.factor_id || pendingMFAChallenge.factorId;
-  const cid = pendingMFAChallenge.id;
-  if (!fid || !cid) { errEl.textContent = 'Invalid challenge data. Login again.'; cancelMFA(); return; }
-  const { error } = await sb.auth.mfa.verify({ factorId: fid, challengeId: cid, code });
-  if (error) { errEl.textContent = error.message; return; }
-  document.getElementById('admin-mfa').classList.add('hidden');
+async function verifyAdminCode() {
+  const code = document.getElementById('admin-secret-input').value;
+  const errEl = document.getElementById('admin-code-error'); errEl.textContent = '';
+  if (!code) { errEl.textContent = 'Enter the admin code'; return; }
+  const { data: row } = await sb.from('site_config').select('value').eq('key', 'admin_secret_code').single();
+  if (!row || code !== row.value) { errEl.textContent = 'Wrong code'; return; }
+  document.getElementById('admin-code-prompt').classList.add('hidden');
   document.getElementById('admin-dashboard').classList.remove('hidden');
-  document.getElementById('mfa-enroll-btn').style.display = '';
+  document.getElementById('manage-code-btn').style.display = '';
   loadAdminPage('dashboard');
 }
-function cancelMFA() { sb.auth.signOut(); adminUser = null; document.getElementById('admin-mfa').classList.add('hidden'); document.getElementById('admin-login').classList.remove('hidden'); }
+function cancelAdminCode() { sb.auth.signOut(); adminUser = null; document.getElementById('admin-code-prompt').classList.add('hidden'); document.getElementById('admin-login').classList.remove('hidden'); }
 
-async function unenrollAllMFA(fromScreen) {
-  if (!confirm('Reset all MFA factors? You will need to set up MFA again.')) return;
-  const { data } = await sb.auth.mfa.listFactors();
-  for (const f of (data.all || [])) {
-    if (f.status === 'verified') await sb.auth.mfa.unenroll({ factorId: f.id }).catch(() => {});
-  }
-  alert('MFA reset. Login again to re-enroll.');
-  adminLogout();
+async function showAdminCodeSettings() {
+  const { data: row } = await sb.from('site_config').select('value').eq('key', 'admin_secret_code').single();
+  var has = row && row.value;
+  showModal('<h3 style="margin-bottom:8px">Admin 2FA Code</h3>'
+    + '<p style="color:var(--muted);font-size:.875rem;margin-bottom:12px">Set a secret code required after login.</p>'
+    + '<input type="text" id="new-admin-code" class="admin-input" placeholder="Enter new code" value="' + (has ? esc(row.value) : '') + '" style="margin-bottom:8px">'
+    + '<button class="btn btn-primary" onclick="saveAdminCode()" style="width:100%;justify-content:center;margin-bottom:6px">Save Code</button>'
+    + (has ? '<button class="btn btn-ghost btn-sm" onclick="clearAdminCode()" style="width:100%;justify-content:center;color:var(--error)">Remove Code (disable 2FA)</button>' : '')
+    + '<p id="admin-code-save-error" style="color:var(--error);margin-top:8px;font-size:.875rem"></p>');
 }
-async function resetAndBack() {
-  const { data } = await sb.auth.mfa.listFactors();
-  for (const f of (data.all || [])) {
-    if (f.status === 'verified') await sb.auth.mfa.unenroll({ factorId: f.id }).catch(() => {});
-  }
-  document.getElementById('admin-mfa').classList.add('hidden');
-  document.getElementById('admin-mfa-code').value = '';
-  document.getElementById('admin-mfa-error').textContent = '';
-  document.getElementById('admin-login').classList.remove('hidden');
+async function saveAdminCode() {
+  var val = document.getElementById('new-admin-code').value;
+  var errEl = document.getElementById('admin-code-save-error'); if (errEl) errEl.textContent = '';
+  if (!val) { if (errEl) errEl.textContent = 'Enter a code'; return; }
+  var { error } = await sb.from('site_config').upsert({ key: 'admin_secret_code', value: val }, { onConflict: 'key' });
+  if (error) { if (errEl) errEl.textContent = error.message; return; }
+  hideModal(); alert('Admin code saved!');
 }
-
-async function enrollMFA() {
-  const name = 'admin-totp-' + Date.now();
-  const { data, error } = await sb.auth.mfa.enroll({ factorType: 'totp', friendlyName: name });
-  if (error) { alert('MFA error: ' + error.message); return; }
-  pendingEnrollFactorId = data.id;
-  showModal('<h3 style="margin-bottom:8px">Setup Two-Factor Auth</h3><p style="color:var(--muted);font-size:.875rem;margin-bottom:16px">Scan this QR code with Google Authenticator or Authy</p><div style="text-align:center;background:#fff;padding:16px;border-radius:12px;margin-bottom:16px"><img src="' + data.totp.qr_code + '" alt="QR Code" style="width:180px;height:180px;border-radius:8px;display:block;margin:0 auto"></div><p style="font-size:.75rem;color:var(--muted);margin-bottom:16px;word-break:break-all">Or enter key: <code style="background:var(--surface);padding:2px 6px;border-radius:4px;font-size:.75rem">' + data.totp.secret + '</code></p><input type="text" id="enroll-mfa-code" class="admin-input" placeholder="Enter 6-digit code" maxlength="6" inputmode="numeric" style="margin-bottom:8px"><button class="btn btn-primary" onclick="verifyEnrollment()" style="width:100%;justify-content:center">Verify &amp; Enable</button><p id="enroll-mfa-error" style="color:var(--error);margin-top:8px;font-size:.875rem"></p>');
-}
-async function verifyEnrollment() {
-  const code = document.getElementById('enroll-mfa-code').value.replace(/\D/g, '');
-  const errEl = document.getElementById('enroll-mfa-error'); errEl.textContent = '';
-  if (code.length !== 6) { errEl.textContent = 'Enter a valid 6-digit code'; return; }
-  const chal = await sb.auth.mfa.challenge({ factorId: pendingEnrollFactorId });
-  if (chal.error) { errEl.textContent = chal.error.message; return; }
-  const { error } = await sb.auth.mfa.verify({ factorId: pendingEnrollFactorId, challengeId: chal.data.id, code });
-  if (error) { errEl.textContent = error.message; return; }
-  hideModal();
-  showModal('<h3 style="margin-bottom:8px">MFA Enabled</h3><p style="color:var(--muted);font-size:.875rem">Two-factor authentication is now active for admin access.</p><button class="btn btn-primary" onclick="hideModal()" style="margin-top:16px;width:100%;justify-content:center">Done</button>');
-  document.getElementById('mfa-enroll-btn').style.display = 'none';
+async function clearAdminCode() {
+  if (!confirm('Remove admin code? Anyone with password can access admin.')) return;
+  var { error } = await sb.from('site_config').delete().eq('key', 'admin_secret_code');
+  if (error) { alert(error.message); return; }
+  hideModal(); alert('Admin code removed.');
 }
 
 function loadAdminPage(page) {
