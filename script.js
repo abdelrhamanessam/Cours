@@ -1862,6 +1862,10 @@ function timeAgo(d) {
   return new Date(d).toLocaleDateString();
 }
 
+function showModal(html) { document.getElementById('app-modal-body').innerHTML = html; document.getElementById('app-modal').classList.add('show'); }
+function hideModal() { document.getElementById('app-modal').classList.remove('show'); }
+document.getElementById('app-modal').onclick = function(e) { if (e.target === this) hideModal(); };
+
 function getLessonName(lid) {
   for (var ci = 0; ci < COURSES.length; ci++) {
     for (var li = 0; li < COURSES[ci].lessons.length; li++) {
@@ -1872,7 +1876,6 @@ function getLessonName(lid) {
 }
 
 async function showCommunity() {
-  showView('community');
   var list = document.getElementById('cm-list');
   if (!list) return;
   list.innerHTML = '<div class="cm-shimmer"></div><div class="cm-shimmer"></div><div class="cm-shimmer"></div>';
