@@ -744,9 +744,9 @@ async function saveSiteSettings() {
   var file = document.getElementById('st-photo-file').files[0];
   if (file) {
     try {
-      var ext = file.name.split('.').pop();
-      var path = 'site/teacher_' + Date.now() + '.' + ext;
-      var upRes = await sb.storage.from('question-images').upload(path, file, { upsert: true });
+      var compressed = await compressImage(file, 600, 0.85);
+      var path = 'site/teacher_' + Date.now() + '.jpg';
+      var upRes = await sb.storage.from('question-images').upload(path, compressed, { upsert: true, contentType: 'image/jpeg' });
       if (upRes.error) { msg.className = 'st-msg st-msg-error'; msg.textContent = 'Upload error: ' + upRes.error.message; return; }
       var pubUrl = SUPABASE_URL + '/storage/v1/object/public/question-images/' + path;
       ops.push({ key: 'teacher_image', value: pubUrl });
@@ -841,8 +841,8 @@ function addCourseForm() { showModal('<h2>Add Course</h2><label>Title</label><in
 function editCourseForm(id) { sb.from('courses').select('*').eq('id', id).single().then(function(r) { var c = r.data; if (!c) return; var lvl = c.level || 'sec1'; showModal('<h2>Edit Course</h2><label>Title</label><input id="f-c-title" value="' + esc(c.title) + '"><label>Level</label><select id="f-c-level"><option value="sec1"'+(lvl==='sec1'?' selected':'')+'>Sec 1</option><option value="sec2"'+(lvl==='sec2'?' selected':'')+'>Sec 2</option><option value="sec3"'+(lvl==='sec3'?' selected':'')+'>Sec 3</option></select><label>Description</label><textarea id="f-c-desc">' + esc(c.description) + '</textarea><label>Icon</label><input id="f-c-icon" value="' + esc(c.icon) + '"><div class="lf-upload-row" style="margin:12px 0 4px"><label class="lf-upload-btn"><input id="f-c-img-file" type="file" accept="image/*">Upload Image</label><span class="lf-upload-hint">or enter a URL below</span></div><div class="upload-progress" id="f-c-img-progress" style="display:none"><div class="upload-progress-bar"><div class="upload-progress-fill" id="f-c-img-bar"></div></div><span class="upload-progress-text" id="f-c-img-text">0%</span></div><label>Image URL</label><input id="f-c-img" value="' + esc(c.image_url||'') + '" oninput="previewCourseImg()"><div id="f-c-img-preview" style="margin:4px 0"></div><label>Sort Order</label><input id="f-c-order" type="number" value="' + (c.sort_order||0) + '"><div class="admin-modal-footer"><button class="btn btn-primary" onclick="updateCourse(' + id + ')">Update</button><button class="btn btn-ghost" onclick="hideModal()">Cancel</button></div>'); setTimeout(previewCourseImg, 50); }); }
 function previewCourseImg() { var url = document.getElementById('f-c-img')?.value; var el = document.getElementById('f-c-img-preview'); if (el) el.innerHTML = url ? '<img src="' + esc(url) + '" style="max-width:200px;max-height:120px;border-radius:8px;border:1px solid var(--border);object-fit:cover" onerror="this.parentElement.innerHTML=\'<span style=color:red;font-size:.75rem>Invalid image URL</span>\'">' : ''; }
 async function uploadCourseImg(file) {
-  var ext = file.name.split('.').pop();
-  var path = 'courses/' + Date.now() + '.' + ext;
+  var compressed = await compressImage(file, 1200, 0.8);
+  var path = 'courses/' + Date.now() + '.jpg';
   var progressEl = document.getElementById('f-c-img-progress');
   var barEl = document.getElementById('f-c-img-bar');
   var textEl = document.getElementById('f-c-img-text');
@@ -872,7 +872,7 @@ async function uploadCourseImg(file) {
       }
     };
     xhr.onerror = function() { alert('Network error'); if (progressEl) progressEl.style.display = 'none'; resolve(null); };
-    xhr.send(file);
+    xhr.send(compressed);
   });
 }
 async function saveCourse() {
@@ -1399,9 +1399,37 @@ function questionOptsHtml(opts, correct, optImages) {
 let _optImagePaths = [];
 let _qImagePath = null;
 
+function compressImage(file, maxW, quality) {
+  return new Promise(function(resolve) {
+    if (!file.type.startsWith('image/')) { resolve(file); return; }
+    var reader = new FileReader();
+    reader.onload = function(e) {
+      var img = new Image();
+      img.onload = function() {
+        var w = img.width, h = img.height;
+        if (w <= maxW && quality >= 1 && file.type === 'image/jpeg') { resolve(file); return; }
+        if (w > maxW) { h = h * maxW / w; w = maxW; }
+        var canvas = document.createElement('canvas');
+        canvas.width = w; canvas.height = h;
+        var ctx = canvas.getContext('2d');
+        ctx.drawImage(img, 0, 0, w, h);
+        canvas.toBlob(function(blob) {
+          blob.name = file.name;
+          resolve(blob);
+        }, 'image/jpeg', quality);
+      };
+      img.onerror = function() { resolve(file); };
+      img.src = e.target.result;
+    };
+    reader.onerror = function() { resolve(file); };
+    reader.readAsDataURL(file);
+  });
+}
+
 function uploadImageToStorage(file, prefix, idx, onProgress) {
   return new Promise(async (resolve) => {
-    const ext = file.name.split('.').pop();
+    var compressed = await compressImage(file, 800, 0.7);
+    const ext = 'jpg';
     const path = prefix + '_' + Date.now() + (idx !== undefined ? '_' + idx : '') + '.' + ext;
     const { data: { session } } = await sb.auth.getSession();
     const token = session?.access_token || '';
@@ -1415,7 +1443,7 @@ function uploadImageToStorage(file, prefix, idx, onProgress) {
       else resolve(null);
     };
     xhr.onerror = function() { resolve(null); };
-    xhr.send(file);
+    xhr.send(compressed);
   });
 }
 

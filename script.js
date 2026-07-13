@@ -281,41 +281,68 @@ function renderProfile() {
   document.getElementById('profile-progress-list').innerHTML = ph ? '<div class="pv-progress-list">' + ph + '</div>' : '<p style="color:var(--muted);font-size:.875rem">Complete a lesson to see progress here.</p>';
 }
 
+function compressImage(file, maxW, quality) {
+  return new Promise(function(resolve) {
+    if (!file.type.startsWith('image/')) { resolve(file); return; }
+    var reader = new FileReader();
+    reader.onload = function(e) {
+      var img = new Image();
+      img.onload = function() {
+        var w = img.width, h = img.height;
+        if (w <= maxW && quality >= 1 && file.type === 'image/jpeg') { resolve(file); return; }
+        if (w > maxW) { h = h * maxW / w; w = maxW; }
+        var canvas = document.createElement('canvas');
+        canvas.width = w; canvas.height = h;
+        var ctx = canvas.getContext('2d');
+        ctx.drawImage(img, 0, 0, w, h);
+        canvas.toBlob(function(blob) {
+          blob.name = file.name;
+          resolve(blob);
+        }, 'image/jpeg', quality);
+      };
+      img.onerror = function() { resolve(file); };
+      img.src = e.target.result;
+    };
+    reader.onerror = function() { resolve(file); };
+    reader.readAsDataURL(file);
+  });
+}
 function uploadProfilePic(event) {
   const file = event.target.files[0];
   if (!file || !currentUser) return;
-  const ext = file.name.split('.').pop().toLowerCase().replace(/[^a-z0-9]/g, '');
-  const path = 'profiles/' + currentUser.id + '/' + Date.now() + '.' + ext;
-  const formData = new FormData();
-  formData.append('file', file);
-  sb.auth.getSession().then(function(ses) {
-    var token = ses.data.session ? ses.data.session.access_token : SUPABASE_ANON_KEY;
-    const xhr = new XMLHttpRequest();
-    xhr.open('POST', SUPABASE_URL + '/storage/v1/object/question-images/' + path);
-    xhr.setRequestHeader('Authorization', 'Bearer ' + token);
-    xhr.upload.onprogress = function(e) {
-      if (e.lengthComputable) {
-        var pct = Math.round(e.loaded / e.total * 100);
-        var pel = document.getElementById('profile-avatar');
-        if (pel) pel.textContent = pct + '%';
-      }
-    };
-    xhr.onload = function() {
-      if (xhr.status === 200) {
-        const url = SUPABASE_URL + '/storage/v1/object/public/question-images/' + path;
-        sb.from('profiles').update({ profile_pic: url }).eq('id', currentUser.id).then(function(res) {
-          if (res.error) { alert('Failed to save photo: ' + res.error.message); return; }
-          if (userProfile) userProfile.profile_pic = url;
+  compressImage(file, 400, 0.8).then(function(compressed) {
+    const path = 'profiles/' + currentUser.id + '/' + Date.now() + '.jpg';
+    const formData = new FormData();
+    formData.append('file', compressed);
+    sb.auth.getSession().then(function(ses) {
+      var token = ses.data.session ? ses.data.session.access_token : SUPABASE_ANON_KEY;
+      const xhr = new XMLHttpRequest();
+      xhr.open('POST', SUPABASE_URL + '/storage/v1/object/question-images/' + path);
+      xhr.setRequestHeader('Authorization', 'Bearer ' + token);
+      xhr.upload.onprogress = function(e) {
+        if (e.lengthComputable) {
+          var pct = Math.round(e.loaded / e.total * 100);
+          var pel = document.getElementById('profile-avatar');
+          if (pel) pel.textContent = pct + '%';
+        }
+      };
+      xhr.onload = function() {
+        if (xhr.status === 200) {
+          const url = SUPABASE_URL + '/storage/v1/object/public/question-images/' + path;
+          sb.from('profiles').update({ profile_pic: url }).eq('id', currentUser.id).then(function(res) {
+            if (res.error) { alert('Failed to save photo: ' + res.error.message); return; }
+            if (userProfile) userProfile.profile_pic = url;
+            renderProfile();
+            updateAuthUI();
+          });
+        } else {
+          alert('Upload failed: ' + xhr.statusText);
           renderProfile();
-          updateAuthUI();
-        });
-      } else {
-        alert('Upload failed: ' + xhr.statusText);
-        renderProfile();
-      }
-    };
-    xhr.onerror = function() { alert('Upload failed'); renderProfile(); };
-    xhr.send(formData);
+        }
+      };
+      xhr.onerror = function() { alert('Upload failed'); renderProfile(); };
+      xhr.send(formData);
+    });
   });
 }
 
