@@ -371,6 +371,7 @@
       <h1>Admin Dashboard</h1>
       <button class="btn btn-ghost btn-sm" onclick="enrollMFA()" id="mfa-enroll-btn" style="display:none">Setup MFA</button>
       <button class="btn btn-ghost btn-sm" onclick="adminLogout()">Logout</button>
+      <button class="btn btn-ghost btn-sm" onclick="unenrollAllMFA()" style="color:var(--error)">Reset MFA</button>
     </div>
     <div class="admin-layout">
       <div class="admin-sidebar">
@@ -459,6 +460,16 @@ async function verifyMFA() {
   loadAdminPage('dashboard');
 }
 function cancelMFA() { sb.auth.signOut(); adminUser = null; document.getElementById('admin-mfa').classList.add('hidden'); document.getElementById('admin-login').classList.remove('hidden'); }
+
+async function unenrollAllMFA() {
+  if (!confirm('Reset all MFA factors? You will need to set up MFA again.')) return;
+  const { data } = await sb.auth.mfa.listFactors();
+  for (const f of (data.all || [])) {
+    if (f.status === 'verified') await sb.auth.mfa.unenroll({ factorId: f.id }).catch(() => {});
+  }
+  alert('MFA reset. Login again to re-enroll.');
+  adminLogout();
+}
 
 async function enrollMFA() {
   const name = 'admin-totp-' + Date.now();
