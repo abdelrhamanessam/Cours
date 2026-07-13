@@ -459,9 +459,12 @@ function cancelMFA() { sb.auth.signOut(); adminUser = null; document.getElementB
 async function enrollMFA() {
   const { data: existing } = await sb.auth.mfa.listFactors();
   for (const f of (existing.all || [])) {
-    if (f.factor_type === 'totp') await sb.auth.mfa.unenroll({ factorId: f.id });
+    if (f.factor_type === 'totp' || f.type === 'totp') {
+      await sb.auth.mfa.unenroll({ factorId: f.id }).catch(() => {});
+    }
   }
-  const { data, error } = await sb.auth.mfa.enroll({ factorType: 'totp', friendlyName: 'admin-totp' });
+  const name = 'admin-totp-' + Date.now();
+  const { data, error } = await sb.auth.mfa.enroll({ factorType: 'totp', friendlyName: name });
   if (error) { alert('MFA error: ' + error.message); return; }
   pendingEnrollFactorId = data.id;
   showModal('<h3 style="margin-bottom:8px">Setup Two-Factor Auth</h3><p style="color:var(--muted);font-size:.875rem;margin-bottom:16px">Scan this QR code with Google Authenticator or Authy</p><div style="text-align:center;background:#fff;padding:16px;border-radius:12px;margin-bottom:16px"><img src="' + data.totp.qr_code + '" alt="QR Code" style="width:180px;height:180px;border-radius:8px;display:block;margin:0 auto"></div><p style="font-size:.75rem;color:var(--muted);margin-bottom:16px;word-break:break-all">Or enter key: <code style="background:var(--surface);padding:2px 6px;border-radius:4px;font-size:.75rem">' + data.totp.secret + '</code></p><input type="text" id="enroll-mfa-code" class="admin-input" placeholder="Enter 6-digit code" maxlength="6" inputmode="numeric" style="margin-bottom:8px"><button class="btn btn-primary" onclick="verifyEnrollment()" style="width:100%;justify-content:center">Verify &amp; Enable</button><p id="enroll-mfa-error" style="color:var(--error);margin-top:8px;font-size:.875rem"></p>');
