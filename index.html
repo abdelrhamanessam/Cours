@@ -27,15 +27,17 @@
         <span class="nl-title">MR • Mathematics</span>
       </span>
     </a>
-    <div class="nv1">
+    <div class="nv1" id="nv1">
       <a href="#" class="nv-link active" onclick="showView('platform')">Dashboard</a>
       <a href="#" class="nv-link" onclick="showView('courses')">Courses</a>
       <a href="#" class="nv-link" onclick="showView('profile')">Profile</a>
       <a href="#" class="nv-link" onclick="showView('review')">Review</a>
       <div class="nv-cta" id="auth-status"></div>
     </div>
+    <button class="nv-hamburger" id="nv-hamburger" aria-label="Menu" onclick="toggleNav()">☰</button>
   </div>
 </nav>
+<div class="nv-overlay" id="nv-overlay" onclick="closeMobileNav()"></div>
 
 <!-- ============ LANDING PAGE ============ -->
 <div id="view-landing" class="landing-view">
@@ -393,6 +395,7 @@ function sanitizeHtml(str) {
     }).catch(function() {});
   } catch(e) {}
 })();
+function toggleNav(){document.getElementById('nv1').classList.toggle('open');document.getElementById('nv-overlay').classList.toggle('show');}
 </script>
 <!-- Auth Modal -->
 <div id="auth-modal" class="auth-modal">

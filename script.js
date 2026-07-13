@@ -727,7 +727,12 @@ function drawPerfChart(canvas) {
   }
 }
 
+function closeMobileNav() {
+  var nv = document.getElementById('nv1'); var ov = document.getElementById('nv-overlay');
+  if (nv) nv.classList.remove('open'); if (ov) ov.classList.remove('show');
+}
 function showView(view, data) {
+  closeMobileNav();
   document.querySelectorAll('.landing-view, .platform-view, .courses-view, .quiz-view, .content-view, .profile-view, .review-view').forEach(v => v.style.display = 'none');
   if (view === 'landing') document.getElementById('view-landing').style.display = 'block';
   else if (view === 'platform') { document.getElementById('view-platform').style.display = 'block'; renderPlatform(); }
