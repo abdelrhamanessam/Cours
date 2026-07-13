@@ -214,38 +214,18 @@ async function signUp() {
   const name = document.getElementById('signup-name').value.trim();
   const level = document.getElementById('signup-level')?.value || 'sec1';
   if (!email || !password || !name) { alert('Please fill in all fields.'); return; }
-  // Send OTP to email first
-  const { error: otpErr } = await sb.auth.signInWithOtp({ email });
-  if (otpErr) { alert(otpErr.message); return; }
+  var { error } = await sb.auth.signUp({ email, password, options: { data: { name, level } } });
+  if (error) { alert(error.message); return; }
   _pendingSignup = { email, password, name, level };
   document.getElementById('signup-actions').style.display = 'none';
   document.getElementById('signup-verify').style.display = 'block';
 }
 async function verifySignupCode() {
   var code = document.getElementById('signup-code').value.trim();
-  if (!_pendingSignup || code.length !== 6) return;
-  const { email, password, name, level } = _pendingSignup;
-  var { data, error } = await sb.auth.verifyOtp({ email, token: code, type: 'email' });
+  if (!_pendingSignup || code.length !== 8) return;
+  const { email } = _pendingSignup;
+  var { data, error } = await sb.auth.verifyOtp({ email, token: code, type: 'signup' });
   if (error) { alert(error.message); return; }
-  // Check if this is an existing account (was already registered)
-  var { data: existingProfile } = await sb.from('profiles').select('name').eq('id', data.user.id).single();
-  if (existingProfile && existingProfile.name) {
-    alert('This email is already registered. Please log in instead.');
-    await sb.auth.signOut();
-    _pendingSignup = null;
-    document.getElementById('signup-actions').style.display = 'flex';
-    document.getElementById('signup-verify').style.display = 'none';
-    return;
-  }
-  // OTP verified — set password
-  await sb.auth.updateUser({ password });
-  // Wait for profile to be created by trigger, then update it
-  for (var i = 0; i < 10; i++) {
-    var { data: existing } = await sb.from('profiles').select('id').eq('id', data.user.id).limit(1);
-    if (existing && existing.length > 0) break;
-    await new Promise(function(r) { setTimeout(r, 500); });
-  }
-  await sb.from('profiles').update({ name, level }).eq('id', data.user.id);
   currentUser = data.user;
   await loadUserAndProgress();
   hideAuthModal();
@@ -257,7 +237,10 @@ async function verifySignupCode() {
 }
 function resendSignupCode(e) {
   e.preventDefault();
-  if (_pendingSignup) sb.auth.signInWithOtp({ email: _pendingSignup.email });
+  if (_pendingSignup) {
+    var { email } = _pendingSignup;
+    sb.auth.resend({ type: 'signup', email });
+  }
 }
 
 async function signOut() {
