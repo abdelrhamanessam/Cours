@@ -1463,8 +1463,12 @@ function renderReport(lessonId, type, questions, result) {
         else if (oi === userAns) { cls = 'incorrect'; lbl = ' (Your answer)'; }
         report += '<div class="quiz-option ' + cls + '" style="cursor:default;margin-bottom:6px">' + l + lbl + '</div>';
       });
-      if (q.explanation) report += '<div style="margin-top:8px;padding:8px 12px;background:var(--bg);border-radius:var(--radius);font-size:.8125rem;color:var(--muted)">💡 ' + esc(q.explanation) + '</div>';
-      if (q.explanation_image_url) report += '<div style="text-align:center;margin-top:8px"><img src="' + SU + esc(q.explanation_image_url) + '" style="max-width:100%;border-radius:var(--radius);border:1px solid var(--border);cursor:pointer" onclick="window.open(this.src)" loading="lazy"></div>';
+      if (q.explanation || q.explanation_image_url) {
+        report += '<div style="margin-top:12px;padding:12px;background:var(--surface);border-radius:var(--radius);border:1px solid var(--border)"><div style="font-size:.75rem;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.04em;margin-bottom:6px">Explanation of choice</div>';
+        if (q.explanation) report += '<div style="font-size:.8125rem;color:var(--ink);margin-bottom:6px">' + esc(q.explanation) + '</div>';
+        if (q.explanation_image_url) report += '<div style="text-align:center"><img src="' + SU + esc(q.explanation_image_url) + '" style="max-width:100%;border-radius:var(--radius);border:1px solid var(--border);cursor:pointer" onclick="window.open(this.src)" loading="lazy"></div>';
+        report += '</div>';
+      }
       report += '</div>';
       return;
     }
@@ -1478,8 +1482,12 @@ function renderReport(lessonId, type, questions, result) {
       else if (oi === userAns) { cls = 'incorrect'; lbl = ' (Your answer)'; }
       report += '<div class="quiz-option ' + cls + '" style="cursor:default;margin-bottom:6px">' + optImg + o + lbl + '</div>';
     });
-    if (q.explanation) report += '<div style="margin-top:8px;padding:8px 12px;background:var(--bg);border-radius:var(--radius);font-size:.8125rem;color:var(--muted)">💡 ' + esc(q.explanation) + '</div>';
-    if (q.explanation_image_url) report += '<div style="text-align:center;margin-top:8px"><img src="' + SU + esc(q.explanation_image_url) + '" style="max-width:100%;border-radius:var(--radius);border:1px solid var(--border);cursor:pointer" onclick="window.open(this.src)" loading="lazy"></div>';
+    if (q.explanation || q.explanation_image_url) {
+      report += '<div style="margin-top:12px;padding:12px;background:var(--surface);border-radius:var(--radius);border:1px solid var(--border)"><div style="font-size:.75rem;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.04em;margin-bottom:6px">Explanation of choice</div>';
+      if (q.explanation) report += '<div style="font-size:.8125rem;color:var(--ink);margin-bottom:6px">' + esc(q.explanation) + '</div>';
+      if (q.explanation_image_url) report += '<div style="text-align:center"><img src="' + SU + esc(q.explanation_image_url) + '" style="max-width:100%;border-radius:var(--radius);border:1px solid var(--border);cursor:pointer" onclick="window.open(this.src)" loading="lazy"></div>';
+      report += '</div>';
+    }
     report += '</div>';
   });
   report += '<div style="display:flex;gap:12px;justify-content:center;margin-top:24px">';
