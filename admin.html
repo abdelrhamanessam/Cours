@@ -1058,7 +1058,7 @@ async function manageContent(lid) {
     if (hw.hw_image_questions && hw.hw_image_questions.length) {
       hw.hw_image_questions.sort((a,b)=>(a.sort_order||0)-(b.sort_order||0)).forEach(q => {
         const imgUrl = SUPABASE_URL + '/storage/v1/object/public/question-images/' + q.image_url;
-        html += '<div class="q-row"><img class="q-row-image" src="' + imgUrl + '" onclick="window.open(this.src)"><div class="q-info"><span class="q-text">Image Question</span><span class="q-meta">correct: ' + q.correct + (q.explanation ? ' · explanation' : '') + '</span></div><span class="q-actions"><button class="btn btn-ghost btn-sm" onclick="editHWImgQForm(' + q.id + ')">Edit</button><button class="btn btn-danger btn-sm" onclick="deleteHWImgQ(' + q.id + ')">×</button></span></div>';
+        html += '<div class="q-row"><img class="q-row-image" src="' + imgUrl + '" onclick="window.open(this.src)"><div class="q-info"><span class="q-text">Image Question</span><span class="q-meta">correct: ' + q.correct + (q.explanation ? ' · explanation' : '') + (q.option_images && q.option_images.some(Boolean) ? ' · 🖼 opts' : '') + '</span></div><span class="q-actions"><button class="btn btn-ghost btn-sm" onclick="editHWImgQForm(' + q.id + ')">Edit</button><button class="btn btn-danger btn-sm" onclick="deleteHWImgQ(' + q.id + ')">×</button></span></div>';
       });
     } else {
       html += '<div style="padding:12px 0;text-align:center;color:var(--muted);font-size:.75rem">No image questions.</div>';
@@ -1118,7 +1118,7 @@ async function manageContent(lid) {
     if (ex.exam_image_questions && ex.exam_image_questions.length) {
       ex.exam_image_questions.sort((a,b)=>(a.sort_order||0)-(b.sort_order||0)).forEach(q => {
         const imgUrl = SUPABASE_URL + '/storage/v1/object/public/question-images/' + q.image_url;
-        html += '<div class="q-row"><img class="q-row-image" src="' + imgUrl + '" onclick="window.open(this.src)"><div class="q-info"><span class="q-text">Image Question</span><span class="q-meta">correct: ' + q.correct + (q.explanation ? ' · explanation' : '') + '</span></div><span class="q-actions"><button class="btn btn-ghost btn-sm" onclick="editExamImgQForm(' + q.id + ')">Edit</button><button class="btn btn-danger btn-sm" onclick="deleteExamImgQ(' + q.id + ')">×</button></span></div>';
+        html += '<div class="q-row"><img class="q-row-image" src="' + imgUrl + '" onclick="window.open(this.src)"><div class="q-info"><span class="q-text">Image Question</span><span class="q-meta">correct: ' + q.correct + (q.explanation ? ' · explanation' : '') + (q.option_images && q.option_images.some(Boolean) ? ' · 🖼 opts' : '') + '</span></div><span class="q-actions"><button class="btn btn-ghost btn-sm" onclick="editExamImgQForm(' + q.id + ')">Edit</button><button class="btn btn-danger btn-sm" onclick="deleteExamImgQ(' + q.id + ')">×</button></span></div>';
       });
     } else {
       html += '<div style="padding:12px 0;text-align:center;color:var(--muted);font-size:.75rem">No image questions.</div>';
@@ -1448,6 +1448,8 @@ function questionOptsHtml(opts, correct, optImages) {
 let _optImagePaths = [];
 let _qImagePath = null;
 let _qExplImagePath = null;
+let _catOptImagePaths = ['', '', '', ''];
+let _imgOptImagePaths = ['', '', '', ''];
 
 function compressImage(file, maxW, quality) {
   return new Promise(function(resolve) {
@@ -1749,15 +1751,39 @@ function uploadExamImgImage(btn) {
   };
   inp.click();
 }
-function imgQFormHtml(title, imgUrl, correct, explanation, explImageUrl) {
+function uploadImgQOptImage(btn, idx) {
+  var inp = document.createElement('input');
+  inp.type = 'file'; inp.accept = 'image/*';
+  inp.onchange = async function() {
+    var file = inp.files?.[0]; if (!file) return;
+    btn.textContent = '0%';
+    var path = await uploadImageToStorage(file, 'imgqopt', idx, function(e) {
+      if (e.lengthComputable) btn.textContent = Math.round(e.loaded / e.total * 100) + '%';
+    });
+    if (path) {
+      btn.textContent = '✅';
+      btn.className = 'opt-img-btn has-image';
+      _imgOptImagePaths[idx] = path;
+      var prev = document.getElementById('f-imgq-opt-preview-' + idx);
+      if (prev) prev.innerHTML = '<img src="' + SUPABASE_URL + '/storage/v1/object/public/question-images/' + path + '" style="max-width:40px;max-height:40px;border-radius:4px;border:1px solid var(--border);object-fit:cover;cursor:pointer" onclick="window.open(this.src)">';
+    } else { btn.textContent = '❌'; setTimeout(function() { btn.textContent = '📷'; btn.className = 'opt-img-btn'; }, 2000); }
+  };
+  inp.click();
+}
+function imgQFormHtml(title, imgUrl, correct, explanation, explImageUrl, optImages) {
   _imgQPath = imgUrl || null;
   _imgQExplPath = explImageUrl || null;
+  _imgOptImagePaths = optImages && optImages.length === 4 ? [...optImages] : ['', '', '', ''];
   return '<h2>' + title + '</h2>' +
     '<label>Question Image (paste or upload)</label>' +
     '<div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:10px">' +
     '<button type="button" class="btn-word-paste" onclick="uploadExamImgImage(this)">📷 Upload Image</button>' +
     '<span style="font-size:.75rem;color:var(--muted)">or paste image directly</span></div>' +
     '<div id="f-imgq-preview" style="margin-bottom:10px">' + (imgUrl ? '<img src="' + SUPABASE_URL + '/storage/v1/object/public/question-images/' + esc(imgUrl) + '" style="max-width:100%;max-height:300px;border-radius:var(--radius);border:1px solid var(--border);cursor:pointer" onclick="window.open(this.src)">' : '') + '</div>' +
+    '<label>Answer Images <span style="font-weight:400;text-transform:none;letter-spacing:0;font-size:.75rem;color:var(--muted)">(optional — click 📷 to add image per option)</span></label>' +
+    '<div id="f-imgq-opt-imgs" style="display:flex;flex-direction:column;gap:6px;margin-bottom:10px">' +
+    (function() { var h = ''; for (var oi = 0; oi < 4; oi++) { var ol = ['A','B','C','D'][oi]; h += '<div class="img-opt-img-row" style="display:flex;align-items:center;gap:8px;padding:6px 10px;border-radius:var(--radius);border:1.5px solid var(--border);background:var(--surface)"><span style="font-weight:700;font-size:.8125rem;width:20px">' + ol + '</span><div id="f-imgq-opt-preview-' + oi + '" style="display:flex;align-items:center;gap:6px;flex:1">' + (_imgOptImagePaths[oi] ? '<img src="' + SUPABASE_URL + '/storage/v1/object/public/question-images/' + esc(_imgOptImagePaths[oi]) + '" style="max-width:40px;max-height:40px;border-radius:4px;border:1px solid var(--border);object-fit:cover;cursor:pointer" onclick="window.open(this.src)">' : '') + '</div><button type="button" class="opt-img-btn' + (_imgOptImagePaths[oi] ? ' has-image' : '') + '" onclick="uploadImgQOptImage(this,' + oi + ')" title="Add image to option ' + ol + '">' + (_imgOptImagePaths[oi] ? '✅' : '📷') + '</button></div>'; } return h; })() +
+    '</div>' +
     '<label>Correct Answer</label>' +
     '<select id="f-imgq-correct" style="width:100%;padding:10px 14px;border:1.5px solid var(--border);border-radius:var(--radius);margin-bottom:10px;font-size:.875rem;background:var(--bg);color:var(--ink);box-sizing:border-box">' +
     '<option value="A"' + (correct === 'A' ? ' selected' : '') + '>A</option>' +
@@ -1775,29 +1801,34 @@ function addExamImgQForm(examId) {
 }
 async function saveExamImgQ(examId) {
   if (!_imgQPath) { alert('Please upload an image first.'); return; }
-  const { error } = await sb.from('exam_image_questions').insert({
+  var payload = {
     exam_id: examId, image_url: _imgQPath,
     correct: document.getElementById('f-imgq-correct').value,
     explanation: document.getElementById('f-imgq-expl').value || '',
     explanation_image_url: _imgQExplPath || '',
     sort_order: 0
-  });
+  };
+  if (_imgOptImagePaths.some(Boolean)) payload.option_images = _imgOptImagePaths;
+  const { error } = await sb.from('exam_image_questions').insert(payload);
   if (error) { alert('Error: ' + error.message); return; }
   hideModal(); manageContent(_contentLid);
 }
 async function editExamImgQForm(id) {
   const { data: q } = await sb.from('exam_image_questions').select('*').eq('id', id).single();
   if (!q) return;
-  showModal(imgQFormHtml('Edit Image Question', q.image_url, q.correct, q.explanation, q.explanation_image_url) + '<button class="btn btn-primary" onclick="updateExamImgQ(' + id + ')">Update</button><button class="btn btn-ghost" onclick="manageContent(' + _contentLid + ')">Cancel</button></div>');
+  showModal(imgQFormHtml('Edit Image Question', q.image_url, q.correct, q.explanation, q.explanation_image_url, q.option_images) + '<button class="btn btn-primary" onclick="updateExamImgQ(' + id + ')">Update</button><button class="btn btn-ghost" onclick="manageContent(' + _contentLid + ')">Cancel</button></div>');
 }
 async function updateExamImgQ(id) {
   if (!_imgQPath) { alert('Image missing.'); return; }
-  const { error } = await sb.from('exam_image_questions').update({
+  var payload = {
     image_url: _imgQPath,
     correct: document.getElementById('f-imgq-correct').value,
     explanation: document.getElementById('f-imgq-expl').value || '',
     explanation_image_url: _imgQExplPath || ''
-  }).eq('id', id);
+  };
+  if (_imgOptImagePaths.some(Boolean)) payload.option_images = _imgOptImagePaths;
+  else payload.option_images = [];
+  const { error } = await sb.from('exam_image_questions').update(payload).eq('id', id);
   if (error) { alert('Error: ' + error.message); return; }
   hideModal(); manageContent(_contentLid);
 }
@@ -1817,29 +1848,34 @@ function addHWImgQForm(hwId) {
 }
 async function saveHWImgQ(hwId) {
   if (!_imgQPath) { alert('Please upload an image first.'); return; }
-  const { error } = await sb.from('hw_image_questions').insert({
+  var payload = {
     homework_id: hwId, image_url: _imgQPath,
     correct: document.getElementById('f-imgq-correct').value,
     explanation: document.getElementById('f-imgq-expl').value || '',
     explanation_image_url: _imgQExplPath || '',
     sort_order: 0
-  });
+  };
+  if (_imgOptImagePaths.some(Boolean)) payload.option_images = _imgOptImagePaths;
+  const { error } = await sb.from('hw_image_questions').insert(payload);
   if (error) { alert('Error: ' + error.message); return; }
   hideModal(); manageContent(_contentLid);
 }
 async function editHWImgQForm(id) {
   const { data: q } = await sb.from('hw_image_questions').select('*').eq('id', id).single();
   if (!q) return;
-  showModal(imgQFormHtml('Edit Image Question', q.image_url, q.correct, q.explanation, q.explanation_image_url) + '<button class="btn btn-primary" onclick="updateHWImgQ(' + id + ')">Update</button><button class="btn btn-ghost" onclick="manageContent(' + _contentLid + ')">Cancel</button></div>');
+  showModal(imgQFormHtml('Edit Image Question', q.image_url, q.correct, q.explanation, q.explanation_image_url, q.option_images) + '<button class="btn btn-primary" onclick="updateHWImgQ(' + id + ')">Update</button><button class="btn btn-ghost" onclick="manageContent(' + _contentLid + ')">Cancel</button></div>');
 }
 async function updateHWImgQ(id) {
   if (!_imgQPath) { alert('Image missing.'); return; }
-  const { error } = await sb.from('hw_image_questions').update({
+  var payload = {
     image_url: _imgQPath,
     correct: document.getElementById('f-imgq-correct').value,
     explanation: document.getElementById('f-imgq-expl').value || '',
     explanation_image_url: _imgQExplPath || ''
-  }).eq('id', id);
+  };
+  if (_imgOptImagePaths.some(Boolean)) payload.option_images = _imgOptImagePaths;
+  else payload.option_images = [];
+  const { error } = await sb.from('hw_image_questions').update(payload).eq('id', id);
   if (error) { alert('Error: ' + error.message); return; }
   hideModal(); manageContent(_contentLid);
 }
@@ -2036,7 +2072,7 @@ async function viewCategoryDetail(catId) {
     qs.forEach(function(q) {
       var typeLabel = q.question_type === 'image' ? '<span class="q-meta-tag imgq">🖼 image</span>' : '<span class="q-meta-tag math">∑ text</span>';
       var text = q.question_type === 'image' ? 'Image Question' : esc(q.question);
-      html += '<div class="q-row"><div class="q-info"><span class="q-text">' + text + '</span><span class="q-meta">' + typeLabel + (q.question_type === 'standard' ? ' · ' + q.options.length + ' opts · ' + String.fromCharCode(65 + (q.correct||0)) : ' · correct: ' + q.correct_letter) + (q.math ? ' · math' : '') + '</span></div><span class="q-actions"><button class="btn btn-ghost btn-sm" onclick="editCatQForm(' + q.id + ',' + catId + ')">Edit</button><button class="btn btn-danger btn-sm" onclick="deleteCatQ(' + q.id + ',' + catId + ')">×</button></span></div>';
+      html += '<div class="q-row"><div class="q-info"><span class="q-text">' + text + '</span><span class="q-meta">' + typeLabel + (q.question_type === 'standard' ? ' · ' + q.options.length + ' opts · ' + String.fromCharCode(65 + (q.correct||0)) : ' · correct: ' + q.correct_letter) + (q.math ? ' · math' : '') + (q.option_images && q.option_images.some(Boolean) ? ' · 🖼 opts' : '') + '</span></div><span class="q-actions"><button class="btn btn-ghost btn-sm" onclick="editCatQForm(' + q.id + ',' + catId + ')">Edit</button><button class="btn btn-danger btn-sm" onclick="deleteCatQ(' + q.id + ',' + catId + ')">×</button></span></div>';
     });
   }
   html += '</div>';
@@ -2045,6 +2081,7 @@ async function viewCategoryDetail(catId) {
 
 // Category question CRUD
 function addCatQForm(catId) {
+  _catOptImagePaths = ['', '', '', ''];
   var h = '<h2>Add Category Question</h2>';
   h += '<label>Type</label><select id="f-catq-type" onchange="toggleCatQType()"><option value="standard">Standard (text + options)</option><option value="image">Image (A/B/C/D) — supports paste</option></select>';
   h += '<div id="f-catq-standard">';
@@ -2059,6 +2096,17 @@ function addCatQForm(catId) {
   h += '<button type="button" class="btn-word-paste" onclick="uploadCatQImage(this)">📷 Upload Image</button>';
   h += '<span style="font-size:.75rem;color:var(--muted)">or paste image directly</span></div>';
   h += '<div id="f-imgq-preview" style="margin-bottom:10px"></div>';
+  h += '<label>Answer Images <span style="font-weight:400;text-transform:none;letter-spacing:0;font-size:.75rem;color:var(--muted)">(optional — click 📷 to add image per option)</span></label>';
+  h += '<div id="f-catq-opt-imgs" style="display:flex;flex-direction:column;gap:6px;margin-bottom:10px">';
+  for (var oi = 0; oi < 4; oi++) {
+    var ol = ['A','B','C','D'][oi];
+    h += '<div class="cat-opt-img-row" style="display:flex;align-items:center;gap:8px;padding:6px 10px;border-radius:var(--radius);border:1.5px solid var(--border);background:var(--surface)">';
+    h += '<span style="font-weight:700;font-size:.8125rem;width:20px">' + ol + '</span>';
+    h += '<div id="f-catq-opt-preview-' + oi + '" style="display:flex;align-items:center;gap:6px;flex:1"></div>';
+    h += '<button type="button" class="opt-img-btn" onclick="uploadCatQOptImage(this,' + oi + ')" title="Add image to option ' + ol + '">📷</button>';
+    h += '</div>';
+  }
+  h += '</div>';
   h += '<label>Correct Answer</label><select id="f-imgq-correct"><option value="A">A</option><option value="B">B</option><option value="C">C</option><option value="D">D</option></select>';
   h += '<label>Explanation</label><textarea id="f-imgq-expl" rows="2"></textarea>';
   h += '</div>';
@@ -2067,6 +2115,27 @@ function addCatQForm(catId) {
 }
 function toggleCatQType() { var t = document.getElementById('f-catq-type').value; document.getElementById('f-catq-standard').style.display = t === 'standard' ? 'block' : 'none'; document.getElementById('f-catq-image').style.display = t === 'image' ? 'block' : 'none'; }
 function uploadCatQImage(btn) { _imgQPath = null; uploadExamImgImage(btn); }
+function uploadCatQOptImage(btn, idx) {
+  var inp = document.createElement('input');
+  inp.type = 'file'; inp.accept = 'image/*';
+  inp.onchange = async function() {
+    var file = inp.files?.[0]; if (!file) return;
+    btn.textContent = '0%';
+    var path = await uploadImageToStorage(file, 'catopt', idx, function(e) {
+      if (e.lengthComputable) btn.textContent = Math.round(e.loaded / e.total * 100) + '%';
+    });
+    if (path) {
+      btn.textContent = '✅';
+      btn.className = 'opt-img-btn has-image';
+      _catOptImagePaths[idx] = path;
+      var prev = document.getElementById('f-catq-opt-preview-' + idx);
+      if (prev) {
+        prev.innerHTML = '<img src="' + SUPABASE_URL + '/storage/v1/object/public/question-images/' + path + '" style="max-width:40px;max-height:40px;border-radius:4px;border:1px solid var(--border);object-fit:cover;cursor:pointer" onclick="window.open(this.src)">';
+      }
+    } else { btn.textContent = '❌'; setTimeout(function() { btn.textContent = '📷'; btn.className = 'opt-img-btn'; }, 2000); }
+  };
+  inp.click();
+}
 async function saveCatQ(catId) {
   var type = document.getElementById('f-catq-type').value;
   var payload = { category_id: catId, question_type: type, sort_order: 0 };
@@ -2082,6 +2151,8 @@ async function saveCatQ(catId) {
     payload.correct_letter = document.getElementById('f-imgq-correct').value;
     payload.explanation = document.getElementById('f-imgq-expl').value || '';
     payload.question = 'Image Question';
+    if (_catOptImagePaths.some(Boolean)) payload.option_images = _catOptImagePaths;
+    _catOptImagePaths = ['', '', '', ''];
   }
   await sb.from('category_questions').insert(payload);
   hideModal(); viewCategoryDetail(catId);
@@ -2099,12 +2170,24 @@ async function editCatQForm(id, catId) {
     showModal(h);
   } else {
     _imgQPath = q.image_url || null;
+    _catOptImagePaths = q.option_images || ['', '', '', ''];
     var h2 = '<h2>Edit Category Question</h2>';
     h2 += '<label>Question Image</label>';
     h2 += '<div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:10px">';
     h2 += '<button type="button" class="btn-word-paste" onclick="uploadCatQImage(this)">📷 Upload Image</button>';
     h2 += '<span style="font-size:.75rem;color:var(--muted)">or paste image directly</span></div>';
     h2 += '<div id="f-imgq-preview" style="margin-bottom:10px">' + (q.image_url ? '<img src="' + SUPABASE_URL + '/storage/v1/object/public/question-images/' + esc(q.image_url) + '" style="max-width:100%;max-height:300px;border-radius:var(--radius);border:1px solid var(--border);cursor:pointer" onclick="window.open(this.src)">' : '') + '</div>';
+    h2 += '<label>Answer Images <span style="font-weight:400;text-transform:none;letter-spacing:0;font-size:.75rem;color:var(--muted)">(optional — click 📷 to add image per option)</span></label>';
+    h2 += '<div id="f-catq-opt-imgs" style="display:flex;flex-direction:column;gap:6px;margin-bottom:10px">';
+    for (var oi = 0; oi < 4; oi++) {
+      var ol = ['A','B','C','D'][oi];
+      h2 += '<div class="cat-opt-img-row" style="display:flex;align-items:center;gap:8px;padding:6px 10px;border-radius:var(--radius);border:1.5px solid var(--border);background:var(--surface)">';
+      h2 += '<span style="font-weight:700;font-size:.8125rem;width:20px">' + ol + '</span>';
+      h2 += '<div id="f-catq-opt-preview-' + oi + '" style="display:flex;align-items:center;gap:6px;flex:1">' + (_catOptImagePaths[oi] ? '<img src="' + SUPABASE_URL + '/storage/v1/object/public/question-images/' + esc(_catOptImagePaths[oi]) + '" style="max-width:40px;max-height:40px;border-radius:4px;border:1px solid var(--border);object-fit:cover;cursor:pointer" onclick="window.open(this.src)">' : '') + '</div>';
+      h2 += '<button type="button" class="opt-img-btn' + (_catOptImagePaths[oi] ? ' has-image' : '') + '" onclick="uploadCatQOptImage(this,' + oi + ')" title="Add image to option ' + ol + '">' + (_catOptImagePaths[oi] ? '✅' : '📷') + '</button>';
+      h2 += '</div>';
+    }
+    h2 += '</div>';
     h2 += '<label>Correct Answer</label><select id="f-imgq-correct">';
     for (var ci = 0; ci < 4; ci++) { var l = ['A','B','C','D'][ci]; h2 += '<option value="' + l + '"' + (q.correct_letter === l ? ' selected' : '') + '>' + l + '</option>'; }
     h2 += '</select>';
@@ -2126,6 +2209,8 @@ async function updateCatQ(id, catId, type) {
     payload.image_url = _imgQPath;
     payload.correct_letter = document.getElementById('f-imgq-correct').value;
     payload.explanation = document.getElementById('f-imgq-expl').value || '';
+    if (_catOptImagePaths.some(Boolean)) payload.option_images = _catOptImagePaths;
+    else payload.option_images = [];
   }
   await sb.from('category_questions').update(payload).eq('id', id);
   hideModal(); viewCategoryDetail(catId);
@@ -2180,7 +2265,7 @@ async function showCategoryQuestions(catId, targetType, targetId, catName) {
       html += '<div class="ci-meta">∑ ' + (q.math ? 'LaTeX' : 'no math') + ' · ' + (q.options||[]).length + ' options</div></div>';
     } else {
       html += '<div class="ci-body"><div class="ci-img-wrap"><img src="' + SUPABASE_URL + '/storage/v1/object/public/question-images/' + esc(q.image_url) + '" onclick="window.open(this.src)" title="Click to enlarge"></div>';
-      html += '<div class="ci-meta">🖼 Image · Correct: ' + (q.correct_letter || 'A') + (q.explanation ? ' · ℹ has explanation' : '') + '</div></div>';
+      html += '<div class="ci-meta">🖼 Image · Correct: ' + (q.correct_letter || 'A') + (q.explanation ? ' · ℹ has explanation' : '') + (q.option_images && q.option_images.some(Boolean) ? ' · 🖼 opts' : '') + '</div></div>';
     }
     html += '</div>';
   });
@@ -2209,6 +2294,7 @@ async function importSelectedCategoryQs(catId, targetType, targetId) {
       else await sb.from('hw_questions').insert(payload);
     } else {
       var payload2 = { image_url: q.image_url, correct: q.correct_letter || 'A', explanation: q.explanation || '', sort_order: i + 1 };
+      if (q.option_images && q.option_images.some(Boolean)) payload2.option_images = q.option_images;
       payload2[fk] = targetId;
       if (targetType === 'exam') await sb.from('exam_image_questions').insert(payload2);
       else await sb.from('hw_image_questions').insert(payload2);
@@ -2365,6 +2451,56 @@ document.addEventListener('paste', function(e) {
       var isOption = target && target.classList.contains('opt-input');
       if (!isImgQ && !isQuestion && !isOption) return;
       if (isImgQ) {
+        // Check if focus is on a category option image row (paste option image)
+        var catOptRow = target && target.closest('.cat-opt-img-row');
+        if (catOptRow) {
+          var catOptRows = document.querySelectorAll('.cat-opt-img-row');
+          var catOptIdx = -1;
+          for (var co = 0; co < catOptRows.length; co++) {
+            if (catOptRows[co] === catOptRow) { catOptIdx = co; break; }
+          }
+          if (catOptIdx >= 0) {
+            uploadImageToStorage(file, 'catopt', catOptIdx, function(e) {
+              if (!e.lengthComputable) return;
+              var pct = Math.round(e.loaded / e.total * 100);
+              var catBtn = catOptRow.querySelector('.opt-img-btn');
+              if (catBtn) catBtn.textContent = pct + '%';
+            }).then(function(path) {
+              if (!path) return;
+              _catOptImagePaths[catOptIdx] = path;
+              var catBtn = catOptRow.querySelector('.opt-img-btn');
+              if (catBtn) { catBtn.textContent = '✅'; catBtn.className = 'opt-img-btn has-image'; }
+              var catPrev = document.getElementById('f-catq-opt-preview-' + catOptIdx);
+              if (catPrev) catPrev.innerHTML = '<img src="' + SUPABASE_URL + '/storage/v1/object/public/question-images/' + path + '" style="max-width:40px;max-height:40px;border-radius:4px;border:1px solid var(--border);object-fit:cover;cursor:pointer" onclick="window.open(this.src)">';
+            });
+            return;
+          }
+        }
+        // Check if focus is on an exam/homework option image row
+        var imgOptRow = target && target.closest('.img-opt-img-row');
+        if (imgOptRow) {
+          var imgOptRows = document.querySelectorAll('.img-opt-img-row');
+          var imgOptIdx = -1;
+          for (var io = 0; io < imgOptRows.length; io++) {
+            if (imgOptRows[io] === imgOptRow) { imgOptIdx = io; break; }
+          }
+          if (imgOptIdx >= 0) {
+            uploadImageToStorage(file, 'imgqopt', imgOptIdx, function(e) {
+              if (!e.lengthComputable) return;
+              var pct = Math.round(e.loaded / e.total * 100);
+              var imgBtn = imgOptRow.querySelector('.opt-img-btn');
+              if (imgBtn) imgBtn.textContent = pct + '%';
+            }).then(function(path) {
+              if (!path) return;
+              _imgOptImagePaths[imgOptIdx] = path;
+              var imgBtn = imgOptRow.querySelector('.opt-img-btn');
+              if (imgBtn) { imgBtn.textContent = '✅'; imgBtn.className = 'opt-img-btn has-image'; }
+              var imgPrev = document.getElementById('f-imgq-opt-preview-' + imgOptIdx);
+              if (imgPrev) imgPrev.innerHTML = '<img src="' + SUPABASE_URL + '/storage/v1/object/public/question-images/' + path + '" style="max-width:40px;max-height:40px;border-radius:4px;border:1px solid var(--border);object-fit:cover;cursor:pointer" onclick="window.open(this.src)">';
+            });
+            return;
+          }
+        }
         var progEl = document.getElementById('f-imgq-progress') || (function() {
           var p = document.createElement('div');
           p.id = 'f-imgq-progress';

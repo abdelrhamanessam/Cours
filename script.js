@@ -34,7 +34,7 @@ async function fetchCourses() {
       واجب: {
         passScore: l.homework?.pass_score || 60,
         questions: (l.homework?.hw_questions || []).sort((a,b) => (a.sort_order||0) - (b.sort_order||0)).map(q => ({ id: q.id, q: q.question, opts: q.options, correct: q.correct, math: q.math || '', image_url: q.image_url || '', option_images: q.option_images || [], explanation: q.explanation || '', explanation_image_url: q.explanation_image_url || '' })),
-        imageQuestions: (l.homework?.hw_image_questions || []).sort((a,b) => (a.sort_order||0) - (b.sort_order||0)).map(q => ({ id: q.id, imgQ: q.image_url, correct: q.correct, explanation: q.explanation || '', explanation_image_url: q.explanation_image_url || '' }))
+        imageQuestions: (l.homework?.hw_image_questions || []).sort((a,b) => (a.sort_order||0) - (b.sort_order||0)).map(q => ({ id: q.id, imgQ: q.image_url, correct: q.correct, explanation: q.explanation || '', explanation_image_url: q.explanation_image_url || '', option_images: q.option_images || [] }))
       },
       امتحان: {
         passScore: l.exams?.pass_score || 60,
@@ -44,7 +44,7 @@ async function fetchCourses() {
         hasFinalExam: l.exams?.has_final_exam || false,
         questionsPerAttempt: l.exams?.questions_per_attempt || 0,
         questions: (l.exams?.exam_questions || []).sort((a,b) => (a.sort_order||0) - (b.sort_order||0)).map(q => ({ id: q.id, q: q.question, opts: q.options, correct: q.correct, math: q.math || '', image_url: q.image_url || '', option_images: q.option_images || [], explanation: q.explanation || '', explanation_image_url: q.explanation_image_url || '' })),
-        imageQuestions: (l.exams?.exam_image_questions || []).sort((a,b) => (a.sort_order||0) - (b.sort_order||0)).map(q => ({ id: q.id, imgQ: q.image_url, correct: q.correct, explanation: q.explanation || '', explanation_image_url: q.explanation_image_url || '' }))
+        imageQuestions: (l.exams?.exam_image_questions || []).sort((a,b) => (a.sort_order||0) - (b.sort_order||0)).map(q => ({ id: q.id, imgQ: q.image_url, correct: q.correct, explanation: q.explanation || '', explanation_image_url: q.explanation_image_url || '', option_images: q.option_images || [] }))
       }
     }))
   }));
@@ -1273,7 +1273,7 @@ function startQuiz(lessonId, type) {
   if (imgQs) {
     imgQs.forEach(function(iq) {
       var letterIndex = iq.correct === 'A' ? 0 : iq.correct === 'B' ? 1 : iq.correct === 'C' ? 2 : iq.correct === 'D' ? 3 : 0;
-      qs.push({ q: '', opts: ['A', 'B', 'C', 'D'], correct: letterIndex, math: '', image_url: '', option_images: [], isImage: true, imgQ: iq.imgQ, explanation: iq.explanation, explanation_image_url: iq.explanation_image_url || '' });
+      qs.push({ q: '', opts: ['A', 'B', 'C', 'D'], correct: letterIndex, math: '', image_url: '', option_images: iq.option_images || [], isImage: true, imgQ: iq.imgQ, explanation: iq.explanation, explanation_image_url: iq.explanation_image_url || '' });
     });
   }
   quizState = { lessonId, type, questions: qs, total: qs.length, answers: new Array(qs.length).fill(-1), submitted: false };
@@ -1301,7 +1301,8 @@ function renderAllQuestions() {
       var imgUrl = SU + q.imgQ;
       var optHtml = q.opts.map(function(o, oi) {
         var sel = answers[qi] === oi ? ' selected' : '';
-        return '<div class="quiz-option' + sel + '" data-qi="' + qi + '" data-oi="' + oi + '" onclick="selectAnswer(' + qi + ',' + oi + ')">' + o + '</div>';
+        var optImg = q.option_images?.[oi] ? '<img src="' + SU + q.option_images[oi] + '" style="max-width:60px;max-height:60px;vertical-align:middle;margin-right:6px;border-radius:4px;border:1px solid var(--border)">' : '';
+        return '<div class="quiz-option' + sel + '" data-qi="' + qi + '" data-oi="' + oi + '" onclick="selectAnswer(' + qi + ',' + oi + ')">' + optImg + o + '</div>';
       }).join('');
       return '<div class="quiz-question"><div class="q-number">Question ' + (qi+1) + ' of ' + total + '</div><div style="text-align:center;margin:12px 0"><img src="' + imgUrl + '" style="max-width:100%;border-radius:var(--radius);border:1px solid var(--border);cursor:zoom-in" onclick="window.open(this.src)"></div><div class="quiz-options" style="grid-template-columns:repeat(2,1fr)">' + optHtml + '</div></div>';
     }
@@ -1500,7 +1501,8 @@ function renderReport(lessonId, type, questions, result) {
         var lbl = '';
         if (oi === q.correct) { cls = 'correct'; lbl = ' (Correct)'; }
         else if (oi === userAns) { cls = 'incorrect'; lbl = ' (Your answer)'; }
-        report += '<div class="quiz-option ' + cls + '" style="cursor:default;margin-bottom:6px">' + l + lbl + '</div>';
+        var optImg = q.option_images?.[oi] ? '<img src="' + SU + q.option_images[oi] + '" style="max-width:40px;max-height:40px;vertical-align:middle;margin-right:6px;border-radius:4px;border:1px solid var(--border)">' : '';
+        report += '<div class="quiz-option ' + cls + '" style="cursor:default;margin-bottom:6px">' + optImg + l + lbl + '</div>';
       });
       if (q.explanation || q.explanation_image_url) {
         report += '<div style="margin-top:12px;padding:12px;background:var(--surface);border-radius:var(--radius);border:1px solid var(--border)"><div style="font-size:.75rem;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.04em;margin-bottom:6px">Explanation of choice</div>';
@@ -1550,7 +1552,7 @@ function viewHW(lid) {
   if (found.lesson.واجب.imageQuestions) {
     found.lesson.واجب.imageQuestions.forEach(function(iq) {
       var letterIndex = iq.correct === 'A' ? 0 : iq.correct === 'B' ? 1 : iq.correct === 'C' ? 2 : iq.correct === 'D' ? 3 : 0;
-      allQs.push({ q: '', opts: ['A', 'B', 'C', 'D'], correct: letterIndex, math: '', image_url: '', option_images: [], isImage: true, imgQ: iq.imgQ, explanation: iq.explanation, explanation_image_url: iq.explanation_image_url || '' });
+      allQs.push({ q: '', opts: ['A', 'B', 'C', 'D'], correct: letterIndex, math: '', image_url: '', option_images: iq.option_images || [], isImage: true, imgQ: iq.imgQ, explanation: iq.explanation, explanation_image_url: iq.explanation_image_url || '' });
     });
   }
   showView('quiz');
@@ -1566,7 +1568,7 @@ function viewExam(lid) {
   if (found.lesson.امتحان.imageQuestions) {
     found.lesson.امتحان.imageQuestions.forEach(function(iq) {
       var letterIndex = iq.correct === 'A' ? 0 : iq.correct === 'B' ? 1 : iq.correct === 'C' ? 2 : iq.correct === 'D' ? 3 : 0;
-      allQs.push({ q: '', opts: ['A', 'B', 'C', 'D'], correct: letterIndex, math: '', image_url: '', option_images: [], isImage: true, imgQ: iq.imgQ, explanation: iq.explanation, explanation_image_url: iq.explanation_image_url || '' });
+      allQs.push({ q: '', opts: ['A', 'B', 'C', 'D'], correct: letterIndex, math: '', image_url: '', option_images: iq.option_images || [], isImage: true, imgQ: iq.imgQ, explanation: iq.explanation, explanation_image_url: iq.explanation_image_url || '' });
     });
   }
   showView('quiz');
@@ -1705,7 +1707,7 @@ async function loadBatchQuestions(ids) {
       var iq = result['img_' + item.question_id];
       if (iq) {
         var li = iq.correct === 'A' ? 0 : iq.correct === 'B' ? 1 : iq.correct === 'C' ? 2 : iq.correct === 'D' ? 3 : 0;
-        qs.push({ q: '', opts: ['A', 'B', 'C', 'D'], correct: li, math: '', image_url: '', option_images: [], isImage: true, imgQ: iq.image_url, explanation: iq.explanation || '', explanation_image_url: iq.explanation_image_url || '' });
+        qs.push({ q: '', opts: ['A', 'B', 'C', 'D'], correct: li, math: '', image_url: '', option_images: iq.option_images || [], isImage: true, imgQ: iq.image_url, explanation: iq.explanation || '', explanation_image_url: iq.explanation_image_url || '' });
       }
     } else if (item.question_type === 'hw_standard') {
       var hq = result['hw_std_' + item.question_id];
@@ -1714,7 +1716,7 @@ async function loadBatchQuestions(ids) {
       var hiq = result['hw_img_' + item.question_id];
       if (hiq) {
         var li2 = hiq.correct === 'A' ? 0 : hiq.correct === 'B' ? 1 : hiq.correct === 'C' ? 2 : hiq.correct === 'D' ? 3 : 0;
-        qs.push({ q: '', opts: ['A', 'B', 'C', 'D'], correct: li2, math: '', image_url: '', option_images: [], isImage: true, imgQ: hiq.image_url, explanation: hiq.explanation || '', explanation_image_url: hiq.explanation_image_url || '' });
+        qs.push({ q: '', opts: ['A', 'B', 'C', 'D'], correct: li2, math: '', image_url: '', option_images: hiq.option_images || [], isImage: true, imgQ: hiq.image_url, explanation: hiq.explanation || '', explanation_image_url: hiq.explanation_image_url || '' });
       }
     }
   });
