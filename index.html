@@ -422,10 +422,8 @@ function toggleNav(){document.getElementById('nv1').classList.toggle('open');doc
       </select>
       <div id="signup-actions" style="display:flex;gap:8px;margin-top:12px"><button class="btn btn-primary" onclick="signUp()" style="flex:1;justify-content:center">Sign Up</button></div>
       <div id="signup-verify" style="display:none;margin-top:12px">
-        <p style="font-size:.8125rem;color:var(--muted);margin-bottom:12px">Enter the 6-digit code sent to your email</p>
-        <input type="text" id="signup-code" class="auth-input" placeholder="00000000" maxlength="8" style="text-align:center;font-size:1.25rem;letter-spacing:8px" oninput="this.value=this.value.replace(/\D/g,'')">
-        <div style="display:flex;gap:8px"><button class="btn btn-primary" onclick="verifySignupCode()" style="flex:1;justify-content:center">Verify</button></div>
-        <p style="font-size:.75rem;color:var(--muted);text-align:center;margin-top:8px">Didn't receive it? <a href="#" onclick="resendSignupCode(event)" style="color:var(--primary)">Resend</a></p>
+        <p style="font-size:.8125rem;color:var(--muted);margin-bottom:4px">Check your email and click the confirmation link.</p>
+        <p style="font-size:.75rem;color:var(--muted);text-align:center"><a href="#" onclick="resendSignupCode(event)" style="color:var(--primary)">Resend email</a></p>
       </div>
     </div>
   </div>

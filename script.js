@@ -207,7 +207,6 @@ async function login() {
   renderPlatform();
 }
 
-var _pendingSignup = null;
 async function signUp() {
   const email = document.getElementById('signup-email').value.trim();
   const password = document.getElementById('signup-password').value;
@@ -216,31 +215,14 @@ async function signUp() {
   if (!email || !password || !name) { alert('Please fill in all fields.'); return; }
   var { error } = await sb.auth.signUp({ email, password, options: { data: { name, level } } });
   if (error) { alert(error.message); return; }
-  _pendingSignup = { email, password, name, level };
   document.getElementById('signup-actions').style.display = 'none';
   document.getElementById('signup-verify').style.display = 'block';
 }
-async function verifySignupCode() {
-  var code = document.getElementById('signup-code').value.trim();
-  if (!_pendingSignup || code.length !== 8) return;
-  const { email } = _pendingSignup;
-  var { data, error } = await sb.auth.verifyOtp({ email, token: code, type: 'signup' });
-  if (error) { alert(error.message); return; }
-  currentUser = data.user;
-  await loadUserAndProgress();
-  hideAuthModal();
-  updateAuthUI();
-  renderProfile();
-  renderCourses();
-  renderPlatform();
-  _pendingSignup = null;
-}
 function resendSignupCode(e) {
   e.preventDefault();
-  if (_pendingSignup) {
-    var { email } = _pendingSignup;
-    sb.auth.resend({ type: 'signup', email });
-  }
+  const email = document.getElementById('signup-email').value.trim();
+  if (!email) return;
+  sb.auth.resend({ type: 'signup', email });
 }
 
 async function signOut() {
