@@ -2332,8 +2332,20 @@ document.addEventListener('paste', function(e) {
     const { data: profile } = await sb.from('profiles').select('*').eq('id', session.user.id).single();
     if (profile && profile.role === 'admin') {
       adminUser = session.user; adminProfile = profile;
+      const { data: factors } = await sb.auth.mfa.listFactors();
+      const totpFactor = factors.all?.find(f => f.factor_type === 'totp' && f.status === 'verified');
+      if (totpFactor) {
+        const chal = await sb.auth.mfa.challenge({ factorId: totpFactor.id });
+        if (!chal.error) {
+          pendingMFAChallenge = chal.data;
+          document.getElementById('admin-mfa').classList.remove('hidden');
+          document.getElementById('admin-mfa-code').focus();
+          return;
+        }
+      }
       document.getElementById('admin-login').classList.add('hidden');
       document.getElementById('admin-dashboard').classList.remove('hidden');
+      document.getElementById('mfa-enroll-btn').style.display = '';
       loadAdminPage('dashboard');
     }
   }
