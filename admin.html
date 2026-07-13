@@ -1547,6 +1547,7 @@ function uploadQExplImage(btn) {
 function qFormHtml(title, q, opts, correct, sort_order, math, qImage, optImages, explanation, explImage) {
   _qImagePath = qImage || null;
   _optImagePaths = optImages ? [...optImages] : [];
+  _qExplImagePath = explImage || null;
   return '<h2>' + title + '</h2>' +
     '<label>Question <span style="font-weight:400;text-transform:none;letter-spacing:0;font-size:.75rem;color:var(--muted)">(use $$...$$ for LaTeX, paste image anywhere)</span></label><input id="f-q-q" value="' + esc(q) + '">' +
     '<div style="display:flex;align-items:center;gap:8px;margin:-4px 0 8px"><button type="button" class="btn-word-paste" onclick="uploadQuestionImage(this)">📷 Add Image</button><span id="f-q-img-preview">' + (qImage ? '<img class="q-img-preview" src="' + SUPABASE_URL + '/storage/v1/object/public/question-images/' + esc(qImage) + '" onclick="window.open(this.src)">' : '') + '</span></div>' +
@@ -2356,10 +2357,36 @@ document.addEventListener('paste', function(e) {
       var file = items[i].getAsFile();
       if (!file) return;
       var target = document.activeElement;
-      var isImgQ = !!document.getElementById('f-imgq-preview');
-      var isQuestion = target && target.id === 'f-q-q';
+      var isImgQExpl = target && target.id === 'f-imgq-expl' && !!document.getElementById('f-imgq-expl-img-preview');
+      var isQExpl = target && target.id === 'f-q-expl' && !!document.getElementById('f-q-expl-img-preview');
+      var isImgQ = !isImgQExpl && !!document.getElementById('f-imgq-preview');
+      var isQuestion = !isQExpl && target && target.id === 'f-q-q';
       var isOption = target && target.classList.contains('opt-input');
-      if (!isImgQ && !isQuestion && !isOption) return;
+      if (!isImgQ && !isQuestion && !isOption && !isQExpl && !isImgQExpl) return;
+      if (isImgQExpl) {
+        var pe = document.getElementById('f-imgq-expl-img-preview');
+        if (pe) pe.innerHTML = '<div style="height:4px;background:var(--border);border-radius:99px;overflow:hidden;margin-bottom:4px"><div id="f-imgq-expl-bar" style="height:100%;width:0%;background:var(--primary);border-radius:99px;transition:width .15s"></div></div>';
+        uploadImageToStorage(file, 'imgqexpl', undefined, function(e) {
+          if (e.lengthComputable) { var b = document.getElementById('f-imgq-expl-bar'); if (b) b.style.width = Math.round(e.loaded / e.total * 100) + '%'; }
+        }).then(function(path) {
+          if (!path) return;
+          _imgQExplPath = path;
+          if (pe) pe.innerHTML = '<img src="' + SUPABASE_URL + '/storage/v1/object/public/question-images/' + path + '" style="max-width:100%;max-height:200px;border-radius:var(--radius);border:1px solid var(--border);cursor:pointer" onclick="window.open(this.src)">';
+        });
+        return;
+      }
+      if (isQExpl) {
+        var pn = document.getElementById('f-q-expl-img-preview');
+        if (pn) pn.innerHTML = '<div style="height:4px;background:var(--border);border-radius:99px;overflow:hidden;margin-bottom:4px"><div id="f-q-expl-bar" style="height:100%;width:0%;background:var(--primary);border-radius:99px;transition:width .15s"></div></div>';
+        uploadImageToStorage(file, 'qexpl', undefined, function(e) {
+          if (e.lengthComputable) { var b = document.getElementById('f-q-expl-bar'); if (b) b.style.width = Math.round(e.loaded / e.total * 100) + '%'; }
+        }).then(function(path) {
+          if (!path) return;
+          _qExplImagePath = path;
+          if (pn) pn.innerHTML = '<img class="q-img-preview" src="' + SUPABASE_URL + '/storage/v1/object/public/question-images/' + path + '" onclick="window.open(this.src)">';
+        });
+        return;
+      }
       if (isImgQ) {
         var progEl = document.getElementById('f-imgq-progress') || (function() {
           var p = document.createElement('div');
