@@ -2357,13 +2357,13 @@ document.addEventListener('paste', function(e) {
       var file = items[i].getAsFile();
       if (!file) return;
       var target = document.activeElement;
-      var isImgQExpl = target && target.id === 'f-imgq-expl' && !!document.getElementById('f-imgq-expl-img-preview');
-      var isQExpl = target && target.id === 'f-q-expl' && !!document.getElementById('f-q-expl-img-preview');
+      var isQExpl = target && (target.id === 'f-q-expl' || target.closest('#f-q-expl-img-preview') || target.matches('[onclick*="uploadQExplImage"]')) && !!document.getElementById('f-q-expl-img-preview');
+      var isImgQExpl = target && (target.id === 'f-imgq-expl' || target.closest('#f-imgq-expl-img-preview') || target.matches('[onclick*="uploadImgQExplImage"]')) && !!document.getElementById('f-imgq-expl-img-preview');
       var isImgQ = !isImgQExpl && !!document.getElementById('f-imgq-preview');
       var isQuestion = !isQExpl && target && target.id === 'f-q-q';
       var isOption = target && target.classList.contains('opt-input');
       if (!isImgQ && !isQuestion && !isOption && !isQExpl && !isImgQExpl) return;
-      if (isImgQExpl) {
+      if (isInImgQExpl) {
         var pe = document.getElementById('f-imgq-expl-img-preview');
         if (pe) pe.innerHTML = '<div style="height:4px;background:var(--border);border-radius:99px;overflow:hidden;margin-bottom:4px"><div id="f-imgq-expl-bar" style="height:100%;width:0%;background:var(--primary);border-radius:99px;transition:width .15s"></div></div>';
         uploadImageToStorage(file, 'imgqexpl', undefined, function(e) {
@@ -2375,7 +2375,7 @@ document.addEventListener('paste', function(e) {
         });
         return;
       }
-      if (isQExpl) {
+      if (isInQExpl) {
         var pn = document.getElementById('f-q-expl-img-preview');
         if (pn) pn.innerHTML = '<div style="height:4px;background:var(--border);border-radius:99px;overflow:hidden;margin-bottom:4px"><div id="f-q-expl-bar" style="height:100%;width:0%;background:var(--primary);border-radius:99px;transition:width .15s"></div></div>';
         uploadImageToStorage(file, 'qexpl', undefined, function(e) {
