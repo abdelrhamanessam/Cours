@@ -498,11 +498,13 @@ async function startSmartReview() {
       var lesson = course.lessons[li];
       if (!Progress[lesson.id]?.completed) continue;
       var exam = lesson.امتحان;
-      if (!exam) continue;
-      // Collect all lesson questions with IDs
+      var hw = lesson.واجب;
+      // Collect all lesson questions with IDs (exam + homework)
       var pool = [];
-      (exam.questions || []).forEach(function(q) { pool.push({ id: q.id, type: 'standard', q: q.q, opts: q.opts, correct: q.correct, math: q.math, image_url: q.image_url, option_images: q.option_images }); });
-      (exam.imageQuestions || []).forEach(function(q) { pool.push({ id: q.id, type: 'image', imgQ: q.imgQ, correct: q.correct, explanation: q.explanation, explanation_image_url: q.explanation_image_url }); });
+      (exam?.questions || []).forEach(function(q) { pool.push({ id: q.id, type: 'standard', q: q.q, opts: q.opts, correct: q.correct, math: q.math, image_url: q.image_url, option_images: q.option_images }); });
+      (exam?.imageQuestions || []).forEach(function(q) { pool.push({ id: q.id, type: 'image', imgQ: q.imgQ, correct: q.correct, explanation: q.explanation, explanation_image_url: q.explanation_image_url }); });
+      (hw?.questions || []).forEach(function(q) { pool.push({ id: q.id, type: 'hw_standard', q: q.q, opts: q.opts, correct: q.correct, math: q.math, image_url: q.image_url, option_images: q.option_images }); });
+      (hw?.imageQuestions || []).forEach(function(q) { pool.push({ id: q.id, type: 'hw_image', imgQ: q.imgQ, correct: q.correct, explanation: q.explanation, explanation_image_url: q.explanation_image_url }); });
       if (pool.length === 0) continue;
       // Find wrong question IDs from attempts (including previous review attempts)
       var lessonAttempts = attempts.filter(function(a) { return a.lesson_id === lesson.id && a.question_order && a.answers && a.answers.answers; });
@@ -551,7 +553,7 @@ async function startSmartReview() {
       picked.forEach(function(p) {
         var qid = p.id;
         var qtype = p.type;
-        if (p.type === 'standard') {
+        if (p.type === 'standard' || p.type === 'hw_standard') {
           allQs.push({ qid: qid, qtype: qtype, q: p.q, opts: p.opts, correct: p.correct, math: p.math || '', image_url: p.image_url || '', option_images: p.option_images || [], isImage: false, sourceLid: lesson.id });
         } else {
           var li = p.correct === 'A' ? 0 : p.correct === 'B' ? 1 : p.correct === 'C' ? 2 : p.correct === 'D' ? 3 : 0;
@@ -1670,11 +1672,12 @@ async function selectAttemptQuestions(lid) {
 }
 
 async function loadBatchQuestions(ids) {
-  var stdIds = [];
-  var imgIds = [];
+  var stdIds = []; var imgIds = []; var hwStdIds = []; var hwImgIds = [];
   ids.forEach(function(item) {
     if (item.question_type === 'standard') stdIds.push(item.question_id);
-    else imgIds.push(item.question_id);
+    else if (item.question_type === 'image') imgIds.push(item.question_id);
+    else if (item.question_type === 'hw_standard') hwStdIds.push(item.question_id);
+    else if (item.question_type === 'hw_image') hwImgIds.push(item.question_id);
   });
   var result = {};
   if (stdIds.length > 0) {
@@ -1685,16 +1688,33 @@ async function loadBatchQuestions(ids) {
     var { data: imgData } = await sb.from('exam_image_questions').select('*').in('id', imgIds);
     if (imgData) imgData.forEach(function(q) { result['img_' + q.id] = q; });
   }
+  if (hwStdIds.length > 0) {
+    var { data: hwStdData } = await sb.from('hw_questions').select('*').in('id', hwStdIds);
+    if (hwStdData) hwStdData.forEach(function(q) { result['hw_std_' + q.id] = q; });
+  }
+  if (hwImgIds.length > 0) {
+    var { data: hwImgData } = await sb.from('hw_image_questions').select('*').in('id', hwImgIds);
+    if (hwImgData) hwImgData.forEach(function(q) { result['hw_img_' + q.id] = q; });
+  }
   var qs = [];
   ids.forEach(function(item) {
     if (item.question_type === 'standard') {
       var sq = result['std_' + item.question_id];
-      if (sq) qs.push({ q: sq.question, opts: sq.options, correct: sq.correct, math: sq.math || '', image_url: sq.image_url || '', option_images: sq.option_images || [], isImage: false });
-    } else {
+      if (sq) qs.push({ q: sq.question, opts: sq.options, correct: sq.correct, math: sq.math || '', image_url: sq.image_url || '', option_images: sq.option_images || [], isImage: false, explanation: sq.explanation || '', explanation_image_url: sq.explanation_image_url || '' });
+    } else if (item.question_type === 'image') {
       var iq = result['img_' + item.question_id];
       if (iq) {
         var li = iq.correct === 'A' ? 0 : iq.correct === 'B' ? 1 : iq.correct === 'C' ? 2 : iq.correct === 'D' ? 3 : 0;
         qs.push({ q: '', opts: ['A', 'B', 'C', 'D'], correct: li, math: '', image_url: '', option_images: [], isImage: true, imgQ: iq.image_url, explanation: iq.explanation || '', explanation_image_url: iq.explanation_image_url || '' });
+      }
+    } else if (item.question_type === 'hw_standard') {
+      var hq = result['hw_std_' + item.question_id];
+      if (hq) qs.push({ q: hq.question, opts: hq.options, correct: hq.correct, math: hq.math || '', image_url: hq.image_url || '', option_images: hq.option_images || [], isImage: false, explanation: hq.explanation || '', explanation_image_url: hq.explanation_image_url || '' });
+    } else if (item.question_type === 'hw_image') {
+      var hiq = result['hw_img_' + item.question_id];
+      if (hiq) {
+        var li2 = hiq.correct === 'A' ? 0 : hiq.correct === 'B' ? 1 : hiq.correct === 'C' ? 2 : hiq.correct === 'D' ? 3 : 0;
+        qs.push({ q: '', opts: ['A', 'B', 'C', 'D'], correct: li2, math: '', image_url: '', option_images: [], isImage: true, imgQ: hiq.image_url, explanation: hiq.explanation || '', explanation_image_url: hiq.explanation_image_url || '' });
       }
     }
   });
