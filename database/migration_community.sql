@@ -25,6 +25,7 @@ CREATE TABLE IF NOT EXISTS community_comments (
   user_id uuid NOT NULL REFERENCES profiles(id) ON DELETE CASCADE,
   parent_id bigint REFERENCES community_comments(id) ON DELETE CASCADE,
   content text NOT NULL CHECK (char_length(content) <= 5000),
+  image_url text,
   is_verified_answer boolean NOT NULL DEFAULT false,
   created_at timestamptz NOT NULL DEFAULT now()
 );

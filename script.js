@@ -1951,8 +1951,50 @@ function renderCommunityPosts(posts) {
   list.innerHTML = html;
 }
 
+var _cmPostImage = null;
+
+async function cmUploadImage(file) {
+  var compressed = await compressImage(file, 1200, 0.8);
+  var path = 'community_' + Date.now() + '_' + Math.random().toString(36).slice(2,6) + '.jpg';
+  var { data: { session } } = await sb.auth.getSession();
+  var token = session?.access_token || '';
+  var xhr = new XMLHttpRequest();
+  xhr.open('POST', SUPABASE_URL + '/storage/v1/object/question-images/' + path);
+  xhr.setRequestHeader('authorization', 'Bearer ' + token);
+  xhr.setRequestHeader('x-upsert', 'true');
+  await new Promise(function(resolve) {
+    xhr.onload = function() { resolve(); };
+    xhr.onerror = function() { resolve(); };
+    xhr.send(compressed);
+  });
+  return xhr.status >= 200 && xhr.status < 300 ? path : null;
+}
+
+function handlePasteImage(event, previewId, callback) {
+  var items = event.clipboardData?.items;
+  if (!items) return;
+  for (var i = 0; i < items.length; i++) {
+    if (items[i].type.startsWith('image/')) {
+      event.preventDefault();
+      var file = items[i].getAsFile();
+      if (!file) continue;
+      cmUploadImage(file).then(function(path) {
+        if (path) {
+          var preview = document.getElementById(previewId);
+          if (preview) {
+            preview.innerHTML = '<div class="cm-pasted-img"><img src="' + SUPABASE_URL + '/storage/v1/object/public/question-images/' + path + '" style="max-width:100%;max-height:120px;border-radius:6px;border:1px solid var(--border)"><button class="cm-pasted-remove" onclick="this.parentElement.remove()">&times;</button></div>';
+          }
+          if (typeof callback === 'function') callback(path);
+        }
+      });
+      break;
+    }
+  }
+}
+
 async function showCreatePost() {
   if (!currentUser) { alert('Please log in first.'); return; }
+  _cmPostImage = null;
   var h = '<h2 style="margin-bottom:16px">New Post</h2>';
   h += '<label style="font-size:.8125rem;font-weight:600;color:var(--muted);display:block;margin-bottom:4px">Lesson</label><select id="f-post-lesson" class="auth-input">';
   for (var ci = 0; ci < COURSES.length; ci++) {
@@ -1963,8 +2005,9 @@ async function showCreatePost() {
   }
   h += '</select>';
   h += '<label style="font-size:.8125rem;font-weight:600;color:var(--muted);display:block;margin-bottom:4px">Title</label><input id="f-post-title" class="auth-input" placeholder="What\'s your question?" maxlength="200">';
-  h += '<label style="font-size:.8125rem;font-weight:600;color:var(--muted);display:block;margin-bottom:4px">Description</label><textarea id="f-post-desc" class="auth-input" rows="4" placeholder="Explain your question in detail..." maxlength="10000"></textarea>';
-  h += '<label style="font-size:.8125rem;font-weight:600;color:var(--muted);display:block;margin-bottom:4px">Image (optional)</label><input id="f-post-img" type="file" accept="image/*" class="auth-input" style="padding:8px">';
+  h += '<label style="font-size:.8125rem;font-weight:600;color:var(--muted);display:block;margin-bottom:4px">Description</label><textarea id="f-post-desc" class="auth-input" rows="4" placeholder="Explain your question in detail... Paste an image (Ctrl+V) to add a screenshot" maxlength="10000" onpaste="handlePasteImage(event,\'cm-post-preview\',function(p){_cmPostImage=p})"></textarea>';
+  h += '<div id="cm-post-preview" style="margin-bottom:8px"></div>';
+  h += '<div style="font-size:.75rem;color:var(--muted);margin-bottom:8px">&#128247; Paste an image (Ctrl+V) into the description to attach it</div>';
   h += '<div class="admin-modal-footer"><button class="btn btn-primary" onclick="submitPost()">Post</button><button class="btn btn-ghost" onclick="hideModal()">Cancel</button></div>';
   showModal(h);
 }
@@ -1983,25 +2026,9 @@ async function submitPost() {
       }
     }
   }
-  var image_url = null;
-  var imgFile = document.getElementById('f-post-img')?.files?.[0];
-  if (imgFile) {
-    var compressed = await compressImage(imgFile, 1200, 0.8);
-    var path = 'community_' + Date.now() + '.jpg';
-    var { data: { session } } = await sb.auth.getSession();
-    var token = session?.access_token || '';
-    var xhr = new XMLHttpRequest();
-    xhr.open('POST', SUPABASE_URL + '/storage/v1/object/question-images/' + path);
-    xhr.setRequestHeader('authorization', 'Bearer ' + token);
-    xhr.setRequestHeader('x-upsert', 'true');
-    await new Promise(function(resolve) {
-      xhr.onload = function() { if (xhr.status >= 200 && xhr.status < 300) image_url = path; resolve(); };
-      xhr.onerror = function() { resolve(); };
-      xhr.send(compressed);
-    });
-  }
-  var { error } = await sb.from('community_posts').insert({ user_id: currentUser.id, lesson_id: lessonId, title: title, description: desc, image_url: image_url });
+  var { error } = await sb.from('community_posts').insert({ user_id: currentUser.id, lesson_id: lessonId, title: title, description: desc, image_url: _cmPostImage });
   if (error) { alert('Error: ' + error.message); return; }
+  _cmPostImage = null;
   hideModal();
   await loadCommunityPosts();
 }
@@ -2033,7 +2060,7 @@ async function showPostDetail(postId) {
   h += '</div>';
 
   h += '<div class="cm-comment-section"><h3 style="font-size:.9375rem;font-weight:700;margin-bottom:12px">Comments</h3>';
-  h += '<div class="cm-comment-form"><textarea id="f-new-comment-' + postId + '" placeholder="Write a comment..." rows="2"></textarea><button class="btn btn-primary btn-sm" style="align-self:flex-end;flex-shrink:0" onclick="addComment(' + postId + ',null)">Post</button></div>';
+  h += '<div class="cm-comment-form"><textarea id="f-new-comment-' + postId + '" placeholder="Write a comment... Paste an image (Ctrl+V) to attach" rows="2" onpaste="handlePasteImage(event,\'cm-comment-preview-' + postId + '\',function(p){document.getElementById(\'f-comment-img-' + postId + '\').value=p})"></textarea><input type="hidden" id="f-comment-img-' + postId + '" value=""><div style="flex-shrink:0;display:flex;flex-direction:column;gap:4px"><button class="btn btn-primary btn-sm" onclick="addComment(' + postId + ',null)">Post</button></div></div><div id="cm-comment-preview-' + postId + '" style="margin-bottom:8px"></div>';
   h += '<div id="cm-comments-' + postId + '"><div style="text-align:center;padding:24px;color:var(--muted);font-size:.875rem">Loading comments...</div></div></div>';
   h += '</div>';
   showModal(h);
@@ -2057,10 +2084,11 @@ function renderCommentTree(comments, parentId, postId) {
     var isOwner = currentUser && currentUser.id === c.user_id;
     var avatarL = (c.profiles?.name || 'U')[0].toUpperCase();
     var verified = c.is_verified_answer ? '<span class="cm-verified-badge">✓ Verified Answer</span>' : '';
+    var commentImg = c.image_url ? '<img src="' + SUPABASE_URL + '/storage/v1/object/public/question-images/' + esc(c.image_url) + '" style="max-width:100%;max-height:200px;border-radius:6px;border:1px solid var(--border);margin-top:6px" onclick="window.open(this.src)">' : '';
     html += '<div class="cm-comment">';
     html += '<div class="cm-comment-avatar">' + avatarL + '</div>';
     html += '<div class="cm-comment-body"><div class="cm-comment-header"><span class="cm-comment-author">' + esc(c.profiles?.name || 'User') + '</span>' + verified + '<span class="cm-comment-time">' + timeAgo(c.created_at) + '</span></div>';
-    html += '<div class="cm-comment-text">' + esc(c.content) + '</div>';
+    html += '<div class="cm-comment-text">' + esc(c.content) + commentImg + '</div>';
     html += '<div class="cm-comment-actions">';
     html += '<button onclick="showReplyForm(' + c.id + ',' + postId + ')">Reply</button>';
     if (isTeacher && !c.is_verified_answer) html += '<button onclick="markVerifiedAnswer(' + c.id + ',' + postId + ')" style="color:var(--success)">✓ Verify</button>';
@@ -2073,7 +2101,7 @@ function renderCommentTree(comments, parentId, postId) {
       var replies = renderCommentTree(comments, c.id, postId);
       if (replies) html += '<div class="cm-replies">' + replies + '</div>';
     }
-    html += '<div id="cm-reply-form-' + c.id + '" style="display:none" class="cm-comment-form" style="margin-top:8px;margin-bottom:8px"><textarea id="f-reply-' + c.id + '" placeholder="Write a reply..." rows="1"></textarea><button class="btn btn-sm btn-primary" style="align-self:flex-end" onclick="addComment(' + postId + ',' + c.id + ')">Reply</button></div>';
+    html += '<div id="cm-reply-form-' + c.id + '" style="display:none" class="cm-comment-form" style="margin-top:8px;margin-bottom:8px"><textarea id="f-reply-' + c.id + '" placeholder="Write a reply... Paste image (Ctrl+V) to attach" rows="1" onpaste="handlePasteImage(event,\'cm-reply-preview-' + c.id + '\',function(p){document.getElementById(\'f-reply-img-' + c.id + '\').value=p})"></textarea><input type="hidden" id="f-reply-img-' + c.id + '" value=""><button class="btn btn-sm btn-primary" style="align-self:flex-end" onclick="addComment(' + postId + ',' + c.id + ')">Reply</button></div><div id="cm-reply-preview-' + c.id + '" style="margin-bottom:8px;margin-left:38px"></div>';
     html += '</div></div>';
   });
   return html;
@@ -2088,15 +2116,20 @@ async function addComment(postId, parentId) {
   var inputId = parentId ? 'f-reply-' + parentId : 'f-new-comment-' + postId;
   var content = document.getElementById(inputId)?.value?.trim();
   if (!content) { alert('Please write something.'); return; }
+  var imgInputId = parentId ? 'f-reply-img-' + parentId : 'f-comment-img-' + postId;
+  var image_url = (document.getElementById(imgInputId)?.value) || null;
   var { data: banned } = await sb.from('banned_words').select('word');
   if (banned) {
     for (var b = 0; b < banned.length; b++) {
       if (content.toLowerCase().includes(banned[b].word.toLowerCase())) { alert('Your comment contains inappropriate language.'); return; }
     }
   }
-  var { error } = await sb.from('community_comments').insert({ post_id: postId, user_id: currentUser.id, content: content, parent_id: parentId || null });
+  var { error } = await sb.from('community_comments').insert({ post_id: postId, user_id: currentUser.id, content: content, parent_id: parentId || null, image_url: image_url });
   if (error) { alert('Error: ' + error.message); return; }
   document.getElementById(inputId).value = '';
+  if (imgInputId) { var imgEl = document.getElementById(imgInputId); if (imgEl) imgEl.value = ''; }
+  var previewId = parentId ? 'cm-reply-preview-' + parentId : 'cm-comment-preview-' + postId;
+  var prev = document.getElementById(previewId); if (prev) prev.innerHTML = '';
   var { data: post } = await sb.from('community_posts').select('user_id').eq('id', postId).single();
   if (post && post.user_id !== currentUser.id) {
     var notifType = parentId ? 'reply' : 'comment';
