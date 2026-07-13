@@ -457,6 +457,10 @@ async function verifyMFA() {
 function cancelMFA() { sb.auth.signOut(); adminUser = null; document.getElementById('admin-mfa').classList.add('hidden'); document.getElementById('admin-login').classList.remove('hidden'); }
 
 async function enrollMFA() {
+  const { data: existing } = await sb.auth.mfa.listFactors();
+  for (const f of (existing.all || [])) {
+    if (f.factor_type === 'totp') await sb.auth.mfa.unenroll({ factorId: f.id });
+  }
   const { data, error } = await sb.auth.mfa.enroll({ factorType: 'totp', friendlyName: 'admin-totp' });
   if (error) { alert('MFA error: ' + error.message); return; }
   pendingEnrollFactorId = data.id;
