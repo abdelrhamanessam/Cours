@@ -447,7 +447,11 @@ async function verifyMFA() {
   const code = document.getElementById('admin-mfa-code').value.replace(/\D/g, '');
   const errEl = document.getElementById('admin-mfa-error'); errEl.textContent = '';
   if (code.length !== 6) { errEl.textContent = 'Enter a valid 6-digit code'; return; }
-  const { error } = await sb.auth.mfa.verify({ factorId: pendingMFAChallenge.factor_id, challengeId: pendingMFAChallenge.id, code });
+  if (!pendingMFAChallenge) { errEl.textContent = 'Session expired. Login again.'; cancelMFA(); return; }
+  const fid = pendingMFAChallenge.factor_id || pendingMFAChallenge.factorId;
+  const cid = pendingMFAChallenge.id;
+  if (!fid || !cid) { errEl.textContent = 'Invalid challenge data. Login again.'; cancelMFA(); return; }
+  const { error } = await sb.auth.mfa.verify({ factorId: fid, challengeId: cid, code });
   if (error) { errEl.textContent = error.message; return; }
   document.getElementById('admin-mfa').classList.add('hidden');
   document.getElementById('admin-dashboard').classList.remove('hidden');
