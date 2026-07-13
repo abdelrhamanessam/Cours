@@ -776,6 +776,9 @@ details[open] .rv-mistake-summary::before{transform:rotate(90deg)}
   .section-header{margin-bottom:40px}
   .steps-grid{grid-template-columns:1fr;gap:24px}
   .features-grid{grid-template-columns:1fr}
+  /* Course / Lesson rows — fix Start button overflow */
+  .course-section-row{flex-wrap:wrap;row-gap:8px}
+  .course-section-row .cs-open{margin-left:auto}
   /* Video player — bigger touch targets */
   .vp-bottom{padding:4px 8px 8px;gap:6px}
   .vp-timeline-wrap{padding:0 8px}
