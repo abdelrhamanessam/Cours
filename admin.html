@@ -1860,7 +1860,7 @@ function renderStudents(search, profiles, courses) {
       html += '<tr><td><div class="student-name">' + esc(name) + '</div><span class="cell-mono" style="color:var(--muted);font-size:.75rem">' + p.id.slice(0,8) + '</span></td>';
       html += '<td><div style="display:flex;align-items:center;gap:8px"><div style="flex:1;max-width:120px;height:6px;background:var(--border);border-radius:99px;overflow:hidden"><div style="height:100%;width:' + pct + '%;background:var(--primary);border-radius:99px;transition:width .3s"></div></div><span class="cell-mono">' + pct + '%</span></div></td>';
       html += '<td><span class="cell-mono">' + completedLessons + '/' + totalLessons + '</span>' + (hwAvg !== null ? '<br><span style="font-size:.75rem;color:var(--muted)">Avg HW: ' + hwAvg + '%</span>' : '') + '</td>';
-      html += '<td style="text-align:right"><span class="tag tag-' + (pct >= 80 ? 'success' : pct >= 40 ? 'warning' : 'neutral') + '">' + (pct >= 80 ? 'On track' : pct >= 40 ? 'Progressing' : 'Getting started') + '</span></td></tr>';
+      html += '<td style="text-align:right"><span class="tag tag-' + (pct >= 80 ? 'success' : pct >= 40 ? 'warning' : 'neutral') + '">' + (pct >= 80 ? 'On track' : pct >= 40 ? 'Progressing' : 'Getting started') + '</span> <button class="btn btn-ghost btn-sm" style="color:var(--error);margin-left:8px" onclick="resetStudentProgress(\'' + p.id + '\',\'' + esc(name.replace(/'/g,"\\'")) + '\')">Reset</button></td></tr>';
     });
     html += '</tbody></table></div>';
   }
@@ -1889,6 +1889,23 @@ function exportCSV() {
   });
   const blob = new Blob([csv], { type: 'text/csv' });
   const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = 'student_progress.csv'; a.click();
+}
+
+async function resetStudentProgress(userId, studentName) {
+  if (!confirm('Reset ALL progress for "' + studentName + '"?\n\nThis will delete:\n• All course progress\n• All exam attempts\n• All final exam results\n\nThis cannot be undone.')) return;
+  if (!confirm('Are you sure? This will permanently remove all learning data for this student.')) return;
+  try {
+    await Promise.all([
+      sb.from('progress').delete().eq('user_id', userId),
+      sb.from('exam_attempts').delete().eq('user_id', userId),
+      sb.from('exam_student_pool').delete().eq('user_id', userId),
+      sb.from('final_exam_attempts').delete().eq('user_id', userId)
+    ]);
+    alert('Progress reset successfully for ' + studentName);
+    loadAdminStudents();
+  } catch(e) {
+    alert('Error resetting progress: ' + e.message);
+  }
 }
 
 // ========== ADMINS ==========

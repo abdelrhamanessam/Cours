@@ -783,7 +783,33 @@ var _courseThumbSvgs = {
   calculus: '<svg viewBox="0 0 280 150" fill="none"><rect width="280" height="150" rx="16" fill="#FAF7F0"/><line x1="35" y1="75" x2="245" y2="75" stroke="#13294B" stroke-width="1" opacity=".15"/><path d="M40 90 C60 95 80 40 100 35 C120 30 140 110 160 105 C180 100 200 50 220 45 C240 40 250 60 255 70" stroke="#D4A017" stroke-width="2.5" fill="none"/><rect x="80" y="35" width="40" height="40" rx="4" fill="#13294B" fill-opacity=".04" stroke="#13294B" stroke-width="1" opacity=".15"/><text x="85" y="60" font-family="serif" font-size="11" fill="#13294B" opacity=".3">∫</text><path d="M60 20 L65 30 L55 30 Z" fill="#D4A017" opacity=".4"/><path d="M200 130 L205 120 L195 120 Z" fill="#D4A017" opacity=".4"/><circle cx="145" cy="70" r="3" fill="#13294B"/><line x1="145" y1="70" x2="145" y2="75" stroke="#D4A017" stroke-width="1.5"/><text x="140" y="68" font-family="monospace" font-size="8" fill="#D4A017">f\'</text><path d="M210 82 C220 87 230 82 235 78" stroke="#13294B" stroke-width="1" fill="none" opacity=".3"/></svg>'
 };
 
-function renderCourses() {
+async function refreshStudentData() {
+  if (!currentUser) return;
+  var [progR, attemptsR, finalR] = await Promise.all([
+    sb.from('progress').select('*').eq('user_id', currentUser.id),
+    sb.from('exam_attempts').select('*').eq('user_id', currentUser.id).order('created_at'),
+    sb.from('final_exam_attempts').select('*').eq('user_id', currentUser.id).maybeSingle()
+  ]);
+  Progress = {};
+  if (progR.data) progR.data.forEach(function(p) {
+    Progress[p.lesson_id] = {
+      hwScore: p.hw_score, hwResult: p.hw_result,
+      completed: p.exam_completed, score: p.exam_score,
+      lastResult: p.exam_result,
+      lastAttempt: p.updated_at ? new Date(p.updated_at).getTime() : undefined,
+      progress: p.exam_completed ? 100 : undefined, inProgress: false
+    };
+  });
+  window._examAttempts = {};
+  if (attemptsR.data) attemptsR.data.forEach(function(a) {
+    if (!window._examAttempts[a.lesson_id]) window._examAttempts[a.lesson_id] = [];
+    window._examAttempts[a.lesson_id].push(a);
+  });
+  window._finalExam = finalR.data || null;
+}
+
+async function renderCourses() {
+  await refreshStudentData();
   const grid = document.getElementById('courses-grid');
   if (!grid) return;
   const filterEl = document.getElementById('courses-filter');
@@ -1295,7 +1321,8 @@ function selectAnswer(qi, oi) {
   if (txt) txt.textContent = answered + '/' + quizState.total;
 }
 
-function submitAll() {
+async function submitAll() {
+  try {
   if (!quizState || quizState.submitted) return;
   quizState.submitted = true;
   let score = 0;
@@ -1382,24 +1409,26 @@ function submitAll() {
       var found = getLesson(lessonId);
       var attPass = found ? found.lesson.امتحان.attemptPassScore : 60;
       var passed = pct >= attPass;
-      (async function() {
-        await sb.from('exam_attempts').update({
-          score: score, total: total, answers: result, passed: passed
-        }).eq('id', attemptId);
-        // Check if all attempts used → auto-complete
-        var atts = (window._examAttempts[lessonId] || []).filter(function(a) { return a.id !== attemptId; });
-        atts.push({ id: attemptId, attempt_number: (window._examAttempts[lessonId] || []).length + 1, score: score, total: total, passed: passed, answers: result });
-        window._examAttempts[lessonId] = atts;
-        var foundL = getLesson(lessonId);
-        if (foundL && foundL.lesson.امتحان.totalQuestions > 0 && atts.length >= foundL.lesson.امتحان.maxAttempts) {
-          Progress[lessonId].completed = true;
-          Progress[lessonId].progress = 100;
-          Progress[lessonId].score = pct;
-          Progress[lessonId].lastAttempt = Date.now();
-          Progress[lessonId].lastResult = result;
-          saveProgress();
-        }
-      })();
+      // Update local cache synchronously with correct attempt_number
+      var oldEntry = (window._examAttempts[lessonId] || []).find(function(a) { return a.id === attemptId; });
+      var actualAttNum = oldEntry ? oldEntry.attempt_number : ((window._examAttempts[lessonId] || []).length + 1);
+      var atts = (window._examAttempts[lessonId] || []).filter(function(a) { return a.id !== attemptId; });
+      atts.push({ id: attemptId, attempt_number: actualAttNum, score: score, total: total, passed: passed, answers: result });
+      window._examAttempts[lessonId] = atts;
+      // Update DB
+      await sb.from('exam_attempts').update({
+        score: score, total: total, answers: result, passed: passed
+      }).eq('id', attemptId);
+      var foundL = getLesson(lessonId);
+      if (foundL && foundL.lesson.امتحان.totalQuestions > 0 && atts.length >= foundL.lesson.امتحان.maxAttempts) {
+        if (!Progress[lessonId]) Progress[lessonId] = {};
+        Progress[lessonId].completed = true;
+        Progress[lessonId].progress = 100;
+        Progress[lessonId].score = pct;
+        Progress[lessonId].lastAttempt = Date.now();
+        Progress[lessonId].lastResult = result;
+        saveProgress();
+      }
     } else {
       // Legacy exam
       Progress[lessonId].completed = true;
@@ -1411,6 +1440,7 @@ function submitAll() {
     }
     renderReport(lessonId, type, quizState.questions, result);
   }
+  } catch(e) { console.error('submitAll error:', e); alert('Error submitting: ' + e.message); }
 }
 
 function renderReport(lessonId, type, questions, result) {
@@ -1664,26 +1694,46 @@ async function loadBatchQuestions(ids) {
   return qs;
 }
 
+var _dynamicExamRunning = false;
 async function startDynamicExam(lid) {
   if (!currentUser) { alert('Please log in.'); return; }
+  if (_dynamicExamRunning) return;
+  if (quizState && !quizState.submitted) { alert('You already have an exam in progress. Please finish it first.'); return; }
+  _dynamicExamRunning = true;
+  try {
   var found = getLesson(lid);
   if (!found) return;
   currentLessonId = lid;
   await initQuestionPool(lid);
   var remaining = await getPoolUnseenCount(lid);
   if (remaining === 0) {
-    alert('No more questions available in the pool.');
-    return;
+    var { count: poolCount } = await sb.from('exam_student_pool')
+      .select('id', { count: 'exact', head: true })
+      .eq('user_id', currentUser.id)
+      .eq('lesson_id', lid);
+    var totalQ = found.lesson.امتحان.totalQuestions;
+    if (poolCount !== totalQ) {
+      await sb.from('exam_student_pool').delete()
+        .eq('user_id', currentUser.id).eq('lesson_id', lid);
+      await initQuestionPool(lid);
+    } else {
+      await sb.from('exam_student_pool')
+        .update({ seen: false, attempt_id: null })
+        .eq('user_id', currentUser.id)
+        .eq('lesson_id', lid);
+    }
+    remaining = await getPoolUnseenCount(lid);
+    if (remaining === 0) {
+      alert('No questions available. Please add questions to the exam pool first.');
+      return;
+    }
   }
   var selected = await selectAttemptQuestions(lid);
   if (!selected || selected.length === 0) return;
   var qs = await loadBatchQuestions(selected);
   if (qs.length === 0) { alert('No questions.'); return; }
-  // Get attempt number
   var attempts = (window._examAttempts[lid] || []);
   var attNum = attempts.length + 1;
-  // Create attempt record in DB
-  // Store question order for reconstructing attempt view
   var qOrder = selected.map(function(s) { return { question_type: s.question_type, question_id: s.question_id }; });
   var { data: att } = await sb.from('exam_attempts').insert({
     user_id: currentUser.id, lesson_id: lid,
@@ -1693,7 +1743,6 @@ async function startDynamicExam(lid) {
   }).select('id').single();
   if (!att) { alert('Failed to create attempt.'); return; }
   var attemptId = att.id;
-  // Mark pool items as seen
   for (var m = 0; m < selected.length; m++) {
     await sb.from('exam_student_pool').update({ seen: true, attempt_id: attemptId })
       .eq('user_id', currentUser.id)
@@ -1701,10 +1750,8 @@ async function startDynamicExam(lid) {
       .eq('question_type', selected[m].question_type)
       .eq('question_id', selected[m].question_id);
   }
-  // Update local cache
   if (!window._examAttempts[lid]) window._examAttempts[lid] = [];
   window._examAttempts[lid].push({ id: attemptId, attempt_number: attNum, score: 0, total: qs.length, passed: false, answers: null });
-  // Start quiz
   quizState = { lessonId: lid, type: 'exam', questions: qs, total: qs.length, answers: new Array(qs.length).fill(-1), submitted: false, attemptId: attemptId };
   var label = document.getElementById('quiz-type-label');
   if (label) label.textContent = 'Attempt ' + attNum;
@@ -1714,6 +1761,8 @@ async function startDynamicExam(lid) {
   if (txt) txt.textContent = '0/' + qs.length;
   showView('quiz');
   renderAllQuestions();
+  } catch(e) { console.error('startDynamicExam error:', e); alert('Error starting exam: ' + e.message); }
+  finally { _dynamicExamRunning = false; }
 }
 
 async function viewExamAttempt(lid, attemptId) {
