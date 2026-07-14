@@ -373,52 +373,95 @@ async function updateProfileLevel(level) {
 }
 
 function renderProfile() {
-  const el = document.getElementById('profile-card');
-  if (!el) return;
+  const container = document.getElementById('pv-content');
+  if (!container) return;
   if (!currentUser) {
-    document.getElementById('profile-avatar').innerHTML = '?';
-    document.getElementById('profile-name').textContent = 'Not signed in';
-    document.getElementById('profile-email').textContent = 'Sign in to see your progress';
-    document.getElementById('pm-quizzes').textContent = '0';
-    document.getElementById('pm-avg').textContent = '—';
-    document.getElementById('profile-progress-list').innerHTML = '<p style="color:var(--muted);font-size:.875rem"><a href="#" onclick="showAuthModal();return false">Sign in</a> to track progress.</p>';
-    document.getElementById('profile-level-wrap').innerHTML = '';
+    container.innerHTML =
+      '<div class="pv-photo-wrap"><div class="pv-photo" id="profile-avatar">?</div></div>' +
+      '<h2 class="pv-name">Not signed in</h2>' +
+      '<p class="pv-email">Sign in to see your progress</p>' +
+      '<p style="color:var(--muted);font-size:.875rem;margin-top:16px"><a href="#" onclick="showAuthModal();return false">Sign in</a> to track progress.</p>';
     return;
   }
-  const init = (userProfile?.name || 'U').charAt(0).toUpperCase();
-  const avatarEl = document.getElementById('profile-avatar');
-  avatarEl.textContent = '';
-  if (userProfile?.profile_pic) {
-    var img = document.createElement('img');
-    img.src = userProfile.profile_pic;
-    img.alt = 'Profile photo';
-    avatarEl.appendChild(img);
-  } else {
-    avatarEl.textContent = init;
-  }
-  document.getElementById('profile-name').textContent = userProfile?.name || 'User';
-  document.getElementById('profile-email').textContent = currentUser.email || '';
   const level = userProfile?.level || 'sec1';
-  document.getElementById('profile-level-wrap').innerHTML = '';
-  document.getElementById('profile-level-wrap').innerHTML = '<div class="cm-dropdown" id="profile-level-dropdown"><button class="cm-dropdown-trigger" onclick="toggleProfileLevelDropdown()" type="button"><span id="profile-level-label">'+(level==='sec1'?'Secondary 1':level==='sec2'?'Secondary 2':'Secondary 3')+'</span><svg class="cm-dropdown-arrow" width="10" height="6" viewBox="0 0 10 6" fill="none"><path d="M1 1l4 4 4-4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg></button><div class="cm-dropdown-menu" id="profile-level-menu"><div class="cm-dropdown-item'+(level==='sec1'?' active':'')+'" data-value="sec1" onclick="selectProfileLevel(\'sec1\')">Secondary 1</div><div class="cm-dropdown-item'+(level==='sec2'?' active':'')+'" data-value="sec2" onclick="selectProfileLevel(\'sec2\')">Secondary 2</div><div class="cm-dropdown-item'+(level==='sec3'?' active':'')+'" data-value="sec3" onclick="selectProfileLevel(\'sec3\')">Secondary 3</div></div></div>';
-  const entries = Object.entries(Progress);
-  const done = entries.filter(([,v]) => v.completed).length;
-  const avg = entries.filter(([,v]) => v.score != null);
-  const avgScore = avg.length ? Math.round(avg.reduce((s, [,v]) => s + v.score, 0) / avg.length) : null;
   const levelCourses = COURSES.filter(c => c.level === level);
+  const levelLessonIds = new Set();
+  levelCourses.forEach(c => c.lessons.forEach(l => levelLessonIds.add(l.id)));
+  const entries = Object.entries(Progress);
+
+  // Done count — only current level
+  const done = entries.filter(([id, v]) => v.completed && levelLessonIds.has(Number(id))).length;
   const totalLessons = levelCourses.reduce((s, c) => s + c.lessons.length, 0);
-  document.getElementById('pm-quizzes').textContent = done + '/' + totalLessons;
-  document.getElementById('pm-avg').textContent = avgScore != null ? avgScore + '%' : '—';
-  let ph = '';
-  levelCourses.forEach(c => {
-    c.lessons.forEach(l => {
-      const p = Progress[l.id];
-      const score = p?.score || 0;
-      const cls = p?.completed ? '' : ' pending';
-      ph += '<div class="pv-progress-row' + cls + '"><span class="pv-progress-row-title">' + esc(l.title) + '</span><span class="pv-progress-row-score">' + (p?.completed ? score + '%' : '—') + '</span><div class="pv-progress-row-bar"><div class="pv-progress-row-fill" style="width:' + (p?.completed ? score : 0) + '%"></div></div></div>';
-    });
+
+  // Avg score — only current level
+  const levelAvg = entries.filter(([id, v]) => v.score != null && levelLessonIds.has(Number(id)));
+  const avgScore = levelAvg.length ? Math.round(levelAvg.reduce((s, [,v]) => s + v.score, 0) / levelAvg.length) : null;
+
+  // Exam stats — from _examAttempts
+  var allAttempts = [];
+  for (var lid in window._examAttempts) {
+    window._examAttempts[lid].forEach(function(a) { allAttempts.push(a); });
+  }
+  var totalAttempts = allAttempts.length;
+  var passed = allAttempts.filter(function(a) { return a.total > 0 && (a.score / a.total) >= 0.6; }).length;
+  var passRate = totalAttempts > 0 ? Math.round(passed / totalAttempts * 100) : null;
+  var bestPct = 0;
+  allAttempts.forEach(function(a) {
+    if (a.total > 0) { var p = Math.round(a.score / a.total * 100); if (p > bestPct) bestPct = p; }
   });
-  document.getElementById('profile-progress-list').innerHTML = ph ? '<div class="pv-progress-list">' + ph + '</div>' : '<p style="color:var(--muted);font-size:.875rem">Complete a lesson to see progress here.</p>';
+
+  // Avatar
+  const init = (userProfile?.name || 'U').charAt(0).toUpperCase();
+  var avatarHtml = userProfile?.profile_pic
+    ? '<img src="' + esc(userProfile.profile_pic) + '" alt="Profile photo">'
+    : init;
+
+  // Level dropdown
+  var levelHtml = '<div class="cm-dropdown" id="profile-level-dropdown"><button class="cm-dropdown-trigger" onclick="toggleProfileLevelDropdown()" type="button"><span id="profile-level-label">'+(level==='sec1'?'Secondary 1':level==='sec2'?'Secondary 2':'Secondary 3')+'</span><svg class="cm-dropdown-arrow" width="10" height="6" viewBox="0 0 10 6" fill="none"><path d="M1 1l4 4 4-4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg></button><div class="cm-dropdown-menu" id="profile-level-menu"><div class="cm-dropdown-item'+(level==='sec1'?' active':'')+'" data-value="sec1" onclick="selectProfileLevel(\'sec1\')">Secondary 1</div><div class="cm-dropdown-item'+(level==='sec2'?' active':'')+'" data-value="sec2" onclick="selectProfileLevel(\'sec2\')">Secondary 2</div><div class="cm-dropdown-item'+(level==='sec3'?' active':'')+'" data-value="sec3" onclick="selectProfileLevel(\'sec3\')">Secondary 3</div></div></div>';
+
+  // Lesson progress — grouped by course
+  var progressHtml = '';
+  levelCourses.forEach(function(c) {
+    var courseDone = c.lessons.filter(function(l) { return Progress[l.id]?.completed; }).length;
+    progressHtml += '<div class="pv-course-group"><div class="pv-course-group-title">' + esc(c.title) + ' <span class="pv-course-group-count">' + courseDone + '/' + c.lessons.length + '</span></div>';
+    c.lessons.forEach(function(l) {
+      var p = Progress[l.id];
+      var score = p?.score || 0;
+      var cls = p?.completed ? '' : ' pending';
+      progressHtml += '<div class="pv-progress-row' + cls + '"><span class="pv-progress-row-title">' + esc(l.title) + '</span><span class="pv-progress-row-score">' + (p?.completed ? score + '%' : '—') + '</span><div class="pv-progress-row-bar"><div class="pv-progress-row-fill" style="width:' + (p?.completed ? score : 0) + '%"></div></div></div>';
+    });
+    progressHtml += '</div>';
+  });
+
+  container.innerHTML =
+    '<div class="pv-photo-wrap"><div class="pv-photo" id="profile-avatar">' + avatarHtml + '</div>' +
+    '<label class="pv-photo-edit" title="Change photo"><input type="file" accept="image/*" hidden onchange="uploadProfilePic(event)"><svg width="20" height="20" viewBox="0 0 20 20" fill="none"><path d="M10 3a1 1 0 0 1 1 1v5h5a1 1 0 1 1 0 2h-5v5a1 1 0 1 1-2 0v-5H4a1 1 0 1 1 0-2h5V4a1 1 0 0 1 1-1z" fill="currentColor"/></svg></label></div>' +
+    '<h2 class="pv-name">' + esc(userProfile?.name || 'User') + '</h2>' +
+    '<p class="pv-email">' + esc(currentUser.email || '') + '</p>' +
+    '<div class="pv-level">' + levelHtml + '</div>' +
+    // Stats row
+    '<div class="pv-stats"><div class="pv-stat"><span class="pv-stat-num">' + done + '/' + totalLessons + '</span><span class="pv-stat-lbl">Lessons Done</span></div>' +
+    '<div class="pv-stat-divider"></div>' +
+    '<div class="pv-stat"><span class="pv-stat-num">' + (avgScore != null ? avgScore + '%' : '—') + '</span><span class="pv-stat-lbl">Avg Score</span></div></div>' +
+    // Account settings
+    '<div class="pv-section"><h3 class="pv-section-title">Account Settings</h3>' +
+    '<div class="pv-setting"><span class="pv-setting-label">Email</span><span class="pv-setting-value">' + esc(currentUser.email || '') + '</span>' +
+    (currentUser.email_confirmed_at ? '<span class="pv-verified-badge">✓ Verified</span>' : '<span class="pv-unverified-badge">Unverified</span>') + '</div>' +
+    '<div class="pv-setting"><span class="pv-setting-label">Display Name</span><span class="pv-setting-value" id="pv-name-display">' + esc(userProfile?.name || 'User') + '</span><button class="btn btn-ghost btn-xs" onclick="editProfileName()">Edit</button></div>' +
+    '<div class="pv-setting"><span class="pv-setting-label">Password</span><span class="pv-setting-value">••••••••</span><button class="btn btn-ghost btn-xs" onclick="showPasswordForm()">Change</button></div>' +
+    '<div id="pv-pw-form" style="display:none;margin-top:10px"><input type="password" id="pv-new-pw" class="pv-input" placeholder="New password" style="margin-bottom:8px;display:block;width:100%"><input type="password" id="pv-confirm-pw" class="pv-input" placeholder="Confirm password" style="margin-bottom:8px;display:block;width:100%"><button class="btn btn-primary btn-sm" onclick="changePassword()">Save</button> <button class="btn btn-ghost btn-sm" onclick="closePasswordForm()">Cancel</button></div></div>' +
+    // Exam stats
+    '<div class="pv-section"><h3 class="pv-section-title">Exam Statistics</h3>' +
+    '<div class="pv-stats"><div class="pv-stat"><span class="pv-stat-num">' + totalAttempts + '</span><span class="pv-stat-lbl">Attempts</span></div>' +
+    '<div class="pv-stat-divider"></div>' +
+    '<div class="pv-stat"><span class="pv-stat-num">' + (passRate != null ? passRate + '%' : '—') + '</span><span class="pv-stat-lbl">Pass Rate</span></div>' +
+    '<div class="pv-stat-divider"></div>' +
+    '<div class="pv-stat"><span class="pv-stat-num">' + (bestPct > 0 ? bestPct + '%' : '—') + '</span><span class="pv-stat-lbl">Best Score</span></div></div></div>' +
+    // Lesson progress
+    '<div class="pv-section"><h3 class="pv-section-title">Lesson Progress</h3>' +
+    (progressHtml || '<p style="color:var(--muted);font-size:.875rem">Complete a lesson to see progress here.</p>') + '</div>' +
+    // Sign out
+    '<button class="btn btn-outline pv-signout" onclick="signOut()">Sign Out</button>';
 }
 
 function compressImage(file, maxW, quality) {
@@ -484,6 +527,38 @@ function uploadProfilePic(event) {
       xhr.send(formData);
     });
   });
+}
+
+function editProfileName() {
+  var newName = prompt('Enter your display name:', userProfile?.name || '');
+  if (!newName || newName.trim() === '' || newName === userProfile?.name) return;
+  (async function() {
+    var { error } = await sb.from('profiles').update({ name: newName.trim() }).eq('id', currentUser.id);
+    if (error) { alert(error.message); return; }
+    if (userProfile) userProfile.name = newName.trim();
+    renderProfile();
+    updateAuthUI();
+  })();
+}
+function showPasswordForm() {
+  var f = document.getElementById('pv-pw-form');
+  if (f) f.style.display = 'block';
+}
+function closePasswordForm() {
+  var f = document.getElementById('pv-pw-form');
+  if (f) { f.style.display = 'none'; document.getElementById('pv-new-pw').value = ''; document.getElementById('pv-confirm-pw').value = ''; }
+}
+function changePassword() {
+  var pw = document.getElementById('pv-new-pw').value;
+  var confirm = document.getElementById('pv-confirm-pw').value;
+  if (!pw || pw.length < 6) { alert('Password must be at least 6 characters.'); return; }
+  if (pw !== confirm) { alert('Passwords do not match.'); return; }
+  (async function() {
+    var { error } = await sb.auth.updateUser({ password: pw });
+    if (error) { alert(error.message); return; }
+    alert('Password updated successfully.');
+    closePasswordForm();
+  })();
 }
 
 // ============ SMART REVIEW ============
@@ -806,7 +881,7 @@ function renderPlatform() {
   });
   body += '</div></div>';
   document.getElementById('dash-content').innerHTML = body || '<div style="text-align:center;padding:48px;color:var(--muted)">Start a course to see your progress here.</div>';
-  // Draw performance chart with sample data
+  // Draw performance chart
   setTimeout(function() {
     var canvas = document.getElementById('pf-canvas');
     if (canvas) drawPerfChart(canvas);
@@ -814,21 +889,28 @@ function renderPlatform() {
 }
 
 function drawPerfChart(canvas) {
+  // Build weeks from real exam attempt data
+  var now = new Date();
   var weeks = [];
   for (var w = 0; w < 4; w++) {
-    var days = 3 + Math.floor(Math.random() * 3);
-    var sc = [];
-    for (var d = 0; d < days; d++) {
-      var base = 35 + w * 12;
-      sc.push(Math.min(100, Math.max(15, base + Math.floor(Math.random() * 30) - 10)));
+    var weekStart = new Date(now);
+    weekStart.setDate(weekStart.getDate() - (w + 1) * 7);
+    var weekEnd = new Date(now);
+    weekEnd.setDate(weekEnd.getDate() - w * 7);
+    var scores = [];
+    for (var lid in window._examAttempts) {
+      window._examAttempts[lid].forEach(function(a) {
+        var d = new Date(a.created_at);
+        if (d >= weekStart && d < weekEnd && a.total > 0) {
+          scores.push(Math.round(a.score / a.total * 100));
+        }
+      });
     }
-    var avg = Math.round(sc.reduce(function(s, v) { return s + v; }, 0) / sc.length);
-    weeks.push({ label: 'Week ' + (w + 1), scores: sc, avg: avg });
+    var avg = scores.length ? Math.round(scores.reduce(function(s, v) { return s + v; }, 0) / scores.length) : null;
+    weeks.unshift({ label: 'Week ' + (w + 1), scores: scores, avg: avg });
   }
-  var allA = weeks.map(function(w) { return w.avg; });
-  var oAvg = Math.round(allA.reduce(function(s, v) { return s + v; }, 0) / allA.length);
-  var chg = allA[allA.length - 1] - allA[0];
-  // Setup canvas
+  // Filter out weeks with no data from display
+  var hasData = weeks.some(function(w) { return w.avg != null; });
   var dpr = window.devicePixelRatio || 1;
   var W = canvas.offsetWidth;
   var H = 280;
@@ -847,6 +929,16 @@ function drawPerfChart(canvas) {
   ctx.clearRect(0, 0, W, H);
   ctx.fillStyle = bg;
   ctx.fillRect(0, 0, W, H);
+  if (!hasData) {
+    ctx.fillStyle = mut;
+    ctx.font = '14px Inter, sans-serif';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText('No exam data yet — complete a lesson exam to see your performance.', W / 2, H / 2);
+    var se = document.getElementById('pf-stats');
+    if (se) se.innerHTML = '';
+    return;
+  }
   // Grid
   ctx.strokeStyle = brd;
   ctx.lineWidth = 1;
@@ -863,46 +955,52 @@ function drawPerfChart(canvas) {
     ctx.setLineDash([5, 5]);
   }
   ctx.setLineDash([]);
-  // Plot points
-  var pts = weeks.map(function(week, wi) {
-    var x = pad.left + (wi / (weeks.length - 1)) * cw;
-    return { x: x, y: pad.top + ch - (week.avg / 100) * ch, week: week };
+  // Plot points — only weeks with data
+  var pts = [];
+  var validWeeks = weeks.filter(function(w) { return w.avg != null; });
+  validWeeks.forEach(function(week, wi) {
+    var x = pad.left + (wi / Math.max(validWeeks.length - 1, 1)) * cw;
+    pts.push({ x: x, y: pad.top + ch - (week.avg / 100) * ch, week: week });
   });
-  // Line
-  ctx.strokeStyle = prim;
-  ctx.lineWidth = 3;
-  ctx.lineJoin = 'round';
-  ctx.lineCap = 'round';
-  ctx.beginPath();
-  pts.forEach(function(p, i) { if (i === 0) ctx.moveTo(p.x, p.y); else ctx.lineTo(p.x, p.y); });
-  ctx.stroke();
-  // Dots + labels
-  pts.forEach(function(p) {
-    // Outer circle
-    ctx.beginPath(); ctx.arc(p.x, p.y, 8, 0, Math.PI * 2); ctx.fillStyle = '#fff'; ctx.fill(); ctx.strokeStyle = prim; ctx.lineWidth = 3; ctx.stroke();
-    // Inner dot
-    ctx.beginPath(); ctx.arc(p.x, p.y, 4, 0, Math.PI * 2); ctx.fillStyle = prim; ctx.fill();
-    // Score above dot
-    ctx.fillStyle = ink;
-    ctx.font = 'bold 16px Inter, sans-serif';
-    ctx.textAlign = 'center';
-    ctx.textBaseline = 'bottom';
-    ctx.fillText(p.week.avg + '%', p.x, p.y - 16);
-    // Week label below
-    ctx.fillStyle = mut;
-    ctx.font = '13px Inter, sans-serif';
-    ctx.textBaseline = 'top';
-    ctx.fillText(p.week.label, p.x, pad.top + ch + 8);
-    // Session count
-    ctx.fillText(p.week.scores.length + ' sessions', p.x, pad.top + ch + 26);
-  });
+  if (pts.length > 0) {
+    // Line
+    ctx.strokeStyle = prim;
+    ctx.lineWidth = 3;
+    ctx.lineJoin = 'round';
+    ctx.lineCap = 'round';
+    ctx.beginPath();
+    pts.forEach(function(p, i) { if (i === 0) ctx.moveTo(p.x, p.y); else ctx.lineTo(p.x, p.y); });
+    ctx.stroke();
+    // Dots + labels
+    pts.forEach(function(p) {
+      ctx.beginPath(); ctx.arc(p.x, p.y, 8, 0, Math.PI * 2); ctx.fillStyle = '#fff'; ctx.fill(); ctx.strokeStyle = prim; ctx.lineWidth = 3; ctx.stroke();
+      ctx.beginPath(); ctx.arc(p.x, p.y, 4, 0, Math.PI * 2); ctx.fillStyle = prim; ctx.fill();
+      ctx.fillStyle = ink;
+      ctx.font = 'bold 16px Inter, sans-serif';
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'bottom';
+      ctx.fillText(p.week.avg + '%', p.x, p.y - 16);
+      ctx.fillStyle = mut;
+      ctx.font = '13px Inter, sans-serif';
+      ctx.textBaseline = 'top';
+      ctx.fillText(p.week.label, p.x, pad.top + ch + 8);
+      ctx.fillText(p.week.scores.length + ' sessions', p.x, pad.top + ch + 26);
+    });
+  }
   // Stats
+  var allAvgs = validWeeks.map(function(w) { return w.avg; });
+  var oAvg = allAvgs.length ? Math.round(allAvgs.reduce(function(s, v) { return s + v; }, 0) / allAvgs.length) : null;
+  var first = validWeeks.length > 0 ? validWeeks[0].avg : null;
+  var last = validWeeks.length > 0 ? validWeeks[validWeeks.length - 1].avg : null;
+  var chg = (first != null && last != null) ? last - first : null;
+  var totalSessions = weeks.reduce(function(s, w) { return s + w.scores.length; }, 0);
   var se = document.getElementById('pf-stats');
   if (se) {
-    se.innerHTML =
-      '<div class="pf-stat"><span class="pf-stat-val">' + oAvg + '%</span><span class="pf-stat-lbl">30-Day Average</span></div>' +
-      '<div class="pf-stat"><span class="pf-stat-val" style="color:' + (chg >= 0 ? 'var(--success)' : 'var(--error)') + '">' + (chg >= 0 ? '▲ +' : '▼ ') + Math.abs(chg) + '%</span><span class="pf-stat-lbl">Week 1 → Week 4</span></div>' +
-      '<div class="pf-stat"><span class="pf-stat-val">' + weeks.reduce(function(s, w) { return s + w.scores.length; }, 0) + '</span><span class="pf-stat-lbl">Sessions Logged</span></div>';
+    se.innerHTML = !oAvg
+      ? '<div class="pf-stat" style="grid-column:1/-1"><span class="pf-stat-lbl">Complete an exam to see stats.</span></div>'
+      : '<div class="pf-stat"><span class="pf-stat-val">' + oAvg + '%</span><span class="pf-stat-lbl">30-Day Average</span></div>' +
+        '<div class="pf-stat"><span class="pf-stat-val" style="color:' + (chg >= 0 ? 'var(--success)' : 'var(--error)') + '">' + (chg >= 0 ? '▲ +' : '▼ ') + Math.abs(chg) + '%</span><span class="pf-stat-lbl">First → Last Week</span></div>' +
+        '<div class="pf-stat"><span class="pf-stat-val">' + totalSessions + '</span><span class="pf-stat-lbl">Sessions Logged</span></div>';
   }
 }
 

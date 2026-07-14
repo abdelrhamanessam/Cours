@@ -360,26 +360,7 @@
 <div class="pv-body">
   <div class="container">
     <div class="pv-card" id="profile-card">
-      <div class="pv-photo-wrap">
-        <div class="pv-photo" id="profile-avatar">U</div>
-        <label class="pv-photo-edit" id="profile-photo-edit" title="Change photo">
-          <input type="file" accept="image/*" id="profile-photo-input" hidden onchange="uploadProfilePic(event)">
-          <svg width="20" height="20" viewBox="0 0 20 20" fill="none"><path d="M10 3a1 1 0 0 1 1 1v5h5a1 1 0 1 1 0 2h-5v5a1 1 0 1 1-2 0v-5H4a1 1 0 1 1 0-2h5V4a1 1 0 0 1 1-1z" fill="currentColor"/></svg>
-        </label>
-      </div>
-      <h2 class="pv-name" id="profile-name">User</h2>
-      <p class="pv-email" id="profile-email">—</p>
-      <div class="pv-level" id="profile-level-wrap"></div>
-      <div class="pv-stats">
-        <div class="pv-stat"><span class="pv-stat-num" id="pm-quizzes">0</span><span class="pv-stat-lbl">Lessons Done</span></div>
-        <div class="pv-stat-divider"></div>
-        <div class="pv-stat"><span class="pv-stat-num" id="pm-avg">—</span><span class="pv-stat-lbl">Avg Score</span></div>
-      </div>
-      <div class="pv-progress" id="profile-topics">
-        <h3 class="pv-progress-head">Lesson Progress</h3>
-        <div id="profile-progress-list"><p style="color:var(--muted);font-size:.875rem">No progress yet.</p></div>
-      </div>
-      <button class="btn btn-outline pv-signout" onclick="signOut()">Sign Out</button>
+      <div id="pv-content"></div>
     </div>
   </div>
 </div>
