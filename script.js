@@ -80,7 +80,11 @@ initApp();
 async function initApp() {
   const { data: { session } } = await sb.auth.getSession();
   currentUser = session?.user || null;
-  if (currentUser) await loadUserAndProgress();
+  if (currentUser) {
+    await loadUserAndProgress();
+    var ok = await checkDeviceLimit();
+    if (!ok) { await fetchCourses(); updateAuthUI(); renderProfile(); renderLandingCourses(); showView('landing'); return; }
+  }
   await fetchCourses();
   updateAuthUI();
   renderProfile();
@@ -267,6 +271,8 @@ async function login() {
   if (error) { alert(error.message); return; }
   currentUser = data.user;
   await loadUserAndProgress();
+  var ok = await checkDeviceLimit();
+  if (!ok) { hideAuthModal(); return; }
   hideAuthModal();
   updateAuthUI();
   renderProfile();
@@ -296,6 +302,71 @@ async function signOut() {
   await sb.auth.signOut();
   currentUser = null; userProfile = null; Progress = {};
   updateAuthUI(); renderProfile(); renderCourses();
+}
+
+// ── Device limit (max 2 devices per account) ──
+function getDeviceId() {
+  var did;
+  try { did = localStorage.getItem('_device_id'); } catch(e) {}
+  if (!did) {
+    var parts = [
+      navigator.userAgent,
+      screen.width + 'x' + screen.height + 'x' + screen.colorDepth,
+      navigator.language,
+      navigator.hardwareConcurrency || '',
+      Intl.DateTimeFormat().resolvedOptions().timeZone || '',
+      (crypto.randomUUID ? crypto.randomUUID() : Math.random().toString(36).slice(2) + Date.now().toString(36))
+    ];
+    var raw = parts.join('|||');
+    var h = 0;
+    for (var i = 0; i < raw.length; i++) { h = ((h << 5) - h) + raw.charCodeAt(i); h |= 0; }
+    did = 'd_' + Math.abs(h).toString(36);
+    try { localStorage.setItem('_device_id', did); } catch(e) {}
+  }
+  return did;
+}
+function getDeviceName() {
+  var ua = navigator.userAgent;
+  var name = 'Unknown';
+  if (ua.indexOf('Windows') !== -1) name = 'Windows';
+  else if (ua.indexOf('Mac OS') !== -1) name = 'macOS';
+  else if (ua.indexOf('Linux') !== -1) name = 'Linux';
+  else if (ua.indexOf('Android') !== -1) name = 'Android';
+  else if (ua.indexOf('iPhone') !== -1 || ua.indexOf('iPad') !== -1) name = 'iOS';
+  var browser = 'Unknown';
+  if (ua.indexOf('Chrome') !== -1) browser = 'Chrome';
+  else if (ua.indexOf('Firefox') !== -1) browser = 'Firefox';
+  else if (ua.indexOf('Safari') !== -1) browser = 'Safari';
+  else if (ua.indexOf('Edge') !== -1) browser = 'Edge';
+  return name + ' · ' + browser;
+}
+async function checkDeviceLimit() {
+  if (!currentUser) return true;
+  var did = getDeviceId();
+  var { data: existing } = await sb.from('user_devices').select('id').eq('user_id', currentUser.id).eq('device_id', did).maybeSingle();
+  if (existing) {
+    await sb.from('user_devices').update({ last_login: new Date().toISOString(), device_name: getDeviceName() }).eq('id', existing.id);
+    return true;
+  }
+  var { data: limitRow } = await sb.from('user_device_limits').select('max_devices').eq('user_id', currentUser.id).maybeSingle();
+  var maxD = limitRow ? limitRow.max_devices : 2;
+  var { count } = await sb.from('user_devices').select('id', { count: 'exact', head: true }).eq('user_id', currentUser.id);
+  if (count >= maxD) {
+    var html = '<div style="text-align:center;padding:16px"><div style="font-size:2.5rem;margin-bottom:12px">&#128274;</div>';
+    html += '<h3 style="margin:0 0 8px">Device Limit Reached</h3>';
+    html += '<p style="color:var(--muted);font-size:.875rem;line-height:1.6">You can only log in from <strong>' + maxD + ' device(s)</strong>. This account is already active on ' + count + ' device(s).</p>';
+    html += '<p style="color:var(--muted);font-size:.875rem;line-height:1.6">Please contact support to increase your device limit.</p>';
+    html += '<button class="btn btn-primary" style="margin-top:12px" onclick="hideModal();showView(\'support\')">Contact Support</button></div>';
+    showModal(html);
+    await sb.auth.signOut();
+    currentUser = null; userProfile = null; Progress = {};
+    updateAuthUI(); renderProfile();
+    return false;
+  }
+  await sb.from('user_devices').insert({
+    user_id: currentUser.id, device_id: did, device_name: getDeviceName(), last_login: new Date().toISOString()
+  });
+  return true;
 }
 async function updateProfileLevel(level) {
   if (!level || !currentUser) return;
@@ -846,7 +917,7 @@ function closeMobileNav() {
 }
 function showView(view, data) {
   closeMobileNav();
-  document.querySelectorAll('.landing-view, .platform-view, .courses-view, .quiz-view, .content-view, .profile-view, .review-view, .community-view').forEach(v => v.style.display = 'none');
+  document.querySelectorAll('.landing-view, .platform-view, .courses-view, .quiz-view, .content-view, .profile-view, .review-view, .community-view, .support-view').forEach(v => v.style.display = 'none');
   if (view === 'landing') document.getElementById('view-landing').style.display = 'block';
   else if (view === 'platform') { document.getElementById('view-platform').style.display = 'block'; renderPlatform(); }
   else if (view === 'courses') { document.getElementById('view-courses').style.display = 'block'; renderCourses(); }
@@ -855,6 +926,7 @@ function showView(view, data) {
   else if (view === 'profile') { document.getElementById('view-profile').style.display = 'block'; renderProfile(); }
   else if (view === 'review') { document.getElementById('view-review').style.display = 'block'; renderReviewPage(); }
   else if (view === 'community') { document.getElementById('view-community').style.display = 'block'; showCommunity(); }
+  else if (view === 'support') { document.getElementById('view-support').style.display = 'block'; showSupportPage(); }
   window.scrollTo({ top: 0, behavior: 'smooth' });
 }
 
@@ -2465,3 +2537,54 @@ document.addEventListener('click', function(e) {
     document.getElementById('nv-notif-panel')?.classList.remove('open');
   }
 });
+
+// ========== SUPPORT PAGE ==========
+async function showSupportPage() {
+  var el = document.getElementById('support-content');
+  if (!currentUser) { el.innerHTML = '<div style="text-align:center;padding:48px;color:var(--muted)">Please log in to access support.</div>'; return; }
+  var h = '<div class="sp-header"><h2>Support</h2><p>Contact the admin team for help with device limits or any other issues.</p></div>';
+  h += '<div class="sp-form"><h3>Submit a Ticket</h3>';
+  h += '<input id="f-ticket-subject" class="auth-input" placeholder="Subject" maxlength="200">';
+  h += '<textarea id="f-ticket-message" class="auth-input" placeholder="Describe your issue in detail..." rows="4" maxlength="5000" style="resize:vertical;min-height:100px;font-family:inherit"></textarea>';
+  h += '<button class="btn btn-primary" onclick="createSupportTicket()" style="width:100%;justify-content:center">Submit Ticket</button></div>';
+  h += '<div class="sp-list"><h3>My Tickets</h3><div id="sp-tickets-list"><div style="text-align:center;padding:24px;color:var(--muted)">Loading…</div></div></div>';
+  el.innerHTML = h;
+  loadSupportTickets();
+}
+async function createSupportTicket() {
+  var subject = document.getElementById('f-ticket-subject')?.value?.trim();
+  var message = document.getElementById('f-ticket-message')?.value?.trim();
+  if (!subject || subject.length < 3) { alert('Please enter a subject (at least 3 characters).'); return; }
+  if (!message) { alert('Please describe your issue.'); return; }
+  var { error } = await sb.from('support_tickets').insert({ user_id: currentUser.id, subject: subject, message: message });
+  if (error) { alert('Error: ' + error.message); return; }
+  document.getElementById('f-ticket-subject').value = '';
+  document.getElementById('f-ticket-message').value = '';
+  alert('Ticket submitted! We will respond soon.');
+  loadSupportTickets();
+}
+async function loadSupportTickets() {
+  var list = document.getElementById('sp-tickets-list');
+  if (!list) return;
+  var { data: tickets } = await sb.from('support_tickets').select('*').eq('user_id', currentUser.id).order('created_at', { ascending: false });
+  if (!tickets || tickets.length === 0) { list.innerHTML = '<div style="text-align:center;padding:24px;color:var(--muted);font-size:.875rem">No tickets yet.</div>'; return; }
+  var h = '';
+  tickets.forEach(function(t) {
+    var statusClass = 'sp-status-' + t.status;
+    var statusLabels = { open: 'Open', admin_replied: 'Replied', resolved: 'Resolved', closed: 'Closed' };
+    h += '<div class="sp-ticket"><div class="sp-ticket-head"><span class="sp-ticket-subject">' + esc(t.subject) + '</span><span class="sp-ticket-status ' + statusClass + '">' + (statusLabels[t.status] || t.status) + '</span></div>';
+    h += '<div class="sp-ticket-message">' + esc(t.message) + '</div>';
+    if (t.admin_reply) h += '<div class="sp-ticket-reply"><strong>Admin Reply:</strong><br>' + esc(t.admin_reply) + '</div>';
+    h += '<div class="sp-ticket-meta">' + timeAgo(t.created_at) + '</div>';
+    if (t.status === 'open' || t.status === 'admin_replied') {
+      h += '<button class="btn btn-ghost btn-sm" style="color:var(--error);font-size:.75rem;margin-top:8px" onclick="closeSupportTicket(' + t.id + ')">Close Ticket</button>';
+    }
+    h += '</div>';
+  });
+  list.innerHTML = h;
+}
+async function closeSupportTicket(tid) {
+  if (!confirm('Close this ticket?')) return;
+  await sb.from('support_tickets').update({ status: 'resolved' }).eq('id', tid);
+  loadSupportTickets();
+}

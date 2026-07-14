@@ -33,6 +33,7 @@
       <a href="#" class="nv-link" onclick="showView('community')">Community</a>
       <a href="#" class="nv-link" onclick="showView('profile')">Profile</a>
       <a href="#" class="nv-link" onclick="showView('review')">Review</a>
+      <a href="#" class="nv-link" onclick="showView('support')">Support</a>
       <div class="nv-cta" id="auth-status"></div>
       <div class="nv-notif-wrap" id="nv-notif-wrap" style="display:none">
         <button class="nv-notif-bell" onclick="toggleNotifPanel()" aria-label="Notifications">
@@ -395,6 +396,20 @@
 <div class="rv-body">
   <div class="container">
     <div id="review-content"><div style="text-align:center;padding:48px;color:var(--muted)">Loading review…</div></div>
+  </div>
+</div>
+</div>
+
+<!-- ============ SUPPORT VIEW ============ -->
+<div id="view-support" class="support-view" style="display:none">
+<div class="rv-header">
+  <div class="container">
+    <button class="rv-back" onclick="showView('platform')">&larr; Dashboard</button>
+  </div>
+</div>
+<div class="rv-body">
+  <div class="container">
+    <div id="support-content"><div style="text-align:center;padding:48px;color:var(--muted)">Loading support…</div></div>
   </div>
 </div>
 </div>

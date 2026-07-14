@@ -383,6 +383,7 @@
         <a onclick="switchAdminPage('stats',this)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12v-2a5 5 0 0 0-5-5H8a5 5 0 0 0-5 5v2"/><circle cx="12" cy="16" r="5"/><path d="M12 11v5"/><path d="M9.5 13.5 12 16l2.5-2.5"/></svg>System</a>
         <a onclick="switchAdminPage('site',this)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/></svg>Site</a>
         <a onclick="switchAdminPage('community',this)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>Community</a>
+        <a onclick="switchAdminPage('support',this)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>Support</a>
       </div>
       <div class="admin-main">
         <div id="admin-page-dashboard" class="admin-page"></div>
@@ -393,6 +394,7 @@
         <div id="admin-page-stats" class="admin-page sys-page"></div>
         <div id="admin-page-site" class="admin-page"></div>
         <div id="admin-page-community" class="admin-page"></div>
+        <div id="admin-page-support" class="admin-page"></div>
       </div>
     </div>
   </div>
@@ -486,6 +488,7 @@ function loadAdminPage(page) {
   else if (page === 'stats') loadAdminStats();
   else if (page === 'site') loadAdminSite();
   else if (page === 'community') loadAdminCommunity();
+  else if (page === 'support') loadAdminSupport();
 }
 
 function switchAdminPage(page, el) {
@@ -1894,35 +1897,47 @@ async function deleteHWImgQ(id) {
 }
 let _allStudentData = null;
 async function loadAdminStudents() {
-  const [profilesR, coursesR] = await Promise.all([
+  const [profilesR, coursesR, devicesR, limitsR] = await Promise.all([
     sb.from('profiles').select('*, progress:progress(*)').eq('role', 'student'),
-    sb.from('courses').select('*, lessons:lessons(*)').order('sort_order')
+    sb.from('courses').select('*, lessons:lessons(*)').order('sort_order'),
+    sb.from('user_devices').select('user_id, id'),
+    sb.from('user_device_limits').select('user_id, max_devices')
   ]);
   const profiles = profilesR.data || [];
   const courses = coursesR.data || [];
-  _allStudentData = { profiles, courses };
-  renderStudents('', profiles, courses);
+  // Build device maps
+  var deviceCountMap = {};
+  (devicesR.data || []).forEach(function(d) { deviceCountMap[d.user_id] = (deviceCountMap[d.user_id] || 0) + 1; });
+  var limitMap = {};
+  (limitsR.data || []).forEach(function(l) { limitMap[l.user_id] = l.max_devices; });
+  _allStudentData = { profiles, courses, deviceCountMap, limitMap };
+  renderStudents('', profiles, courses, deviceCountMap, limitMap);
 }
-function renderStudents(search, profiles, courses) {
+function renderStudents(search, profiles, courses, deviceCountMap, limitMap) {
+  deviceCountMap = deviceCountMap || {};
+  limitMap = limitMap || {};
   const q = search.toLowerCase();
   const filtered = profiles.filter(p => (p.name||'').toLowerCase().includes(q) || (p.id||'').toLowerCase().includes(q));
   let html = '<div class="admin-header"><h1>Students</h1><div style="display:flex;gap:8px"><input class="search-input" style="width:200px" placeholder="Search by name..." oninput="filterStudents(this.value)"><button class="btn btn-ghost btn-sm" onclick="exportCSV()">Export CSV</button></div></div>';
   if (filtered.length === 0) {
     html += '<div class="empty-state"><div class="empty-icon">👤</div><h3>No students found</h3><p>Students will appear here once they sign up and start learning.</p></div>';
   } else {
-    html += '<div class="data-table-wrap"><table class="data-table"><thead><tr><th>Student</th><th>Progress</th><th>Completed</th><th style="text-align:right">Actions</th></tr></thead><tbody>';
-    filtered.forEach(p => {
+    html += '<div class="data-table-wrap"><table class="data-table"><thead><tr><th>Student</th><th>Progress</th><th>Completed</th><th>Devices</th><th style="text-align:right">Actions</th></tr></thead><tbody>';
+    filtered.forEach(function(p) {
       const name = p.name || 'Unknown';
       const prog = p.progress || [];
-      const totalLessons = courses.reduce((acc, c) => acc + (c.lessons||[]).length, 0);
-      const completedLessons = prog.filter(p => p.exam_completed).length;
+      const totalLessons = courses.reduce(function(acc, c) { return acc + (c.lessons||[]).length; }, 0);
+      const completedLessons = prog.filter(function(p) { return p.exam_completed; }).length;
       const pct = totalLessons > 0 ? Math.round(completedLessons / totalLessons * 100) : 0;
-      const avgHw = prog.filter(p => p.hw_score != null).reduce((s, p) => s + p.hw_score, 0);
-      const avgHwCount = prog.filter(p => p.hw_score != null).length;
+      const avgHw = prog.filter(function(p) { return p.hw_score != null; }).reduce(function(s, p) { return s + p.hw_score; }, 0);
+      const avgHwCount = prog.filter(function(p) { return p.hw_score != null; }).length;
       const hwAvg = avgHwCount > 0 ? Math.round(avgHw / avgHwCount) : null;
+      var devCount = deviceCountMap[p.id] || 0;
+      var devLimit = limitMap[p.id] || 2;
       html += '<tr><td><div class="student-name">' + esc(name) + '</div><span class="cell-mono" style="color:var(--muted);font-size:.75rem">' + p.id.slice(0,8) + '</span></td>';
       html += '<td><div style="display:flex;align-items:center;gap:8px"><div style="flex:1;max-width:120px;height:6px;background:var(--border);border-radius:99px;overflow:hidden"><div style="height:100%;width:' + pct + '%;background:var(--primary);border-radius:99px;transition:width .3s"></div></div><span class="cell-mono">' + pct + '%</span></div></td>';
       html += '<td><span class="cell-mono">' + completedLessons + '/' + totalLessons + '</span>' + (hwAvg !== null ? '<br><span style="font-size:.75rem;color:var(--muted)">Avg HW: ' + hwAvg + '%</span>' : '') + '</td>';
+      html += '<td><span class="tag ' + (devCount >= devLimit ? 'tag-warning' : 'tag-neutral') + '">' + devCount + '/' + devLimit + '</span> <button class="btn btn-ghost btn-sm" onclick="adminViewUserDevices(\'' + p.id + '\')" style="font-size:.7rem;padding:2px 6px">Manage</button></td>';
       html += '<td style="text-align:right"><span class="tag tag-' + (pct >= 80 ? 'success' : pct >= 40 ? 'warning' : 'neutral') + '">' + (pct >= 80 ? 'On track' : pct >= 40 ? 'Progressing' : 'Getting started') + '</span> <button class="btn btn-ghost btn-sm" style="color:var(--error);margin-left:8px" onclick="resetStudentProgress(\'' + p.id + '\',\'' + esc(name.replace(/'/g,"\\'")) + '\')">Reset</button></td></tr>';
     });
     html += '</tbody></table></div>';
@@ -1931,7 +1946,7 @@ function renderStudents(search, profiles, courses) {
 }
 function filterStudents(val) {
   if (!_allStudentData) return;
-  renderStudents(val, _allStudentData.profiles, _allStudentData.courses);
+  renderStudents(val, _allStudentData.profiles, _allStudentData.courses, _allStudentData.deviceCountMap, _allStudentData.limitMap);
 }
 function exportCSV() {
   if (!_allStudentData) return;
@@ -2940,6 +2955,164 @@ async function cmAdminDeleteComment(commentId) {
     await sb.from('community_comments').delete().eq('id', commentId);
     loadAdminCommunity();
   } catch(e) { alert('Error: ' + e.message); }
+}
+
+// ========== SUPPORT & DEVICE MANAGEMENT ==========
+var _allTickets = [];
+async function loadAdminSupport() {
+  var el = document.getElementById('admin-page-support');
+  el.innerHTML = '<div style="text-align:center;padding:48px;color:var(--muted)">Loading\u2026</div>';
+  try {
+    var [ticketsR, devicesR] = await Promise.all([
+      sb.from('support_tickets').select('*, profiles!support_tickets_user_id_fkey(name)').order('created_at', { ascending: false }),
+      sb.from('user_devices').select('*, profiles!user_devices_user_id_fkey(name)').order('last_login', { ascending: false })
+    ]);
+    _allTickets = ticketsR.data || [];
+    el.innerHTML = '<div class="admin-header"><h1>Support & Devices</h1></div>'
+      + '<div class="md-tabs">'
+      + '<button class="active" onclick="switchSupportTab(\'tickets\',this)">Tickets (' + ((ticketsR.data||[]).length) + ')</button>'
+      + '<button onclick="switchSupportTab(\'devices\',this)">Devices (' + ((devicesR.data||[]).length) + ')</button>'
+      + '</div>'
+      + '<div id="sp-admin-tab-content"></div>';
+    renderSupportTickets(document.getElementById('sp-admin-tab-content'));
+  } catch(e) {
+    el.innerHTML = '<div class="empty-state"><div class="empty-icon">\u26A0\uFE0F</div><h3>Error</h3><p>' + esc(e.message) + '</p></div>';
+  }
+}
+function switchSupportTab(tab, btn) {
+  document.querySelectorAll('#admin-page-support .md-tabs button').forEach(function(b) { b.classList.remove('active'); });
+  if (btn) btn.classList.add('active');
+  if (tab === 'tickets') renderSupportTickets(document.getElementById('sp-admin-tab-content'));
+  else renderSupportDevices(document.getElementById('sp-admin-tab-content'));
+}
+function renderSupportTickets(el) {
+  if (!el) return;
+  var tickets = _allTickets;
+  if (tickets.length === 0) {
+    el.innerHTML = '<div class="empty-state"><div class="empty-icon">\u2709\uFE0F</div><h3>No support tickets</h3><p>No tickets have been submitted yet.</p></div>'; return;
+  }
+  var html = '<div class="data-table-wrap"><table class="data-table"><thead><tr><th>User</th><th>Subject</th><th>Status</th><th>Date</th><th style="text-align:right">Actions</th></tr></thead><tbody>';
+  tickets.forEach(function(t) {
+    var userName = t.profiles?.name || 'Unknown';
+    var statusLabels = { open: 'Open', admin_replied: 'Replied', resolved: 'Resolved', closed: 'Closed' };
+    var statusClass = t.status === 'closed' ? 'tag-neutral' : (t.status === 'resolved' ? 'tag-success' : (t.status === 'admin_replied' ? 'tag-warning' : 'tag-danger'));
+    var hasReply = t.admin_reply ? ' <span style="color:var(--success);font-size:.75rem">\u2713 Replied</span>' : '';
+    html += '<tr><td>' + esc(userName) + '<br><span style="font-size:.75rem;color:var(--muted)">' + t.user_id.slice(0,8) + '</span></td>';
+    html += '<td style="max-width:250px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">' + esc(t.subject) + hasReply + '</td>';
+    html += '<td><span class="tag ' + statusClass + '">' + (statusLabels[t.status] || t.status) + '</span></td>';
+    html += '<td style="font-size:.75rem;color:var(--muted)">' + timeAgo(t.created_at) + '</td>';
+    html += '<td style="text-align:right">';
+    if (t.status === 'open' || t.status === 'admin_replied') {
+      html += '<button class="btn btn-ghost btn-sm" onclick="showAdminReplyForm(' + t.id + ')">Reply</button>';
+      html += ' <button class="btn btn-ghost btn-sm" style="color:var(--success)" onclick="adminCloseTicket(' + t.id + ')">Close</button>';
+    }
+    html += ' <button class="btn btn-ghost btn-sm" onclick="adminViewTicketDetail(' + t.id + ')">View</button>';
+    html += ' <button class="btn btn-ghost btn-sm" onclick="adminViewUserDevices(\'' + t.user_id + '\')">Devices</button>';
+    html += '</td></tr>';
+  });
+  html += '</tbody></table></div>';
+  el.innerHTML = html;
+}
+function renderSupportDevices(el) {
+  if (!el) return;
+  sb.from('user_devices').select('*, profiles!user_devices_user_id_fkey(name)').order('last_login', { ascending: false }).then(function(r) {
+    var devices = r.data || [];
+    if (devices.length === 0) {
+      el.innerHTML = '<div class="empty-state"><div class="empty-icon">\uD83D\uDCF1</div><h3>No registered devices</h3><p>No devices have been registered yet.</p></div>'; return;
+    }
+    var html = '<div class="data-table-wrap"><table class="data-table"><thead><tr><th>User</th><th>Device</th><th>Name</th><th>Last Login</th><th style="text-align:right">Actions</th></tr></thead><tbody>';
+    devices.forEach(function(d) {
+      var userName = d.profiles?.name || 'Unknown';
+      html += '<tr><td>' + esc(userName) + '</td><td style="font-family:monospace;font-size:.75rem">' + esc(d.device_id) + '</td><td>' + esc(d.device_name) + '</td>';
+      html += '<td style="font-size:.75rem;color:var(--muted)">' + timeAgo(d.last_login) + '</td>';
+      html += '<td style="text-align:right"><button class="btn btn-ghost btn-sm" style="color:var(--error)" onclick="adminDeleteDevice(' + d.id + ')">Remove</button></td></tr>';
+    });
+    html += '</tbody></table></div>';
+    el.innerHTML = html;
+  }).catch(function(e) { el.innerHTML = '<div class="empty-state"><div class="empty-icon">\u26A0\uFE0F</div><h3>Error</h3><p>' + esc(e.message) + '</p></div>'; });
+}
+function adminViewTicketDetail(tid) {
+  var t = _allTickets.find(function(x) { return x.id === tid; });
+  if (!t) return;
+  var statusLabels = { open: 'Open', admin_replied: 'Replied', resolved: 'Resolved', closed: 'Closed' };
+  var userName = t.profiles?.name || 'Unknown';
+  var h = '<h2>Ticket #' + t.id + '</h2>';
+  h += '<div style="margin-bottom:12px"><span class="tag tag-success">' + (statusLabels[t.status] || t.status) + '</span> <span style="font-size:.8125rem;color:var(--muted)">by ' + esc(userName) + ' &middot; ' + timeAgo(t.created_at) + '</span></div>';
+  h += '<div style="font-weight:600;font-size:1rem;margin-bottom:8px">' + esc(t.subject) + '</div>';
+  h += '<div style="font-size:.875rem;line-height:1.6;margin-bottom:16px;padding:12px;background:var(--surface);border-radius:var(--radius)">' + esc(t.message) + '</div>';
+  if (t.admin_reply) {
+    h += '<div style="font-size:.875rem;line-height:1.6;margin-bottom:16px;padding:12px;background:var(--primary-soft);border-radius:var(--radius);border-left:3px solid var(--primary)"><strong style="color:var(--primary)">Admin Reply:</strong><br>' + esc(t.admin_reply) + '</div>';
+  }
+  h += '<div style="display:flex;gap:8px;margin-top:16px">';
+  if (t.status === 'open' || t.status === 'admin_replied') {
+    h += '<button class="btn btn-primary" onclick="hideModal();showAdminReplyForm(' + t.id + ')">Reply</button>';
+    h += '<button class="btn btn-ghost" style="color:var(--success)" onclick="hideModal();adminCloseTicket(' + t.id + ')">Close Ticket</button>';
+  }
+  h += '<button class="btn btn-ghost" onclick="hideModal()">Close</button></div>';
+  showModal(h);
+}
+function showAdminReplyForm(tid) {
+  var t = _allTickets.find(function(x) { return x.id === tid; });
+  if (!t) return;
+  var userName = t.profiles?.name || 'Unknown';
+  var h = '<h2>Reply to Ticket #' + t.id + '</h2>';
+  h += '<p style="font-size:.8125rem;color:var(--muted);margin-bottom:12px"><strong>' + esc(userName) + '</strong> wrote: ' + esc(t.subject)</p>';
+  h += '<p style="font-size:.8125rem;padding:8px;background:var(--surface);border-radius:var(--radius);margin-bottom:12px">' + esc(t.message.substring(0,200)) + (t.message.length > 200 ? '...' : '') + '</p>';
+  h += '<textarea id="f-admin-reply" rows="5" style="width:100%;resize:vertical;font-family:inherit;font-size:.875rem" placeholder="Write your reply..."></textarea>';
+  h += '<div class="admin-modal-footer" style="margin-top:12px"><button class="btn btn-primary" onclick="adminSaveTicketReply(' + tid + ')">Send Reply</button><button class="btn btn-ghost" onclick="hideModal()">Cancel</button></div>';
+  showModal(h);
+}
+async function adminSaveTicketReply(tid) {
+  var reply = document.getElementById('f-admin-reply')?.value?.trim();
+  if (!reply) { alert('Please write a reply.'); return; }
+  await sb.from('support_tickets').update({ admin_reply: reply, status: 'admin_replied', updated_at: new Date().toISOString() }).eq('id', tid);
+  hideModal();
+  alert('Reply sent.');
+  loadAdminSupport();
+}
+async function adminCloseTicket(tid) {
+  if (!confirm('Close this ticket?')) return;
+  await sb.from('support_tickets').update({ status: 'resolved', updated_at: new Date().toISOString() }).eq('id', tid);
+  loadAdminSupport();
+}
+async function adminDeleteDevice(did) {
+  if (!confirm('Remove this device registration?')) return;
+  await sb.from('user_devices').delete().eq('id', did);
+  loadAdminSupport();
+}
+function adminViewUserDevices(userId) {
+  sb.from('user_devices').select('*').eq('user_id', userId).then(function(r) {
+    var devices = r.data || [];
+    sb.from('user_device_limits').select('max_devices').eq('user_id', userId).maybeSingle().then(function(limitR) {
+      var maxD = limitR?.data?.max_devices ?? 2;
+      var h = '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px"><h2 style="margin:0">User Devices</h2><span style="font-size:.8125rem;color:var(--muted)">Limit: ' + maxD + '</span></div>';
+      if (devices.length === 0) {
+        h += '<p style="color:var(--muted);font-size:.875rem">No registered devices.</p>';
+      } else {
+        h += '<div class="data-table-wrap"><table class="data-table" style="font-size:.8125rem"><thead><tr><th>Device</th><th>Name</th><th>Last Login</th><th style="text-align:right">Actions</th></tr></thead><tbody>';
+        devices.forEach(function(d) {
+          h += '<tr><td style="font-family:monospace;font-size:.7rem">' + esc(d.device_id) + '</td><td>' + esc(d.device_name) + '</td><td style="font-size:.75rem;color:var(--muted)">' + timeAgo(d.last_login) + '</td>';
+          h += '<td style="text-align:right"><button class="btn btn-ghost btn-sm" style="color:var(--error);font-size:.7rem" onclick="adminDeleteDevice(' + d.id + ')">Remove</button></td></tr>';
+        });
+        h += '</tbody></table></div>';
+      }
+      h += '<div style="margin-top:16px;padding-top:12px;border-top:1px solid var(--border)">';
+      h += '<label style="font-size:.8125rem;font-weight:600;display:block;margin-bottom:4px">Device Limit</label>';
+      h += '<div style="display:flex;gap:8px;align-items:center"><input id="f-admin-device-limit" type="number" min="1" max="20" value="' + maxD + '" style="width:80px;padding:8px;border:1px solid var(--border);border-radius:var(--radius);font-size:.875rem">';
+      h += '<button class="btn btn-primary btn-sm" onclick="adminSaveDeviceLimit(\'' + userId + '\')">Save</button></div></div>';
+      h += '<div class="admin-modal-footer" style="margin-top:16px"><button class="btn btn-ghost" onclick="hideModal()">Close</button></div>';
+      showModal(h);
+    });
+  });
+}
+async function adminSaveDeviceLimit(userId) {
+  var val = parseInt(document.getElementById('f-admin-device-limit')?.value);
+  if (!val || val < 1 || val > 20) { alert('Limit must be between 1 and 20.'); return; }
+  var { error } = await sb.from('user_device_limits').upsert({ user_id: userId, max_devices: val }, { onConflict: 'user_id' });
+  if (error) { alert('Error: ' + error.message); return; }
+  hideModal();
+  alert('Device limit updated to ' + val + '.');
+  loadAdminSupport();
 }
 
 // Always show login form on page load

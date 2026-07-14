@@ -986,4 +986,22 @@ details[open] .rv-mistake-summary::before{transform:rotate(90deg)}
   .admin-sidebar a{flex:1 1 100%}
   .dash-table th,.dash-table td{padding:6px 8px;font-size:.6875rem}
 }
+/* Support page */
+.sp-header{margin-bottom:24px;text-align:center}
+.sp-header h2{margin:0 0 4px;font-size:1.5rem}
+.sp-header p{color:var(--muted);font-size:.875rem;margin:0}
+.sp-form{background:var(--card-bg);border:1px solid var(--border);border-radius:var(--radius);padding:24px;margin-bottom:24px}
+.sp-form h3{margin:0 0 16px;font-size:1rem}
+.sp-list h3{margin:0 0 16px;font-size:1rem}
+.sp-ticket{background:var(--card-bg);border:1px solid var(--border);border-radius:var(--radius);padding:16px;margin-bottom:12px}
+.sp-ticket-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:8px}
+.sp-ticket-subject{font-weight:600;font-size:.875rem}
+.sp-ticket-status{font-size:.6875rem;font-weight:600;padding:2px 8px;border-radius:99px}
+.sp-status-open{background:var(--error-soft, rgba(239,68,68,.12));color:var(--error, #ef4444)}
+.sp-status-admin_replied{background:var(--warning-soft, rgba(234,179,8,.12));color:var(--warning, #eab308)}
+.sp-status-resolved{background:var(--success-soft, rgba(34,197,94,.12));color:var(--success, #22c55e)}
+.sp-status-closed{background:var(--surface-2, rgba(128,128,128,.12));color:var(--muted)}
+.sp-ticket-message{font-size:.8125rem;color:var(--ink);line-height:1.6;margin-bottom:8px}
+.sp-ticket-reply{font-size:.8125rem;padding:10px;background:var(--primary-soft, rgba(99,102,241,.08));border-radius:var(--radius);border-left:3px solid var(--primary);margin-bottom:8px;line-height:1.6}
+.sp-ticket-meta{font-size:.75rem;color:var(--muted)}
 
