@@ -406,7 +406,7 @@ footer .legal{border-top:1px solid oklch(0.25 0 0);padding-top:24px;display:flex
 .lesson-view-header .back-btn{display:flex;align-items:center;gap:6px;font-size:0.875rem;font-weight:500;color:var(--muted);padding:8px 12px;border-radius:var(--radius);transition:all 0.2s}
 .lesson-view-header .back-btn:hover{color:var(--ink);background:var(--surface-2)}
 .lesson-view-body{padding:48px 0 64px}
-.lesson-view-body .container{max-width:760px}
+.lesson-view-body .container{max-width:var(--max-w)}
 .lesson-content h2{font-size:1.75rem;font-weight:700;letter-spacing:-0.03em;margin-bottom:8px}
 .lesson-content .lesson-topic-header{font-size:0.875rem;color:var(--muted);margin-bottom:32px}
 .lesson-step{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-lg);padding:32px;margin-bottom:24px}
