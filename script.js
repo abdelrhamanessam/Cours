@@ -1702,13 +1702,15 @@ async function submitAll() {
     // Final exam submission
     var passed = pct >= (getLesson(lessonId)?.lesson.امتحان.attemptPassScore || 60);
     (async function() {
-      await sb.from('final_exam_attempts').upsert({
-        user_id: currentUser.id, lesson_id: lessonId,
-        score: score, total: total, answers: result,
-        passed: passed
-      }, { onConflict: 'user_id, lesson_id' });
+      var { data: existing } = await sb.from('final_exam_attempts').select('id').eq('user_id', currentUser.id).eq('lesson_id', lessonId).maybeSingle();
+      if (existing) {
+        await sb.from('final_exam_attempts').update({ score: score, total: total, answers: result, passed: passed }).eq('id', existing.id);
+      } else {
+        await sb.from('final_exam_attempts').insert({ user_id: currentUser.id, lesson_id: lessonId, score: score, total: total, answers: result, passed: passed });
+      }
     })();
     window._finalExam = { lesson_id: lessonId, score: score, total: total, passed: passed };
+    if (!Progress[lessonId]) Progress[lessonId] = {};
     Progress[lessonId].completed = true;
     Progress[lessonId].progress = 100;
     Progress[lessonId].score = pct;
@@ -1744,6 +1746,7 @@ async function submitAll() {
       }
     } else {
       // Legacy exam
+      if (!Progress[lessonId]) Progress[lessonId] = {};
       Progress[lessonId].completed = true;
       Progress[lessonId].progress = 100;
       Progress[lessonId].score = pct;
