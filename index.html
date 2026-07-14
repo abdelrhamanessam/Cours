@@ -412,12 +412,8 @@ function sanitizeHtml(str) {
     .replace(/javascript\s*:/gi, '');
 }
 (function loadHeroSettings() {
-  if (!window.supabase) return;
+  if (typeof sb === 'undefined') return;
   try {
-    var sb = window.supabase.createClient(
-      'https://usllnkoqqpfynsiprvqh.supabase.co',
-      'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InVzbGxua29xcXBmeW5zaXBydnFoIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODM3MTYxMzgsImV4cCI6MjA5OTI5MjEzOH0.JbWJo9S7phVksNx8ib8zXY6QkHy-6FpLT-vDedEFp_g'
-    );
     sb.from('site_config').select('key, value').then(function(res) {
       if (!res.data) return;
       var cfg = {}; res.data.forEach(function(r) { cfg[r.key] = r.value; });
