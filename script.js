@@ -244,11 +244,6 @@ function updateAuthUI() {
       wrap.textContent = init;
     }
     el.appendChild(wrap);
-    var btn = document.createElement('button');
-    btn.className = 'btn btn-ghost btn-sm';
-    btn.onclick = function() { signOut(); };
-    btn.textContent = 'Sign Out';
-    el.appendChild(btn);
   } else {
     el.innerHTML = '<button class="btn btn-primary btn-sm" onclick="showAuthModal()">Log In</button>';
   }

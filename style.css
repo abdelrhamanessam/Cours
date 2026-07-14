@@ -74,7 +74,7 @@ nav .container{display:flex;align-items:center;height:100%;gap:32px;justify-cont
 .nav-anim .nv1 > *:nth-child(3) { animation-delay: 160ms; }
 .nav-anim .nv1 > *:nth-child(4) { animation-delay: 210ms; }
 .nv1 .nv-cta{display:flex;gap:8px}
-.nv1 .avatar{width:32px;height:32px;border-radius:50%;background:var(--primary);color:var(--bg);display:flex;align-items:center;justify-content:center;font-size:.75rem;font-weight:800;cursor:pointer;border:2px solid transparent;transition:border-color .15s;overflow:hidden;flex-shrink:0}
+.nv1 .avatar{width:38px;height:38px;border-radius:50%;background:var(--primary);color:var(--bg);display:flex;align-items:center;justify-content:center;font-size:.75rem;font-weight:800;cursor:pointer;border:2px solid transparent;transition:border-color .15s;overflow:hidden;flex-shrink:0}
 .nv1 .avatar img{width:100%;height:100%;object-fit:cover;display:block}
 .nv1 .avatar:hover{border-color:var(--primary)}
 .nv-notif-wrap{position:relative;display:flex;align-items:center}
