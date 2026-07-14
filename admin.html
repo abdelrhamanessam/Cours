@@ -1637,34 +1637,34 @@ function convertWordMathToLatex(raw) {
     const mapped = sub.split('').map(c => subMap[c] || c).join('');
     return base + '_{' + mapped + '}';
   });
-  s = s.replace(/∜\(([^()]+)\)/g, '\\sqrt[4]{$1}');
-  s = s.replace(/∛\(([^()]+)\)/g, '\\sqrt[3]{$1}');
-  s = s.replace(/√\(([^()]+)\)/g, '\\sqrt{$1}');
-  s = s.replace(/∜([A-Za-z0-9]+)/g, '\\sqrt[4]{$1}');
-  s = s.replace(/∛([A-Za-z0-9]+)/g, '\\sqrt[3]{$1}');
-  s = s.replace(/√([A-Za-z0-9]+)/g, '\\sqrt{$1}');
-  const symbolMap = {
-    '×': '\\times ', '÷': '\\div ', '·': '\\cdot ', '∙': '\\cdot ',
-    '≤': '\\leq ', '≥': '\\geq ', '≠': '\\neq ', '≈': '\\approx ', '≡': '\\equiv ',
-    '≅': '\\cong ', '≃': '\\simeq ', '∝': '\\propto ',
-    '±': '\\pm ', '∓': '\\mp ',
-    'π': '\\pi ', 'θ': '\\theta ', 'α': '\\alpha ', 'β': '\\beta ', 'γ': '\\gamma ',
-    'δ': '\\delta ', 'ε': '\\varepsilon ', 'λ': '\\lambda ', 'μ': '\\mu ',
-    'σ': '\\sigma ', 'τ': '\\tau ', 'φ': '\\phi ', 'ω': '\\omega ',
-    'Δ': '\\Delta ', 'Σ': '\\sum ', 'Π': '\\prod ', 'Ω': '\\Omega ',
-    '∞': '\\infty ', '∫': '\\int ', '∬': '\\iint ', '∂': '\\partial ',
-    '∇': '\\nabla ', '∀': '\\forall ', '∃': '\\exists ',
-    '∈': '\\in ', '∉': '\\notin ', '⊂': '\\subset ', '⊆': '\\subseteq ',
-    '⊃': '\\supset ', '⊇': '\\supseteq ', '∪': '\\cup ', '∩': '\\cap ',
-    '∅': '\\emptyset ', '∧': '\\wedge ', '∨': '\\vee ',
-    '→': '\\rightarrow ', '←': '\\leftarrow ', '⇒': '\\Rightarrow ',
-    '⇐': '\\Leftarrow ', '↔': '\\leftrightarrow ', '⇔': '\\Leftrightarrow ',
-    '∴': '\\therefore ', '∵': '\\because ',
-    '⊥': '\\perp ', '∥': '\\parallel ', '∠': '\\angle ',
-    '°': '^{\\circ}', '√': '\\sqrt', '∛': '\\sqrt[3]', '∜': '\\sqrt[4]',
-    'ℕ': '\\mathbb{N}', 'ℤ': '\\mathbb{Z}', 'ℚ': '\\mathbb{Q}', 'ℝ': '\\mathbb{R}', 'ℂ': '\\mathbb{C}'
-  };
-  for (const [ch, tex] of Object.entries(symbolMap)) s = s.split(ch).join(tex);
+  s = s.replace(new RegExp('\\u221C\\(([^()]+)\\)', 'g'), '\\sqrt[4]{$1}');
+  s = s.replace(new RegExp('\\u221B\\(([^()]+)\\)', 'g'), '\\sqrt[3]{$1}');
+  s = s.replace(new RegExp('\\u221A\\(([^()]+)\\)', 'g'), '\\sqrt{$1}');
+  s = s.replace(new RegExp('\\u221C([A-Za-z0-9]+)', 'g'), '\\sqrt[4]{$1}');
+  s = s.replace(new RegExp('\\u221B([A-Za-z0-9]+)', 'g'), '\\sqrt[3]{$1}');
+  s = s.replace(new RegExp('\\u221A([A-Za-z0-9]+)', 'g'), '\\sqrt{$1}');
+  const sm = [
+    ['\u00D7','\\times '],['\u00F7','\\div '],['\u00B7','\\cdot '],['\u2219','\\cdot '],
+    ['\u2264','\\leq '],['\u2265','\\geq '],['\u2260','\\neq '],['\u2248','\\approx '],['\u2261','\\equiv '],
+    ['\u2245','\\cong '],['\u2243','\\simeq '],['\u221D','\\propto '],
+    ['\u00B1','\\pm '],['\u2213','\\mp '],
+    ['\u03C0','\\pi '],['\u03B8','\\theta '],['\u03B1','\\alpha '],['\u03B2','\\beta '],['\u03B3','\\gamma '],
+    ['\u03B4','\\delta '],['\u03B5','\\varepsilon '],['\u03BB','\\lambda '],['\u03BC','\\mu '],
+    ['\u03C3','\\sigma '],['\u03C4','\\tau '],['\u03C6','\\phi '],['\u03C9','\\omega '],
+    ['\u0394','\\Delta '],['\u03A3','\\sum '],['\u03A0','\\prod '],['\u03A9','\\Omega '],
+    ['\u221E','\\infty '],['\u222B','\\int '],['\u222C','\\iint '],['\u2202','\\partial '],
+    ['\u2207','\\nabla '],['\u2200','\\forall '],['\u2203','\\exists '],
+    ['\u2208','\\in '],['\u2209','\\notin '],['\u2282','\\subset '],['\u2286','\\subseteq '],
+    ['\u2283','\\supset '],['\u2287','\\supseteq '],['\u222A','\\cup '],['\u2229','\\cap '],
+    ['\u2205','\\emptyset '],['\u2227','\\wedge '],['\u2228','\\vee '],
+    ['\u2192','\\rightarrow '],['\u2190','\\leftarrow '],['\u21D2','\\Rightarrow '],
+    ['\u21D0','\\Leftarrow '],['\u2194','\\leftrightarrow '],['\u21D4','\\Leftrightarrow '],
+    ['\u2234','\\therefore '],['\u2235','\\because '],
+    ['\u22A5','\\perp '],['\u2225','\\parallel '],['\u2220','\\angle '],
+    ['\u00B0','^{\\circ}'],['\u221A','\\sqrt'],['\u221B','\\sqrt[3]'],['\u221C','\\sqrt[4]'],
+    ['\u2115','\\mathbb{N}'],['\u2124','\\mathbb{Z}'],['\u211A','\\mathbb{Q}'],['\u211D','\\mathbb{R}'],['\u2102','\\mathbb{C}']
+  ];
+  for (const [ch, tex] of sm) s = s.split(ch).join(tex);
   s = s.split('\n').map(line => line.replace(/[ \t]+/g, ' ').trim()).join('\n');
   return s;
 }
