@@ -1946,6 +1946,7 @@ function renderCommunityPosts(posts) {
     html += '<div class="cm-card' + (p.is_pinned ? ' cm-card-pinned' : '') + '" onclick="showPostDetail(' + p.id + ')">';
     html += '<div class="cm-card-top"><div class="cm-card-title"><a href="#" onclick="event.stopPropagation();showPostDetail(' + p.id + ')">' + esc(p.title) + '</a></div><div style="display:flex;gap:4px;flex-shrink:0">' + pinned + solved + '</div></div>';
     html += '<div class="cm-card-body">' + esc(p.description.substring(0, 200)) + '</div>';
+    if (p.image_url) html += '<div class="cm-card-img"><img src="' + SUPABASE_URL + '/storage/v1/object/public/question-images/' + esc(p.image_url) + '" loading="lazy" onclick="event.stopPropagation();showPostDetail(' + p.id + ')"></div>';
     html += '<div class="cm-card-meta"><div class="cm-card-author"><div class="cm-card-avatar">' + avatarL + '</div>' + esc(p.profiles?.name || 'User') + '</div><span>·</span><span>' + esc(lessonName) + '</span><span>·</span><span>' + timeAgo(p.created_at) + '</span>';
     html += '<div class="cm-card-stats"><span class="cm-card-stat' + liked + '">' + (liked ? '♥' : '♡') + ' ' + likeCount + '</span><span class="cm-card-stat">💬 ' + commentCount + '</span></div></div>';
     html += '</div>';

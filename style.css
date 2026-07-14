@@ -866,6 +866,9 @@ details[open] .rv-mistake-summary::before{transform:rotate(90deg)}
 .cm-card-title a{color:var(--ink)}
 .cm-card-title a:hover{color:var(--primary)}
 .cm-card-body{font-size:.875rem;color:var(--muted);display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;margin-bottom:12px;line-height:1.6}
+.cm-card-img{margin-bottom:12px;border-radius:var(--radius);overflow:hidden;border:1px solid var(--border);background:var(--surface)}
+.cm-card-img img{width:100%;height:140px;object-fit:cover;cursor:pointer;transition:transform .2s}
+.cm-card-img img:hover{transform:scale(1.02)}
 .cm-card-meta{display:flex;align-items:center;gap:12px;flex-wrap:wrap;font-size:.75rem;color:var(--muted)}
 .cm-card-author{display:flex;align-items:center;gap:6px;font-weight:600;color:var(--ink)}
 .cm-card-avatar{width:24px;height:24px;border-radius:50%;background:var(--primary);color:var(--bg);display:flex;align-items:center;justify-content:center;font-size:.625rem;font-weight:800;flex-shrink:0}
