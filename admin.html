@@ -187,6 +187,7 @@
 .tag-success{background:oklch(0.6 0.155 145 / .12);color:var(--success)}
 .tag-warning{background:oklch(0.72 0.14 85 / .12);color:var(--warning)}
 .tag-neutral{background:var(--border);color:var(--muted)}
+.tag-danger{background:oklch(0.55 0.2 30 / .12);color:var(--error)}
 
 /* Word import */
 .word-import-list{display:flex;flex-direction:column;gap:6px;max-height:400px;overflow-y:auto;margin:12px 0}
@@ -2700,13 +2701,18 @@ function renderCmReports(el) {
 function renderCmWords(el) {
   sb.from('banned_words').select('*').order('created_at', { ascending: false }).then(function(r) {
     var words = r.data || [];
-    var html = '<div style="margin-bottom:16px;display:flex;gap:8px;flex-wrap:wrap"><input class="search-input" id="cm-new-word" style="max-width:240px" placeholder="Add banned word\u2026"><button class="btn btn-primary" onclick="addBannedWord()">Add</button><button class="btn btn-ghost" onclick="showBulkBannedWords()">Bulk Import</button></div>';
+    var html = '<div style="margin-bottom:16px;display:flex;gap:8px;flex-wrap:wrap;align-items:center"><input class="search-input" id="cm-new-word" style="max-width:200px" placeholder="Add banned word\u2026">'
+      + '<select id="cm-word-severity" style="padding:8px 10px;border:1px solid var(--border);border-radius:var(--radius);background:var(--bg);font-size:.8125rem"><option value="severe">Severe</option><option value="moderate">Moderate</option><option value="mild">Mild</option></select>'
+      + '<button class="btn btn-primary" onclick="addBannedWord()">Add</button><button class="btn btn-ghost" onclick="showBulkBannedWords()">Bulk Import</button></div>';
     if (words.length === 0) {
       html += '<div class="empty-state" style="padding:24px"><div class="empty-icon">\uD83D\uDCDD</div><h3>No banned words</h3><p>Add words that should be blocked in community posts and comments.</p></div>';
     } else {
       html += '<div style="display:flex;flex-wrap:wrap;gap:8px">';
       words.forEach(function(w) {
-        html += '<span style="display:inline-flex;align-items:center;gap:6px;padding:6px 12px;background:var(--surface);border:1px solid var(--border);border-radius:8px;font-size:.8125rem;font-weight:500">' + esc(w.word) + ' <button class="btn btn-ghost btn-sm" style="color:var(--error);padding:0 4px;font-size:14px" onclick="removeBannedWord(' + w.id + ')">\u00D7</button></span>';
+        var sevClass = 'tag-warning';
+        if (w.severity === 'severe') sevClass = 'tag-danger';
+        else if (w.severity === 'mild') sevClass = 'tag-neutral';
+        html += '<span style="display:inline-flex;align-items:center;gap:6px;padding:6px 12px;background:var(--surface);border:1px solid var(--border);border-radius:8px;font-size:.8125rem;font-weight:500"><span class="tag ' + sevClass + '" style="font-size:.625rem;padding:1px 6px">' + (w.severity||'severe') + '</span>' + esc(w.word) + ' <button class="btn btn-ghost btn-sm" style="color:var(--error);padding:0 4px;font-size:14px" onclick="removeBannedWord(' + w.id + ')">\u00D7</button></span>';
       });
       html += '</div>';
     }
@@ -2715,17 +2721,21 @@ function renderCmWords(el) {
 }
 
 function showBulkBannedWords() {
-  showModal('<h2>Bulk Import Banned Words</h2><p style="font-size:.8125rem;color:var(--muted);margin-bottom:12px">Paste words one per line. Duplicates will be skipped.</p><textarea id="f-bulk-words" rows="10" style="width:100%;resize:vertical;font-size:.8125rem"></textarea><div class="admin-modal-footer"><button class="btn btn-primary" onclick="saveBulkBannedWords()">Import</button><button class="btn btn-ghost" onclick="hideModal()">Cancel</button></div>');
+  showModal('<h2>Bulk Import Banned Words</h2><p style="font-size:.8125rem;color:var(--muted);margin-bottom:12px">Paste words one per line. Duplicates will be skipped.</p><textarea id="f-bulk-words" rows="8" style="width:100%;resize:vertical;font-size:.8125rem"></textarea>'
+    + '<label style="margin-top:12px;display:block;font-size:.8125rem;font-weight:600">Default Severity for imported words</label>'
+    + '<select id="f-bulk-severity" style="width:100%;padding:8px 10px;border:1px solid var(--border);border-radius:var(--radius);background:var(--bg);font-size:.8125rem;margin-top:4px"><option value="severe">Severe</option><option value="moderate">Moderate</option><option value="mild">Mild</option></select>'
+    + '<div class="admin-modal-footer" style="margin-top:16px"><button class="btn btn-primary" onclick="saveBulkBannedWords()">Import</button><button class="btn btn-ghost" onclick="hideModal()">Cancel</button></div>');
 }
 
 async function saveBulkBannedWords() {
   var text = document.getElementById('f-bulk-words').value.trim();
+  var sev = document.getElementById('f-bulk-severity')?.value || 'severe';
   if (!text) return;
   var words = text.split('\n').map(function(s) { return s.trim(); }).filter(Boolean);
   var inserted = 0;
   for (var i = 0; i < words.length; i++) {
     try {
-      await sb.from('banned_words').insert({ word: words[i] });
+      await sb.from('banned_words').insert({ word: words[i], severity: sev });
       inserted++;
     } catch(e) {}
   }
@@ -2786,8 +2796,10 @@ async function addBannedWord() {
   var input = document.getElementById('cm-new-word');
   var word = input ? input.value.trim() : '';
   if (!word) return;
+  var sevSelect = document.getElementById('cm-word-severity');
+  var severity = sevSelect ? sevSelect.value : 'severe';
   try {
-    await sb.from('banned_words').insert({ word: word });
+    await sb.from('banned_words').insert({ word: word, severity: severity });
     input.value = '';
     renderCmWords(document.getElementById('cm-admin-tab-content'));
   } catch(e) { alert('Error: ' + e.message); }

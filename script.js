@@ -8,6 +8,72 @@ let COURSES = [];
 let Progress = {};
 let currentLessonId = null;
 let quizState = null;
+let _bannedWordsCache = null;
+
+// ── Banned words normalization pipeline ──
+var AR_DIACR = /[\u064B-\u065F\u0670]/g;
+var AR_MAP = { '\u0623':'\u0627','\u0625':'\u0627','\u0622':'\u0627','\u0621':'','\u0629':'\u0647','\u0649':'\u064A','\u064A':'','\u0624':'\u0648','\u0626':'\u064A' };
+var ZW_CHARS = /[\u200B-\u200F\uFEFF\u061C\u2060-\u2064]/g;
+var LEET_PATTERNS = [
+  [/[3\u20B3]/g,'ع'],[/[7\u20BB]/g,'ح'],[/5/g,'خ'],[/0/g,'o'],[/1/g,'i'],[/4/g,'a'],
+  [/8/g,'b'],[/2/g,'z'],[/6/g,'b'],[/9/g,'g'],
+  [/\$\$/g,'ss'],[/\|/g,'i'],[/@/g,'a'],[/\u00A9/g,'c']
+];
+// English letter-to-similar-looking replacements for catching evasion
+var ENG_ALIKE = { '0':'o','1':'i','3':'e','4':'a','5':'s','7':'t','8':'b','$':'s','@':'a','!':'i','*':'' };
+
+function normalizeText(str) {
+  if (!str) return '';
+  var s = String(str);
+  // 1. Strip zero-width / invisible Unicode
+  s = s.replace(ZW_CHARS, '');
+  // 2. Strip Arabic diacritics
+  s = s.replace(AR_DIACR, '');
+  // 3. Normalize Arabic letters
+  var chars = s.split('');
+  for (var ci = 0; ci < chars.length; ci++) { var m = AR_MAP[chars[ci]]; if (m !== undefined) { if (m === '') chars[ci] = ''; else chars[ci] = m; } }
+  s = chars.join('');
+  // 4. Leetspeak / Arabizi number conversion
+  for (var pi = 0; pi < LEET_PATTERNS.length; pi++) s = s.replace(LEET_PATTERNS[pi][0], LEET_PATTERNS[pi][1]);
+  // 5. Collapse 3+ repeated chars to 2 (Arabic keeps double letters, English reduces to 1)
+  s = s.replace(/([^\w])+/g, '$1');
+  s = s.replace(/(.)\1{2,}/g, '$1$1');
+  // 6. Remove single non-word chars between word letters (catches f.u.c.k evasion)
+  s = s.replace(/(\w)[\s.\-_*+,;:!?#\/\\~`'\"(){}\[\]|@$%^&=<>](?=\w)/g, '$1');
+  // 7. Lowercase
+  s = s.toLowerCase();
+  return s;
+}
+
+function makeStripped(str) {
+  // Remove everything that is not a word character or Arabic letter
+  return str.replace(/[^\w\u0600-\u06FF]/g, '');
+}
+
+async function ensureBannedCache() {
+  if (_bannedWordsCache) return;
+  var r = await sb.from('banned_words').select('*');
+  var words = r.data || [];
+  _bannedWordsCache = words.map(function(w) {
+    return { id: w.id, word: w.word, severity: w.severity || 'severe', lang: w.lang || 'en', category: w.category || 'general', norm: normalizeText(w.word), stripped: makeStripped(normalizeText(w.word)) };
+  });
+}
+
+function checkBannedContent(content) {
+  if (!_bannedWordsCache || !content) return [];
+  var c = String(content);
+  var norm = normalizeText(c);
+  var stripped = makeStripped(norm);
+  var hits = [];
+  for (var i = 0; i < _bannedWordsCache.length; i++) {
+    var bw = _bannedWordsCache[i];
+    if (norm.indexOf(bw.norm) >= 0 || stripped.indexOf(bw.stripped) >= 0) {
+      hits.push({ word: bw.word, severity: bw.severity, lang: bw.lang, category: bw.category });
+    }
+  }
+  return hits;
+}
+// ── end banned words pipeline ──
 
 initApp();
 
@@ -2098,13 +2164,14 @@ async function submitPost() {
   var desc = document.getElementById('f-post-desc')?.value.trim();
   if (!title || title.length < 3) { alert('Title must be at least 3 characters.'); return; }
   if (!desc) { alert('Please add a description.'); return; }
-  var { data: banned } = await sb.from('banned_words').select('word');
-  if (banned) {
-    for (var b = 0; b < banned.length; b++) {
-      if (title.toLowerCase().includes(banned[b].word.toLowerCase()) || desc.toLowerCase().includes(banned[b].word.toLowerCase())) {
-        alert('Your post contains inappropriate language and cannot be published.'); return;
-      }
-    }
+  await ensureBannedCache();
+  var violations = checkBannedContent(title + ' ' + desc);
+  if (violations.length > 0) {
+    var sev = violations[0].severity;
+    var msg = 'Your post contains inappropriate language and cannot be published.';
+    if (sev === 'moderate') msg = 'Please remove offensive language before posting.';
+    else if (sev === 'severe') msg = 'Severe language detected. Your post has been blocked.';
+    alert(msg); return;
   }
   var { error } = await sb.from('community_posts').insert({ user_id: currentUser.id, lesson_id: lessonId, title: title, description: desc, image_url: _cmPostImage });
   if (error) { alert('Error: ' + error.message); return; }
@@ -2218,11 +2285,12 @@ async function addComment(postId, parentId) {
   if (!content) { alert('Please write something.'); return; }
   var imgInputId = parentId ? 'f-reply-img-' + parentId : 'f-comment-img-' + postId;
   var image_url = (document.getElementById(imgInputId)?.value) || null;
-  var { data: banned } = await sb.from('banned_words').select('word');
-  if (banned) {
-    for (var b = 0; b < banned.length; b++) {
-      if (content.toLowerCase().includes(banned[b].word.toLowerCase())) { alert('Your comment contains inappropriate language.'); return; }
-    }
+  await ensureBannedCache();
+  var violations = checkBannedContent(content);
+  if (violations.length > 0) {
+    var msg = 'Your comment contains inappropriate language.';
+    if (violations[0].severity === 'severe') msg = 'Severe language detected. Comment blocked.';
+    alert(msg); return;
   }
   var { error } = await sb.from('community_comments').insert({ post_id: postId, user_id: currentUser.id, content: content, parent_id: parentId || null, image_url: image_url });
   if (error) { alert('Error: ' + error.message); return; }
