@@ -2689,6 +2689,7 @@ function renderCmReports(el) {
       html += '<td style="font-size:.75rem;color:var(--muted)">' + timeAgo(rp.created_at) + '</td>';
       html += '<td style="text-align:right"><button class="btn btn-ghost btn-sm" onclick="dismissReport(' + rp.id + ')">Dismiss</button>';
       if (rp.post_id) html += ' <button class="btn btn-danger btn-sm" onclick="cmAdminDeletePost(' + rp.post_id + ')">Delete Post</button>';
+      if (rp.comment_id) html += ' <button class="btn btn-danger btn-sm" onclick="cmAdminDeleteComment(' + rp.comment_id + ')">Delete Comment</button>';
       html += '</td></tr>';
     });
     html += '</tbody></table></div>';
@@ -2699,7 +2700,7 @@ function renderCmReports(el) {
 function renderCmWords(el) {
   sb.from('banned_words').select('*').order('created_at', { ascending: false }).then(function(r) {
     var words = r.data || [];
-    var html = '<div style="margin-bottom:16px;display:flex;gap:8px"><input class="search-input" id="cm-new-word" style="max-width:240px" placeholder="Add banned word\u2026"><button class="btn btn-primary" onclick="addBannedWord()">Add</button></div>';
+    var html = '<div style="margin-bottom:16px;display:flex;gap:8px;flex-wrap:wrap"><input class="search-input" id="cm-new-word" style="max-width:240px" placeholder="Add banned word\u2026"><button class="btn btn-primary" onclick="addBannedWord()">Add</button><button class="btn btn-ghost" onclick="showBulkBannedWords()">Bulk Import</button></div>';
     if (words.length === 0) {
       html += '<div class="empty-state" style="padding:24px"><div class="empty-icon">\uD83D\uDCDD</div><h3>No banned words</h3><p>Add words that should be blocked in community posts and comments.</p></div>';
     } else {
@@ -2711,6 +2712,26 @@ function renderCmWords(el) {
     }
     el.innerHTML = html;
   });
+}
+
+function showBulkBannedWords() {
+  showModal('<h2>Bulk Import Banned Words</h2><p style="font-size:.8125rem;color:var(--muted);margin-bottom:12px">Paste words one per line. Duplicates will be skipped.</p><textarea id="f-bulk-words" rows="10" style="width:100%;resize:vertical;font-size:.8125rem"></textarea><div class="admin-modal-footer"><button class="btn btn-primary" onclick="saveBulkBannedWords()">Import</button><button class="btn btn-ghost" onclick="hideModal()">Cancel</button></div>');
+}
+
+async function saveBulkBannedWords() {
+  var text = document.getElementById('f-bulk-words').value.trim();
+  if (!text) return;
+  var words = text.split('\n').map(function(s) { return s.trim(); }).filter(Boolean);
+  var inserted = 0;
+  for (var i = 0; i < words.length; i++) {
+    try {
+      await sb.from('banned_words').insert({ word: words[i] });
+      inserted++;
+    } catch(e) {}
+  }
+  hideModal();
+  renderCmWords(document.getElementById('cm-admin-tab-content'));
+  alert('Imported ' + inserted + ' of ' + words.length + ' words.');
 }
 
 function renderCmBans(el) {
@@ -2779,9 +2800,10 @@ async function removeBannedWord(id) {
   } catch(e) { alert('Error: ' + e.message); }
 }
 
-function showBanForm() {
+function showBanForm(preFilledUserId) {
   showModal('<h2>Ban User</h2>'
-    + '<label>User ID</label><input id="f-ban-user-id" placeholder="Paste user UUID">'
+    + '<label>Search User</label><div style="position:relative"><input class="search-input" id="f-ban-user-search" style="width:100%" placeholder="Type name to search..." oninput="searchBanUser(this.value)"><div id="f-ban-search-results" style="position:absolute;top:100%;left:0;right:0;background:var(--bg);border:1px solid var(--border);border-radius:var(--radius);max-height:200px;overflow-y:auto;z-index:10;display:none"></div></div>'
+    + '<label>User ID</label><input id="f-ban-user-id" readonly style="font-size:.75rem;color:var(--muted)" placeholder="Select a user above or paste UUID">'
     + '<label>Ban Type</label><select id="f-ban-type"><option value="warning">Warning</option><option value="temporary">Temporary</option><option value="permanent">Permanent</option></select>'
     + '<div id="f-ban-expires-wrap"><label>Expires At</label><input type="date" id="f-ban-expires"></div>'
     + '<label>Reason</label><textarea id="f-ban-reason" rows="2"></textarea>'
@@ -2791,6 +2813,9 @@ function showBanForm() {
   };
   if (document.getElementById('f-ban-type').value === 'permanent') {
     document.getElementById('f-ban-expires-wrap').style.display = 'none';
+  }
+  if (preFilledUserId) {
+    document.getElementById('f-ban-user-id').value = preFilledUserId;
   }
 }
 
@@ -2813,6 +2838,94 @@ async function revokeBan(banId) {
   if (!confirm('Revoke this ban?')) return;
   try {
     await sb.from('user_bans').delete().eq('id', banId);
+    loadAdminCommunity();
+  } catch(e) { alert('Error: ' + e.message); }
+}
+
+var _banSearchTimeout = null;
+function searchBanUser(query) {
+  if (_banSearchTimeout) clearTimeout(_banSearchTimeout);
+  _banSearchTimeout = setTimeout(function() {
+    var q = query.trim();
+    var resultsEl = document.getElementById('f-ban-search-results');
+    var idInput = document.getElementById('f-ban-user-id');
+    if (q.length < 2) { resultsEl.style.display = 'none'; return; }
+    sb.from('profiles').select('id,name').ilike('name', '%' + q + '%').limit(10).then(function(r) {
+      var users = r.data || [];
+      if (users.length === 0) { resultsEl.style.display = 'none'; return; }
+      resultsEl.style.display = 'block';
+      resultsEl.innerHTML = '';
+      users.forEach(function(u) {
+        var div = document.createElement('div');
+        div.style.cssText = 'padding:8px 12px;cursor:pointer;font-size:.8125rem;border-bottom:1px solid var(--border)';
+        div.textContent = u.name + ' \u2014 ' + u.id.slice(0, 8) + '...';
+        div.onmouseenter = function() { this.style.background = 'var(--primary-soft)'; };
+        div.onmouseleave = function() { this.style.background = ''; };
+        div.onclick = function() {
+          idInput.value = u.id;
+          resultsEl.style.display = 'none';
+          document.getElementById('f-ban-user-search').value = u.name;
+        };
+        resultsEl.appendChild(div);
+      });
+    });
+  }, 300);
+}
+
+// Auto-ban: escalating strikes when admin deletes content
+async function autoBanUser(userId, reason) {
+  if (!userId) return;
+  try {
+    var { data: existingBans } = await sb.from('user_bans').select('id').eq('user_id', userId);
+    var strikeCount = (existingBans || []).length;
+    var banType, banReason, expiresAt;
+    if (strikeCount === 0) {
+      banType = 'warning';
+      banReason = 'Warning \u2014 ' + reason;
+    } else if (strikeCount === 1) {
+      banType = 'temporary';
+      banReason = 'Temporary ban \u2014 ' + reason;
+      expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString();
+    } else {
+      banType = 'permanent';
+      banReason = 'Permanent ban \u2014 ' + reason;
+    }
+    await sb.from('user_bans').insert({
+      user_id: userId,
+      admin_id: adminUser.id,
+      ban_type: banType,
+      is_permanent: banType === 'permanent',
+      expires_at: expiresAt || null,
+      reason: banReason
+    });
+    return { strike: strikeCount + 1, banType: banType };
+  } catch(e) { console.error('autoBan failed', e); }
+}
+
+async function cmAdminDeletePost(postId) {
+  if (!confirm('Delete this post permanently? This cannot be undone.')) return;
+  try {
+    var { data: post } = await sb.from('community_posts').select('user_id,title').eq('id', postId).single();
+    if (post) {
+      var result = await autoBanUser(post.user_id, 'Deleted post: "' + (post.title || '').substring(0, 60) + '"');
+      if (result) alert('Auto-banned user: strike \u0023' + result.strike + ' (' + result.banType + ')');
+    }
+    await sb.from('community_posts').delete().eq('id', postId);
+    _cmAllPosts = _cmAllPosts.filter(function(p) { return p.id !== postId; });
+    loadAdminCommunity();
+  } catch(e) { alert('Error: ' + e.message); }
+}
+
+async function cmAdminDeleteComment(commentId) {
+  if (!confirm('Delete this comment permanently? This will also auto-ban the author.')) return;
+  try {
+    var { data: comment } = await sb.from('community_comments').select('user_id,content').eq('id', commentId).single();
+    if (comment) {
+      var snippet = (comment.content || '').substring(0, 60);
+      var result = await autoBanUser(comment.user_id, 'Deleted comment: "' + snippet + '"');
+      if (result) alert('Auto-banned user: strike \u0023' + result.strike + ' (' + result.banType + ')');
+    }
+    await sb.from('community_comments').delete().eq('id', commentId);
     loadAdminCommunity();
   } catch(e) { alert('Error: ' + e.message); }
 }

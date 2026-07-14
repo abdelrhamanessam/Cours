@@ -405,7 +405,13 @@ async function renderReviewPage() {
     var lessonList = Object.values(lessonData).sort(function(a, b) {
       return (b.wrong / Math.max(1, b.total)) - (a.wrong / Math.max(1, a.total));
     });
-    var completedLids = Object.keys(Progress).filter(function(k) { return Progress[k]?.completed; }).map(Number);
+    var userLevel = userProfile?.level || null;
+    var myCourses = userLevel ? COURSES.filter(function(c) { return c.level === userLevel; }) : COURSES;
+    var myLids = {};
+    myCourses.forEach(function(c) { c.lessons.forEach(function(l) { myLids[l.id] = true; }); });
+    var completedLids = Object.keys(Progress).filter(function(k) { return Progress[k]?.completed && myLids[parseInt(k)]; }).map(Number);
+    // Filter lessonList to only include user's level lessons
+    lessonList = lessonList.filter(function(l) { return myLids[l.lid]; });
     // Build HTML
     var html = '';
     // Smart Review CTA
@@ -485,16 +491,20 @@ async function renderReviewPage() {
 
 async function startSmartReview() {
   if (!currentUser) { alert('Please log in.'); return; }
-  var completedLids = Object.keys(Progress).filter(function(lid) { return Progress[lid]?.completed; }).map(Number);
-  if (completedLids.length === 0) { alert('Complete at least one lesson first.'); return; }
+  var userLevel = userProfile?.level || null;
+  var myCourses = userLevel ? COURSES.filter(function(c) { return c.level === userLevel; }) : COURSES;
+  var myLids = {};
+  myCourses.forEach(function(c) { c.lessons.forEach(function(l) { myLids[l.id] = true; }); });
+  var completedLids = Object.keys(Progress).filter(function(lid) { return Progress[lid]?.completed && myLids[parseInt(lid)]; }).map(Number);
+  if (completedLids.length === 0) { alert('Complete at least one lesson in your level first.'); return; }
   // Scale questions per lesson: fewer as more lessons completed
   var perLesson = completedLids.length <= 3 ? 5 : completedLids.length <= 6 ? 4 : completedLids.length <= 10 ? 3 : 2;
   var { data: attempts } = await sb.from('exam_attempts').select('*').eq('user_id', currentUser.id);
   if (!attempts) attempts = [];
   var allQs = [];
   var qOrder = [];
-  for (var ci = 0; ci < COURSES.length; ci++) {
-    var course = COURSES[ci];
+  for (var ci = 0; ci < myCourses.length; ci++) {
+    var course = myCourses[ci];
     for (var li = 0; li < course.lessons.length; li++) {
       var lesson = course.lessons[li];
       if (!Progress[lesson.id]?.completed) continue;
