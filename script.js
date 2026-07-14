@@ -1036,7 +1036,7 @@ function lessonsHTML(c) {
       }
       h += '</div>';
       h += '<div class="cs-group"><div class="cs-group-head">Community</div><div class="course-section-row" onclick="event.stopPropagation();showTopCommunityQuestions(' + lid + ',\'' + esc(l.title) + '\')"><span class="cs-num">&#9733;</span><span class="cs-title">Top questions from students about this lesson</span><span class="cs-type cs-community">Community</span><span class="cs-open">View &rarr;</span></div></div>';
-      h += '</div></div>';
+      h += '</div>';
     }
   });
   return h;
