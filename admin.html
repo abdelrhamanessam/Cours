@@ -26,8 +26,8 @@
 .hidden{display:none!important}
 .admin-page{display:none}
 .admin-page.active{display:block}
-@keyframes fadeSlide{from{opacity:0;transform:translateY(4px)}to{opacity:1;transform:translateY(0)}}
-@media(prefers-reduced-motion:no-preference){.admin-page.active{animation:fadeSlide .2s ease}}
+@keyframes fadeSlide{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
+@media(prefers-reduced-motion:no-preference){.admin-page.active{animation:fadeSlide .35s cubic-bezier(0.22,1,0.36,1) both}}
 
 .admin-sidebar{width:200px;flex-shrink:0;position:sticky;top:40px;align-self:start}
 .admin-sidebar a{display:flex;align-items:center;gap:10px;padding:10px 14px;color:var(--muted);text-decoration:none;border-radius:var(--radius);margin-bottom:2px;font-weight:500;font-size:.875rem;cursor:pointer;transition:background .15s,color .15s;outline:none}
@@ -3125,6 +3125,24 @@ async function adminSaveDeviceLimit(userId) {
 }
 
 // Always show login form on page load
+// ── Dynamic content reveal for admin pages ──
+(function() {
+  if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+  function animItems(items) {
+    var fresh = []; items.forEach(function(el) { if (!el.classList.contains('sr-animated')) { fresh.push(el); el.classList.add('sr-animated'); } }); if (!fresh.length) return;
+    fresh.forEach(function(el, i) { el.style.setProperty('--i', (i * 60) + 'ms'); el.classList.add('sr-item'); });
+    requestAnimationFrame(function() { fresh.forEach(function(el) { el.classList.add('sr-in'); }); });
+  }
+  var dTimers = {};
+  ['admin-page-courses','admin-page-students','admin-page-admins','admin-page-categories','admin-page-community','admin-page-support'].forEach(function(id) {
+    var container = document.getElementById(id);
+    if (!container) return;
+    new MutationObserver(function() {
+      clearTimeout(dTimers[id]); dTimers[id] = setTimeout(function() { animItems(container.querySelectorAll('.crs-card, .lessons-table, .st-row, .md-tabs, .sp-ticket')); }, 40);
+    }).observe(container, { childList: true, subtree: true });
+  });
+  window.animItems = animItems;
+})();
 </script>
 </body>
 </html>
