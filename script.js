@@ -1941,7 +1941,7 @@ function timeAgo(d) {
 
 function showModal(html) { document.getElementById('app-modal-body').innerHTML = html; document.getElementById('app-modal').classList.add('show'); }
 function hideModal() { document.getElementById('app-modal').classList.remove('show'); }
-document.getElementById('app-modal').onclick = function(e) { if (e.target === this) hideModal(); };
+document.addEventListener('click', function(e) { if (e.target === document.getElementById('app-modal')) hideModal(); });
 
 function getLessonName(lid) {
   for (var ci = 0; ci < COURSES.length; ci++) {
