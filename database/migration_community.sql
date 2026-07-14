@@ -278,6 +278,11 @@ CREATE POLICY "update_own_notifications" ON notifications
     auth.role() = 'authenticated' AND user_id = auth.uid()
   );
 
+CREATE POLICY "insert_notifications" ON notifications
+  FOR INSERT WITH CHECK (
+    auth.role() = 'authenticated' AND actor_id = auth.uid()
+  );
+
 -- ============================================================
 -- Helper function: check if post/comment contains banned words
 -- ============================================================
