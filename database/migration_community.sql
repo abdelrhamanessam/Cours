@@ -140,14 +140,14 @@ CREATE POLICY "update_own_or_admin_posts" ON community_posts
   FOR UPDATE USING (
     auth.role() = 'authenticated' AND (
       user_id = auth.uid() OR
-      EXISTS (SELECT 1 FROM profiles WHERE id = auth.uid() AND role = 'teacher')
+      EXISTS (SELECT 1 FROM profiles WHERE id = auth.uid() AND role IN ('teacher','admin'))
     )
   );
 
 CREATE POLICY "delete_posts_admin" ON community_posts
   FOR DELETE USING (
     auth.role() = 'authenticated' AND
-    EXISTS (SELECT 1 FROM profiles WHERE id = auth.uid() AND role = 'teacher')
+    EXISTS (SELECT 1 FROM profiles WHERE id = auth.uid() AND role IN ('teacher','admin'))
   );
 
 -- ============================================================
@@ -173,7 +173,7 @@ CREATE POLICY "delete_own_or_admin_comments" ON community_comments
   FOR DELETE USING (
     auth.role() = 'authenticated' AND (
       user_id = auth.uid() OR
-      EXISTS (SELECT 1 FROM profiles WHERE id = auth.uid() AND role = 'teacher')
+      EXISTS (SELECT 1 FROM profiles WHERE id = auth.uid() AND role IN ('teacher','admin'))
     )
   );
 
