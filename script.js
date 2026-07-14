@@ -231,8 +231,7 @@ async function signOut() {
   currentUser = null; userProfile = null; Progress = {};
   updateAuthUI(); renderProfile(); renderCourses();
 }
-async function updateProfileLevel() {
-  const level = document.getElementById('profile-level-select')?.value;
+async function updateProfileLevel(level) {
   if (!level || !currentUser) return;
   const { error } = await sb.from('profiles').update({ level }).eq('id', currentUser.id);
   if (error) { alert(error.message); return; }
@@ -268,7 +267,8 @@ function renderProfile() {
   document.getElementById('profile-name').textContent = userProfile?.name || 'User';
   document.getElementById('profile-email').textContent = currentUser.email || '';
   const level = userProfile?.level || 'sec1';
-  document.getElementById('profile-level-wrap').innerHTML = '<select id="profile-level-select" onchange="updateProfileLevel()"><option value="sec1"'+(level==='sec1'?' selected':'')+'>Secondary 1</option><option value="sec2"'+(level==='sec2'?' selected':'')+'>Secondary 2</option><option value="sec3"'+(level==='sec3'?' selected':'')+'>Secondary 3</option></select>';
+  document.getElementById('profile-level-wrap').innerHTML = '';
+  document.getElementById('profile-level-wrap').innerHTML = '<div class="cm-dropdown" id="profile-level-dropdown"><button class="cm-dropdown-trigger" onclick="toggleProfileLevelDropdown()" type="button"><span id="profile-level-label">'+(level==='sec1'?'Secondary 1':level==='sec2'?'Secondary 2':'Secondary 3')+'</span><svg class="cm-dropdown-arrow" width="10" height="6" viewBox="0 0 10 6" fill="none"><path d="M1 1l4 4 4-4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg></button><div class="cm-dropdown-menu" id="profile-level-menu"><div class="cm-dropdown-item'+(level==='sec1'?' active':'')+'" data-value="sec1" onclick="selectProfileLevel(\'sec1\')">Secondary 1</div><div class="cm-dropdown-item'+(level==='sec2'?' active':'')+'" data-value="sec2" onclick="selectProfileLevel(\'sec2\')">Secondary 2</div><div class="cm-dropdown-item'+(level==='sec3'?' active':'')+'" data-value="sec3" onclick="selectProfileLevel(\'sec3\')">Secondary 3</div></div></div>';
   const entries = Object.entries(Progress);
   const done = entries.filter(([,v]) => v.completed).length;
   const avg = entries.filter(([,v]) => v.score != null);
@@ -1936,10 +1936,28 @@ function selectLessonDropdown(value) {
   applyCommunityFilters();
 }
 
-// Close dropdown on outside click
+function toggleProfileLevelDropdown() {
+  var dd = document.getElementById('profile-level-dropdown');
+  if (dd) dd.classList.toggle('open');
+}
+
+function selectProfileLevel(value) {
+  var dd = document.getElementById('profile-level-dropdown');
+  var label = document.getElementById('profile-level-label');
+  var labels = { sec1: 'Secondary 1', sec2: 'Secondary 2', sec3: 'Secondary 3' };
+  if (label) label.textContent = labels[value] || value;
+  var items = document.querySelectorAll('#profile-level-menu .cm-dropdown-item');
+  items.forEach(function(item) { item.classList.toggle('active', item.dataset.value === value); });
+  if (dd) dd.classList.remove('open');
+  updateProfileLevel(value);
+}
+
+// Close dropdowns on outside click
 document.addEventListener('click', function(e) {
   var dd = document.getElementById('cm-dropdown');
   if (dd && !dd.contains(e.target)) dd.classList.remove('open');
+  var pd = document.getElementById('profile-level-dropdown');
+  if (pd && !pd.contains(e.target)) pd.classList.remove('open');
 });
 
 async function loadCommunityPosts() {

@@ -381,6 +381,7 @@
         <a onclick="switchAdminPage('admins',this)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>Admins</a>
         <a onclick="switchAdminPage('stats',this)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12v-2a5 5 0 0 0-5-5H8a5 5 0 0 0-5 5v2"/><circle cx="12" cy="16" r="5"/><path d="M12 11v5"/><path d="M9.5 13.5 12 16l2.5-2.5"/></svg>System</a>
         <a onclick="switchAdminPage('site',this)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/></svg>Site</a>
+        <a onclick="switchAdminPage('community',this)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>Community</a>
       </div>
       <div class="admin-main">
         <div id="admin-page-dashboard" class="admin-page"></div>
@@ -390,6 +391,7 @@
         <div id="admin-page-admins" class="admin-page"></div>
         <div id="admin-page-stats" class="admin-page sys-page"></div>
         <div id="admin-page-site" class="admin-page"></div>
+        <div id="admin-page-community" class="admin-page"></div>
       </div>
     </div>
   </div>
@@ -482,8 +484,8 @@ function loadAdminPage(page) {
   else if (page === 'admins') loadAdminAdmins();
   else if (page === 'stats') loadAdminStats();
   else if (page === 'site') loadAdminSite();
+  else if (page === 'community') loadAdminCommunity();
 }
-
 function switchAdminPage(page, el) {
   document.querySelectorAll('.admin-sidebar a').forEach(a => a.classList.remove('active'));
   if (el) el.classList.add('active');
@@ -495,7 +497,7 @@ function switchAdminPage(page, el) {
 // ========== DASHBOARD ==========
 async function loadDashboard() {
   const el = document.getElementById('admin-page-dashboard');
-  el.innerHTML = '<div style="text-align:center;padding:48px;color:var(--muted)">Loading…</div>';
+  el.innerHTML = '<div style="text-align:center;padding:48px;color:var(--muted)">Loading�</div>';
   try {
     const [coursesR, lessonsR, profilesR, progressR, hwR, examQR, hwQR, examImgR, hwImgR, catsR, attR] = await Promise.all([
       sb.from('courses').select('id', { count: 'exact', head: true }),
@@ -522,27 +524,27 @@ async function loadDashboard() {
     function fmtNum(n) { return (n||0).toLocaleString(); }
     const d = document.getElementById('admin-page-dashboard');
     let html = '<div class="dash-grid">';
-    // Row 1 — Overview
+    // Row 1 � Overview
     html += '<div class="dash-section"><div class="dash-section-title">Overview</div><div class="dash-cards">';
-    html += '<div class="dash-card"><div class="dc-icon" style="background:oklch(0.8 0.15 85 / .15)">📚</div><div class="dc-body"><div class="dc-val">' + fmtNum(coursesR.count) + '</div><div class="dc-lbl">Courses</div></div></div>';
-    html += '<div class="dash-card"><div class="dc-icon" style="background:oklch(0.55 0.12 235 / .1)">📄</div><div class="dc-body"><div class="dc-val">' + fmtNum(lessonsR.count) + '</div><div class="dc-lbl">Lessons</div></div></div>';
-    html += '<div class="dash-card"><div class="dc-icon" style="background:oklch(0.6 0.155 145 / .12)">👤</div><div class="dc-body"><div class="dc-val">' + fmtNum(students) + '</div><div class="dc-lbl">Students</div></div></div>';
-    html += '<div class="dash-card"><div class="dc-icon" style="background:oklch(0.72 0.14 85 / .12)">🛡️</div><div class="dc-body"><div class="dc-val">' + fmtNum(admins) + '</div><div class="dc-lbl">Admins</div></div></div>';
+    html += '<div class="dash-card"><div class="dc-icon" style="background:oklch(0.8 0.15 85 / .15)">??</div><div class="dc-body"><div class="dc-val">' + fmtNum(coursesR.count) + '</div><div class="dc-lbl">Courses</div></div></div>';
+    html += '<div class="dash-card"><div class="dc-icon" style="background:oklch(0.55 0.12 235 / .1)">??</div><div class="dc-body"><div class="dc-val">' + fmtNum(lessonsR.count) + '</div><div class="dc-lbl">Lessons</div></div></div>';
+    html += '<div class="dash-card"><div class="dc-icon" style="background:oklch(0.6 0.155 145 / .12)">??</div><div class="dc-body"><div class="dc-val">' + fmtNum(students) + '</div><div class="dc-lbl">Students</div></div></div>';
+    html += '<div class="dash-card"><div class="dc-icon" style="background:oklch(0.72 0.14 85 / .12)">???</div><div class="dc-body"><div class="dc-val">' + fmtNum(admins) + '</div><div class="dc-lbl">Admins</div></div></div>';
     html += '</div></div>';
-    // Row 2 — Learning
+    // Row 2 � Learning
     html += '<div class="dash-section"><div class="dash-section-title">Learning</div><div class="dash-cards">';
-    html += '<div class="dash-card"><div class="dc-icon" style="background:oklch(0.6 0.155 145 / .12)">✅</div><div class="dc-body"><div class="dc-val">' + fmtNum(examsDone) + '</div><div class="dc-lbl">Exams Completed</div></div></div>';
-    html += '<div class="dash-card"><div class="dc-icon" style="background:oklch(0.8 0.15 85 / .15)">📊</div><div class="dc-body"><div class="dc-val">' + Math.round(avgExam) + '%</div><div class="dc-lbl">Avg Exam Score</div></div></div>';
-    html += '<div class="dash-card"><div class="dc-icon" style="background:oklch(0.55 0.12 235 / .1)">📝</div><div class="dc-body"><div class="dc-val">' + fmtNum(hwDone) + '</div><div class="dc-lbl">Homework Done</div></div></div>';
-    html += '<div class="dash-card"><div class="dc-icon" style="background:oklch(0.72 0.14 85 / .12)">📐</div><div class="dc-body"><div class="dc-val">' + Math.round(avgHw) + '%</div><div class="dc-lbl">Avg HW Score</div></div></div>';
+    html += '<div class="dash-card"><div class="dc-icon" style="background:oklch(0.6 0.155 145 / .12)">?</div><div class="dc-body"><div class="dc-val">' + fmtNum(examsDone) + '</div><div class="dc-lbl">Exams Completed</div></div></div>';
+    html += '<div class="dash-card"><div class="dc-icon" style="background:oklch(0.8 0.15 85 / .15)">??</div><div class="dc-body"><div class="dc-val">' + Math.round(avgExam) + '%</div><div class="dc-lbl">Avg Exam Score</div></div></div>';
+    html += '<div class="dash-card"><div class="dc-icon" style="background:oklch(0.55 0.12 235 / .1)">??</div><div class="dc-body"><div class="dc-val">' + fmtNum(hwDone) + '</div><div class="dc-lbl">Homework Done</div></div></div>';
+    html += '<div class="dash-card"><div class="dc-icon" style="background:oklch(0.72 0.14 85 / .12)">??</div><div class="dc-body"><div class="dc-val">' + Math.round(avgHw) + '%</div><div class="dc-lbl">Avg HW Score</div></div></div>';
     html += '</div></div>';
-    // Row 3 — Content
+    // Row 3 � Content
     html += '<div class="dash-section"><div class="dash-section-title">Content</div><div class="dash-cards">';
-    html += '<div class="dash-card"><div class="dc-icon" style="background:oklch(0.8 0.15 85 / .15)">❓</div><div class="dc-body"><div class="dc-val">' + fmtNum(totalQs) + '</div><div class="dc-lbl">Questions</div></div></div>';
-    html += '<div class="dash-card"><div class="dc-icon" style="background:oklch(0.6 0.155 145 / .12)">🏠</div><div class="dc-body"><div class="dc-val">' + fmtNum(hwR.count) + '</div><div class="dc-lbl">Homework Sets</div></div></div>';
-    html += '<div class="dash-card"><div class="dc-icon" style="background:oklch(0.72 0.14 85 / .12)">📂</div><div class="dc-body"><div class="dc-val">' + fmtNum(catsR.count) + '</div><div class="dc-lbl">Categories</div></div></div>';
+    html += '<div class="dash-card"><div class="dc-icon" style="background:oklch(0.8 0.15 85 / .15)">?</div><div class="dc-body"><div class="dc-val">' + fmtNum(totalQs) + '</div><div class="dc-lbl">Questions</div></div></div>';
+    html += '<div class="dash-card"><div class="dc-icon" style="background:oklch(0.6 0.155 145 / .12)">??</div><div class="dc-body"><div class="dc-val">' + fmtNum(hwR.count) + '</div><div class="dc-lbl">Homework Sets</div></div></div>';
+    html += '<div class="dash-card"><div class="dc-icon" style="background:oklch(0.72 0.14 85 / .12)">??</div><div class="dc-body"><div class="dc-val">' + fmtNum(catsR.count) + '</div><div class="dc-lbl">Categories</div></div></div>';
     var activeCourseCount = coursesR.count || 0;
-    html += '<div class="dash-card"><div class="dc-icon" style="background:oklch(0.55 0.12 235 / .1)">📘</div><div class="dc-body"><div class="dc-val">' + fmtNum(activeCourseCount) + '</div><div class="dc-lbl">Active Courses</div></div></div>';
+    html += '<div class="dash-card"><div class="dc-icon" style="background:oklch(0.55 0.12 235 / .1)">??</div><div class="dc-body"><div class="dc-val">' + fmtNum(activeCourseCount) + '</div><div class="dc-lbl">Active Courses</div></div></div>';
     html += '</div></div>';
     // Recent Activity
     if (recentAtts.length > 0) {
@@ -552,19 +554,19 @@ async function loadDashboard() {
         var pct = a.total > 0 ? Math.round(a.score / a.total * 100) : 0;
         var prof = (profilesR.data || []).find(function(p) { return p.id === a.user_id; });
         var name = prof ? (prof.display_name || prof.email || a.user_id.substring(0, 8)) : a.user_id.substring(0, 8);
-        html += '<tr><td>' + esc(name) + '</td><td>Lesson ' + a.lesson_id + '</td><td class="dash-td-score ' + (pct >= 60 ? 'dash-pass' : 'dash-fail') + '">' + pct + '%</td><td class="dash-td-date">' + (a.created_at ? new Date(a.created_at).toLocaleDateString() : '—') + '</td></tr>';
+        html += '<tr><td>' + esc(name) + '</td><td>Lesson ' + a.lesson_id + '</td><td class="dash-td-score ' + (pct >= 60 ? 'dash-pass' : 'dash-fail') + '">' + pct + '%</td><td class="dash-td-date">' + (a.created_at ? new Date(a.created_at).toLocaleDateString() : '�') + '</td></tr>';
       }
       html += '</tbody></table></div></div>';
     }
     html += '</div>';
     el.innerHTML = html;
-  } catch (e) { el.innerHTML = '<div class="empty-state"><div class="empty-icon">⚠️</div><h3>Error</h3><p>' + esc(e.message) + '</p></div>'; }
+  } catch (e) { el.innerHTML = '<div class="empty-state"><div class="empty-icon">??</div><h3>Error</h3><p>' + esc(e.message) + '</p></div>'; }
 }
 
 // ========== SYSTEM STATS ==========
 async function loadAdminStats() {
   var el = document.getElementById('admin-page-stats');
-  el.innerHTML = '<div class="sys-header"><h1>System Statistics</h1><p>Database usage, storage, and content overview</p></div><div id="sys-loading" style="text-align:center;padding:48px;color:var(--muted)">Loading…</div>';
+  el.innerHTML = '<div class="sys-header"><h1>System Statistics</h1><p>Database usage, storage, and content overview</p></div><div id="sys-loading" style="text-align:center;padding:48px;color:var(--muted)">Loading�</div>';
   try {
     var [coursesR, lessonsR, lecturesR, profilesR, progressR, hwR, examsR, examQR, hwQR, examImgR, hwImgR, catsR, catQR, attR, finalAttR, siteConfigR] = await Promise.all([
       sb.from('courses').select('*', { count: 'exact', head: true }),
@@ -586,7 +588,7 @@ async function loadAdminStats() {
     ]);
     var students = (profilesR.data || []).filter(function(p) { return p.role === 'student'; }).length;
     var admins = (profilesR.data || []).filter(function(p) { return p.role === 'admin'; }).length;
-    // Storage — track success per bucket
+    // Storage � track success per bucket
     var imgCount = 0, vidCount = 0, filesCount = 0, imgSize = 0, vidSize = 0, filesSize = 0, imgOk = true, vidOk = true, filesOk = true;
     try { var imgList = await sb.storage.from('question-images').list('', { limit: 9999 }); if (imgList.data && !imgList.error) { imgCount = imgList.data.length; imgList.data.forEach(function(f) { imgSize += f.metadata?.size || 0; }); } else if (imgList.error) { imgOk = false; } } catch (_) { imgOk = false; }
     try { var vidList = await sb.storage.from('videos').list('', { limit: 9999 }); if (vidList.data && !vidList.error) { vidCount = vidList.data.length; vidList.data.forEach(function(f) { vidSize += f.metadata?.size || 0; }); } else if (vidList.error) { vidOk = false; } } catch (_) { vidOk = false; }
@@ -610,54 +612,54 @@ async function loadAdminStats() {
     } catch(e) { console.error('Supabase stats error', e); }
     var html = '<div class="sys-header"><h1>System Statistics</h1><p>Database usage, storage, and content overview</p></div>';
     // Storage section
-    html += '<div class="sys-section"><div class="sys-section-title">📦 Storage <span>— Free tier: 1 GB max</span></div><div class="sys-grid">';
-    html += '<div class="sys-card ' + (imgOk ? 'info' : 'danger') + '"><div class="sys-card-icon">🖼️</div><div class="sys-card-value">' + (imgOk ? fmtNum(imgCount) : 'N/A') + '</div><div class="sys-card-label">Images</div></div>';
+    html += '<div class="sys-section"><div class="sys-section-title">?? Storage <span>� Free tier: 1 GB max</span></div><div class="sys-grid">';
+    html += '<div class="sys-card ' + (imgOk ? 'info' : 'danger') + '"><div class="sys-card-icon">???</div><div class="sys-card-value">' + (imgOk ? fmtNum(imgCount) : 'N/A') + '</div><div class="sys-card-label">Images</div></div>';
     if (imgOk && avgImgSize > 0) {
-      html += '<div class="sys-card"><div class="sys-card-icon">📐</div><div class="sys-card-value">' + fmtBytes(avgImgSize) + '</div><div class="sys-card-label">Avg Image Size</div></div>';
+      html += '<div class="sys-card"><div class="sys-card-icon">??</div><div class="sys-card-value">' + fmtBytes(avgImgSize) + '</div><div class="sys-card-label">Avg Image Size</div></div>';
     }
-    html += '<div class="sys-card ' + (vidOk ? 'warning' : 'danger') + '"><div class="sys-card-icon">🎬</div><div class="sys-card-value">' + (vidOk ? fmtNum(vidCount) : 'N/A') + '</div><div class="sys-card-label">Videos</div></div>';
-    html += '<div class="sys-card ' + (filesOk ? 'ok' : 'danger') + '"><div class="sys-card-icon">📎</div><div class="sys-card-value">' + (filesOk ? fmtNum(filesCount) : 'N/A') + '</div><div class="sys-card-label">Files</div></div>';
-    html += '<div class="sys-card accent"><div class="sys-card-icon">💾</div><div class="sys-card-value">' + fmtBytes(totalStorage) + '</div><div class="sys-card-label">Total Storage</div></div>';
-    html += '<div class="sys-card"><div class="sys-card-icon">📊</div><div class="sys-card-value">' + storagePct + '% <span class="sys-unit">of 1 GB</span></div><div class="sys-card-label">Storage Usage</div><div class="sys-card-bar"><div class="sys-card-bar-fill" style="width:' + storagePct + '%;background:' + (storagePct > 80 ? 'var(--error)' : storagePct > 50 ? '#c97a00' : 'var(--success)') + '"></div></div></div>';
+    html += '<div class="sys-card ' + (vidOk ? 'warning' : 'danger') + '"><div class="sys-card-icon">??</div><div class="sys-card-value">' + (vidOk ? fmtNum(vidCount) : 'N/A') + '</div><div class="sys-card-label">Videos</div></div>';
+    html += '<div class="sys-card ' + (filesOk ? 'ok' : 'danger') + '"><div class="sys-card-icon">??</div><div class="sys-card-value">' + (filesOk ? fmtNum(filesCount) : 'N/A') + '</div><div class="sys-card-label">Files</div></div>';
+    html += '<div class="sys-card accent"><div class="sys-card-icon">??</div><div class="sys-card-value">' + fmtBytes(totalStorage) + '</div><div class="sys-card-label">Total Storage</div></div>';
+    html += '<div class="sys-card"><div class="sys-card-icon">??</div><div class="sys-card-value">' + storagePct + '% <span class="sys-unit">of 1 GB</span></div><div class="sys-card-label">Storage Usage</div><div class="sys-card-bar"><div class="sys-card-bar-fill" style="width:' + storagePct + '%;background:' + (storagePct > 80 ? 'var(--error)' : storagePct > 50 ? '#c97a00' : 'var(--success)') + '"></div></div></div>';
     if (imgOk && vidOk && totalStorage > 0) {
       var imgPct = Math.round(imgSize / totalStorage * 100);
-      html += '<div class="sys-card"><div class="sys-card-icon">🧩</div><div class="sys-card-value">' + imgPct + '% <span class="sys-unit">images</span></div><div class="sys-card-label">Storage Mix</div><div class="sys-card-bar"><div class="sys-card-bar-fill" style="width:' + imgPct + '%;background:var(--primary)"></div></div></div>';
+      html += '<div class="sys-card"><div class="sys-card-icon">??</div><div class="sys-card-value">' + imgPct + '% <span class="sys-unit">images</span></div><div class="sys-card-label">Storage Mix</div><div class="sys-card-bar"><div class="sys-card-bar-fill" style="width:' + imgPct + '%;background:var(--primary)"></div></div></div>';
     }
     html += '</div></div>';
     // Supabase Project Usage
     if (supabaseStats) {
       var dbSizeMB = Math.round(supabaseStats.dbSize / (1024*1024)), fileStorageMB = Math.round(supabaseStats.storageBytes / (1024*1024));
-      html += '<div class="sys-section"><div class="sys-section-title">☁️ Supabase Usage</div><div class="sys-grid">' +
-        '<div class="sys-card warning"><div class="sys-card-icon">🌐</div><div class="sys-card-value">130 MB</div><div class="sys-card-label">Egress (est.)</div></div>' +
-        '<div class="sys-card"><div class="sys-card-icon">🗄️</div><div class="sys-card-value">' + fmtNum(dbSizeMB) + ' MB</div><div class="sys-card-label">Database Size</div></div>' +
-        '<div class="sys-card"><div class="sys-card-icon">👥</div><div class="sys-card-value">' + fmtNum(supabaseStats.mau) + '</div><div class="sys-card-label">Monthly Users</div></div>' +
-        '<div class="sys-card info"><div class="sys-card-icon">📦</div><div class="sys-card-value">' + fmtNum(fileStorageMB) + ' MB</div><div class="sys-card-label">File Storage</div></div>' +
+      html += '<div class="sys-section"><div class="sys-section-title">?? Supabase Usage</div><div class="sys-grid">' +
+        '<div class="sys-card warning"><div class="sys-card-icon">??</div><div class="sys-card-value">130 MB</div><div class="sys-card-label">Egress (est.)</div></div>' +
+        '<div class="sys-card"><div class="sys-card-icon">???</div><div class="sys-card-value">' + fmtNum(dbSizeMB) + ' MB</div><div class="sys-card-label">Database Size</div></div>' +
+        '<div class="sys-card"><div class="sys-card-icon">??</div><div class="sys-card-value">' + fmtNum(supabaseStats.mau) + '</div><div class="sys-card-label">Monthly Users</div></div>' +
+        '<div class="sys-card info"><div class="sys-card-icon">??</div><div class="sys-card-value">' + fmtNum(fileStorageMB) + ' MB</div><div class="sys-card-label">File Storage</div></div>' +
         '</div></div>';
     }
     // Database section
-    html += '<div class="sys-section"><div class="sys-section-title">🗄️ Database <span>— Free tier: 500 MB max</span></div><div class="sys-table-wrap"><table class="sys-table"><thead><tr><th>Table</th><th style="text-align:right">Rows</th></tr></thead><tbody>';
+    html += '<div class="sys-section"><div class="sys-section-title">??? Database <span>� Free tier: 500 MB max</span></div><div class="sys-table-wrap"><table class="sys-table"><thead><tr><th>Table</th><th style="text-align:right">Rows</th></tr></thead><tbody>';
     var tables = [['courses', coursesR.count||0],['lessons', lessonsR.count||0],['lectures', lecturesR.count||0],['profiles', profilesR.count||0],['progress', progressR.count||0],['homework', hwR.count||0],['exams', examsR.count||0],['exam_attempts', attR.count||0],['final_exam_attempts', finalAttR.count||0],['exam_questions', examQR.count||0],['hw_questions', hwQR.count||0],['exam_image_questions', examImgR.count||0],['hw_image_questions', hwImgR.count||0],['question_categories', catsR.count||0],['category_questions', catQR.count||0],['site_config', siteConfigR.count||0]];
     var totalRows = 0;
     tables.forEach(function(t) { totalRows += t[1]; html += '<tr><td>' + t[0] + '</td><td style="text-align:right;font-weight:600;font-variant-numeric:tabular-nums">' + fmtNum(t[1]) + '</td></tr>'; });
     html += '<tr style="font-weight:700;border-top:2px solid var(--border)"><td>Total</td><td style="text-align:right;font-variant-numeric:tabular-nums">' + fmtNum(totalRows) + '</td></tr>';
     html += '</tbody></table></div></div>';
     // Users & Activity
-    html += '<div class="sys-section"><div class="sys-section-title">👥 Users & Activity</div><div class="sys-grid">';
-    html += '<div class="sys-card ok"><div class="sys-card-icon">👤</div><div class="sys-card-value">' + fmtNum(students) + '</div><div class="sys-card-label">Students</div></div>';
-    html += '<div class="sys-card info"><div class="sys-card-icon">🛡️</div><div class="sys-card-value">' + fmtNum(admins) + '</div><div class="sys-card-label">Admins</div></div>';
-    html += '<div class="sys-card accent"><div class="sys-card-icon">📝</div><div class="sys-card-value">' + fmtNum(progressR.count||0) + '</div><div class="sys-card-label">Progress Records</div></div>';
-    html += '<div class="sys-card warning"><div class="sys-card-icon">📋</div><div class="sys-card-value">' + fmtNum((attR.count||0) + (finalAttR.count||0)) + '</div><div class="sys-card-label">Exam Attempts</div></div>';
-    html += '<div class="sys-card"><div class="sys-card-icon">❓</div><div class="sys-card-value">' + fmtNum(totalQs) + '</div><div class="sys-card-label">Total Questions</div></div>';
+    html += '<div class="sys-section"><div class="sys-section-title">?? Users & Activity</div><div class="sys-grid">';
+    html += '<div class="sys-card ok"><div class="sys-card-icon">??</div><div class="sys-card-value">' + fmtNum(students) + '</div><div class="sys-card-label">Students</div></div>';
+    html += '<div class="sys-card info"><div class="sys-card-icon">???</div><div class="sys-card-value">' + fmtNum(admins) + '</div><div class="sys-card-label">Admins</div></div>';
+    html += '<div class="sys-card accent"><div class="sys-card-icon">??</div><div class="sys-card-value">' + fmtNum(progressR.count||0) + '</div><div class="sys-card-label">Progress Records</div></div>';
+    html += '<div class="sys-card warning"><div class="sys-card-icon">??</div><div class="sys-card-value">' + fmtNum((attR.count||0) + (finalAttR.count||0)) + '</div><div class="sys-card-label">Exam Attempts</div></div>';
+    html += '<div class="sys-card"><div class="sys-card-icon">?</div><div class="sys-card-value">' + fmtNum(totalQs) + '</div><div class="sys-card-label">Total Questions</div></div>';
     html += '</div></div>';
     // Content
-    html += '<div class="sys-section"><div class="sys-section-title">📚 Content</div><div class="sys-grid">';
-    html += '<div class="sys-card accent"><div class="sys-card-icon">📖</div><div class="sys-card-value">' + fmtNum(coursesR.count||0) + '</div><div class="sys-card-label">Courses</div></div>';
-    html += '<div class="sys-card"><div class="sys-card-icon">📄</div><div class="sys-card-value">' + fmtNum(lessonsR.count||0) + '</div><div class="sys-card-label">Lessons</div></div>';
-    html += '<div class="sys-card info"><div class="sys-card-icon">🎥</div><div class="sys-card-value">' + fmtNum(lecturesR.count||0) + '</div><div class="sys-card-label">Lectures</div></div>';
-    html += '<div class="sys-card ok"><div class="sys-card-icon">🏠</div><div class="sys-card-value">' + fmtNum(hwR.count||0) + '</div><div class="sys-card-label">Homework Sets</div></div>';
-    html += '<div class="sys-card warning"><div class="sys-card-icon">📝</div><div class="sys-card-value">' + fmtNum(examsR.count||0) + '</div><div class="sys-card-label">Exams</div></div>';
-    html += '<div class="sys-card"><div class="sys-card-icon">📂</div><div class="sys-card-value">' + fmtNum(catsR.count||0) + '</div><div class="sys-card-label">Categories</div></div>';
-    html += '<div class="sys-card info"><div class="sys-card-icon">⚙️</div><div class="sys-card-value">' + fmtNum(siteConfigR.count||0) + '</div><div class="sys-card-label">Site Config</div></div>';
+    html += '<div class="sys-section"><div class="sys-section-title">?? Content</div><div class="sys-grid">';
+    html += '<div class="sys-card accent"><div class="sys-card-icon">??</div><div class="sys-card-value">' + fmtNum(coursesR.count||0) + '</div><div class="sys-card-label">Courses</div></div>';
+    html += '<div class="sys-card"><div class="sys-card-icon">??</div><div class="sys-card-value">' + fmtNum(lessonsR.count||0) + '</div><div class="sys-card-label">Lessons</div></div>';
+    html += '<div class="sys-card info"><div class="sys-card-icon">??</div><div class="sys-card-value">' + fmtNum(lecturesR.count||0) + '</div><div class="sys-card-label">Lectures</div></div>';
+    html += '<div class="sys-card ok"><div class="sys-card-icon">??</div><div class="sys-card-value">' + fmtNum(hwR.count||0) + '</div><div class="sys-card-label">Homework Sets</div></div>';
+    html += '<div class="sys-card warning"><div class="sys-card-icon">??</div><div class="sys-card-value">' + fmtNum(examsR.count||0) + '</div><div class="sys-card-label">Exams</div></div>';
+    html += '<div class="sys-card"><div class="sys-card-icon">??</div><div class="sys-card-value">' + fmtNum(catsR.count||0) + '</div><div class="sys-card-label">Categories</div></div>';
+    html += '<div class="sys-card info"><div class="sys-card-icon">??</div><div class="sys-card-value">' + fmtNum(siteConfigR.count||0) + '</div><div class="sys-card-label">Site Config</div></div>';
     html += '</div></div>';
     el.innerHTML = html;
   } catch (e) { el.innerHTML = '<div class="sys-empty">Error: ' + esc(e.message) + '</div>'; }
@@ -669,7 +671,7 @@ async function loadAdminSite() {
   html += '<div class="st-wrap">';
   // Photo section
   html += '<div class="st-section">';
-  html += '<div class="st-section-h"><div class="st-section-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" width="18" height="18"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg></div><div><div class="st-section-title">Teacher Photo</div><div class="st-section-desc">Appears on the landing page hero. Square image, 500×500px minimum.</div></div></div>';
+  html += '<div class="st-section-h"><div class="st-section-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" width="18" height="18"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg></div><div><div class="st-section-title">Teacher Photo</div><div class="st-section-desc">Appears on the landing page hero. Square image, 500�500px minimum.</div></div></div>';
   html += '<div class="st-photo-area">';
   html += '<div class="st-photo-circle" id="st-photo-preview"><div class="st-photo-placeholder"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" width="28" height="28"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg></div></div>';
   html += '<div class="st-photo-actions"><label class="st-upload-btn"><input type="file" id="st-photo-file" accept="image/*" onchange="previewTeacherPhoto(event)">Upload Photo</label><button class="btn btn-sm btn-ghost st-remove-btn" id="st-photo-remove" onclick="clearTeacherPhoto()" style="display:none">Remove</button></div>';
@@ -681,7 +683,7 @@ async function loadAdminSite() {
   html += '<div class="st-field"><label class="st-label">Teacher Title</label><input id="st-title" class="st-input" placeholder="Mathematics Instructor"></div></div>';
   html += '<div class="st-field"><label class="st-label">Hero Tag</label><input id="st-tag" class="st-input" placeholder="Elite Online Tutoring"></div>';
   html += '<div class="st-field"><label class="st-label">Hero Title <span class="st-label-note">(HTML allowed)</span></label><input id="st-hero-title" class="st-input" placeholder="Master Mathematics with &lt;span class=&quot;highlight&quot;&gt;Mr Essam&lt;/span&gt;"></div>';
-  html += '<div class="st-field"><label class="st-label">Hero Description</label><textarea id="st-desc" class="st-input st-textarea" rows="2" placeholder="Expert math tutoring for secondary school students…"></textarea></div>';
+  html += '<div class="st-field"><label class="st-label">Hero Description</label><textarea id="st-desc" class="st-input st-textarea" rows="2" placeholder="Expert math tutoring for secondary school students�"></textarea></div>';
   html += '</div>';
   // Save bar
   html += '<div class="st-save-bar"><button class="btn btn-primary" onclick="saveSiteSettings()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="16" height="16"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg>Save Changes</button><span id="st-msg" class="st-msg"></span></div>';
@@ -727,7 +729,7 @@ function clearTeacherPhoto() {
 async function saveSiteSettings() {
   var msg = document.getElementById('st-msg');
   msg.className = 'st-msg st-msg-loading';
-  msg.textContent = 'Saving…';
+  msg.textContent = 'Saving�';
   var pairs = [
     ['teacher_name','st-name'],
     ['teacher_title','st-title'],
@@ -770,7 +772,7 @@ async function loadAdminCourses() {
   const { data: courses } = await sb.from('courses').select('*, lessons:lessons(*, homework:homework(*), exams:exams(*))').order('sort_order');
   let html = '<div class="admin-header"><h1>Courses</h1><div class="admin-header-actions"><button class="btn btn-primary" onclick="addCourseForm()">+ Add Course</button></div></div>';
   if (!courses || courses.length === 0) {
-    html += '<div class="empty-state"><div class="empty-icon">📚</div><h3>No courses yet</h3><p>Create your first course to get started.</p></div>';
+    html += '<div class="empty-state"><div class="empty-icon">??</div><h3>No courses yet</h3><p>Create your first course to get started.</p></div>';
   } else {
     html += '<div class="crs-list">';
     courses.forEach(c => {
@@ -780,14 +782,14 @@ async function loadAdminCourses() {
       const exCount = lessons.filter(l => l.exams !== null).length;
       html += '<div class="crs-card" data-cid="' + c.id + '">';
       html += '<div class="crs-card-header" onclick="toggleCourseCard(this)">';
-      html += '<div class="crs-icon">' + (c.icon || '📘') + '</div>';
+      html += '<div class="crs-icon">' + (c.icon || '??') + '</div>';
       html += '<div class="crs-info">';
       html += '<div class="crs-title">' + esc(c.title) + ' <span class="crs-badge">' + lvl + '</span></div>';
       html += '<div class="crs-desc">' + esc(c.description) + '</div>';
       html += '<div class="crs-meta"><span class="crs-meta-item"><strong>' + lessons.length + '</strong> lessons</span><span class="crs-meta-item"><strong>' + hwCount + '</strong> with homework</span><span class="crs-meta-item"><strong>' + exCount + '</strong> with exam</span></div>';
       html += '</div>';
-      html += '<div class="crs-actions"><button class="btn btn-ghost btn-sm" onclick="event.stopPropagation();editCourseForm(' + c.id + ')">Edit</button><button class="btn btn-danger btn-sm" onclick="event.stopPropagation();deleteCourse(' + c.id + ')">×</button></div>';
-      html += '<span class="crs-expand-icon">▼</span>';
+      html += '<div class="crs-actions"><button class="btn btn-ghost btn-sm" onclick="event.stopPropagation();editCourseForm(' + c.id + ')">Edit</button><button class="btn btn-danger btn-sm" onclick="event.stopPropagation();deleteCourse(' + c.id + ')">�</button></div>';
+      html += '<span class="crs-expand-icon">?</span>';
       html += '</div>';
       html += '<div class="crs-body">';
       if (lessons.length === 0) {
@@ -807,11 +809,11 @@ async function loadAdminCourses() {
           const lecCount = 0; // will be populated if we fetch lectures too
           html += '<td><span class="lt-status"><span class="lt-status-dot ' + (hasHW || hasEx ? 'active' : 'inactive') + '"></span>' + (hasHW || hasEx ? 'Configured' : 'Not set') + '</span></td>';
           html += '<td><span class="lt-actions">';
-          if (li > 0) html += '<button class="move-btn" onclick="moveLesson(' + l.id + ',' + c.id + ',-1)" title="Move up">▲</button>';
-          if (li < lessons.length - 1) html += '<button class="move-btn" onclick="moveLesson(' + l.id + ',' + c.id + ',1)" title="Move down">▼</button>';
-          html += '<button class="btn btn-ghost btn-sm" onclick="duplicateLesson(' + l.id + ',' + c.id + ')" title="Duplicate">⧉</button>';
-          html += '<button class="btn btn-ghost btn-sm" onclick="manageContent(' + l.id + ')" title="Edit content">✎</button>';
-          html += '<button class="btn btn-danger btn-sm" onclick="deleteLesson(' + l.id + ')">×</button>';
+          if (li > 0) html += '<button class="move-btn" onclick="moveLesson(' + l.id + ',' + c.id + ',-1)" title="Move up">?</button>';
+          if (li < lessons.length - 1) html += '<button class="move-btn" onclick="moveLesson(' + l.id + ',' + c.id + ',1)" title="Move down">?</button>';
+          html += '<button class="btn btn-ghost btn-sm" onclick="duplicateLesson(' + l.id + ',' + c.id + ')" title="Duplicate">?</button>';
+          html += '<button class="btn btn-ghost btn-sm" onclick="manageContent(' + l.id + ')" title="Edit content">?</button>';
+          html += '<button class="btn btn-danger btn-sm" onclick="deleteLesson(' + l.id + ')">�</button>';
           html += '</span></td></tr>';
         });
         html += '<tr class="lessons-add-row"><td colspan="4"><button class="btn btn-primary btn-sm" onclick="addLessonForm(' + c.id + ')" style="width:100%">+ Add Lesson</button></td></tr>';
@@ -837,7 +839,7 @@ async function moveLesson(id, courseId, dir) {
   loadAdminCourses();
 }
 
-function addCourseForm() { showModal('<h2>Add Course</h2><label>Title</label><input id="f-c-title"><label>Level</label><select id="f-c-level"><option value="sec1">Sec 1</option><option value="sec2">Sec 2</option><option value="sec3">Sec 3</option></select><label>Description</label><textarea id="f-c-desc"></textarea><label>Icon</label><input id="f-c-icon" placeholder="🎯"><div class="lf-upload-row" style="margin:12px 0 4px"><label class="lf-upload-btn"><input id="f-c-img-file" type="file" accept="image/*">Upload Image</label><span class="lf-upload-hint">or enter a URL below</span></div><div class="upload-progress" id="f-c-img-progress" style="display:none"><div class="upload-progress-bar"><div class="upload-progress-fill" id="f-c-img-bar"></div></div><span class="upload-progress-text" id="f-c-img-text">0%</span></div><label>Image URL</label><input id="f-c-img" oninput="previewCourseImg()"><div id="f-c-img-preview" style="margin:4px 0"></div><label>Sort Order</label><input id="f-c-order" type="number" value="1"><div class="admin-modal-footer"><button class="btn btn-primary" onclick="saveCourse()">Save</button><button class="btn btn-ghost" onclick="hideModal()">Cancel</button></div>'); }
+function addCourseForm() { showModal('<h2>Add Course</h2><label>Title</label><input id="f-c-title"><label>Level</label><select id="f-c-level"><option value="sec1">Sec 1</option><option value="sec2">Sec 2</option><option value="sec3">Sec 3</option></select><label>Description</label><textarea id="f-c-desc"></textarea><label>Icon</label><input id="f-c-icon" placeholder="??"><div class="lf-upload-row" style="margin:12px 0 4px"><label class="lf-upload-btn"><input id="f-c-img-file" type="file" accept="image/*">Upload Image</label><span class="lf-upload-hint">or enter a URL below</span></div><div class="upload-progress" id="f-c-img-progress" style="display:none"><div class="upload-progress-bar"><div class="upload-progress-fill" id="f-c-img-bar"></div></div><span class="upload-progress-text" id="f-c-img-text">0%</span></div><label>Image URL</label><input id="f-c-img" oninput="previewCourseImg()"><div id="f-c-img-preview" style="margin:4px 0"></div><label>Sort Order</label><input id="f-c-order" type="number" value="1"><div class="admin-modal-footer"><button class="btn btn-primary" onclick="saveCourse()">Save</button><button class="btn btn-ghost" onclick="hideModal()">Cancel</button></div>'); }
 function editCourseForm(id) { sb.from('courses').select('*').eq('id', id).single().then(function(r) { var c = r.data; if (!c) return; var lvl = c.level || 'sec1'; showModal('<h2>Edit Course</h2><label>Title</label><input id="f-c-title" value="' + esc(c.title) + '"><label>Level</label><select id="f-c-level"><option value="sec1"'+(lvl==='sec1'?' selected':'')+'>Sec 1</option><option value="sec2"'+(lvl==='sec2'?' selected':'')+'>Sec 2</option><option value="sec3"'+(lvl==='sec3'?' selected':'')+'>Sec 3</option></select><label>Description</label><textarea id="f-c-desc">' + esc(c.description) + '</textarea><label>Icon</label><input id="f-c-icon" value="' + esc(c.icon) + '"><div class="lf-upload-row" style="margin:12px 0 4px"><label class="lf-upload-btn"><input id="f-c-img-file" type="file" accept="image/*">Upload Image</label><span class="lf-upload-hint">or enter a URL below</span></div><div class="upload-progress" id="f-c-img-progress" style="display:none"><div class="upload-progress-bar"><div class="upload-progress-fill" id="f-c-img-bar"></div></div><span class="upload-progress-text" id="f-c-img-text">0%</span></div><label>Image URL</label><input id="f-c-img" value="' + esc(c.image_url||'') + '" oninput="previewCourseImg()"><div id="f-c-img-preview" style="margin:4px 0"></div><label>Sort Order</label><input id="f-c-order" type="number" value="' + (c.sort_order||0) + '"><div class="admin-modal-footer"><button class="btn btn-primary" onclick="updateCourse(' + id + ')">Update</button><button class="btn btn-ghost" onclick="hideModal()">Cancel</button></div>'); setTimeout(previewCourseImg, 50); }); }
 function previewCourseImg() { var url = document.getElementById('f-c-img')?.value; var el = document.getElementById('f-c-img-preview'); if (el) el.innerHTML = url ? '<img src="' + esc(url) + '" style="max-width:200px;max-height:120px;border-radius:8px;border:1px solid var(--border);object-fit:cover" onerror="this.parentElement.innerHTML=\'<span style=color:red;font-size:.75rem>Invalid image URL</span>\'">' : ''; }
 async function uploadCourseImg(file) {
@@ -1012,17 +1014,17 @@ async function manageContent(lid) {
   // === LECTURES TAB ===
   html += '<div class="md-tab-content active" id="content-lectures">';
   if ((l.lectures||[]).length === 0) {
-    html += '<div class="empty-state" style="padding:24px 12px"><div class="empty-icon" style="font-size:1.5rem">📖</div><h3 style="font-size:.875rem">No lectures</h3><p style="font-size:.75rem">Add video or reading content.</p></div>';
+    html += '<div class="empty-state" style="padding:24px 12px"><div class="empty-icon" style="font-size:1.5rem">??</div><h3 style="font-size:.875rem">No lectures</h3><p style="font-size:.75rem">Add video or reading content.</p></div>';
   } else {
     html += '<div class="qs-list">';
     (l.lectures||[]).sort((a,b)=>(a.sort_order||0)-(b.sort_order||0)).forEach((lec, li, arr) => {
       html += '<div class="q-row">';
-      html += '<div class="q-info"><span class="q-text">' + esc(lec.title) + '</span><span class="q-meta">' + lec.type + (lec.video_url ? ' · video' : '') + (lec.file_url ? ' · <a href="' + esc(lec.file_url) + '" target="_blank" rel="noopener noreferrer" style="color:var(--accent);text-decoration:underline">file</a>' : '') + (lec.pdf_url ? ' · <a href="' + esc(lec.pdf_url) + '" target="_blank" rel="noopener noreferrer" style="color:var(--error);text-decoration:underline">PDF</a>' : '') + (lec.image_url ? ' · image' : '') + '</span></div>';
+      html += '<div class="q-info"><span class="q-text">' + esc(lec.title) + '</span><span class="q-meta">' + lec.type + (lec.video_url ? ' � video' : '') + (lec.file_url ? ' � <a href="' + esc(lec.file_url) + '" target="_blank" rel="noopener noreferrer" style="color:var(--accent);text-decoration:underline">file</a>' : '') + (lec.pdf_url ? ' � <a href="' + esc(lec.pdf_url) + '" target="_blank" rel="noopener noreferrer" style="color:var(--error);text-decoration:underline">PDF</a>' : '') + (lec.image_url ? ' � image' : '') + '</span></div>';
       html += '<span class="q-actions">';
-      if (li > 0) html += '<button class="move-btn" onclick="moveLecture(' + lec.id + ',' + lid + ',-1)" title="Move up">▲</button>';
-      if (li < arr.length - 1) html += '<button class="move-btn" onclick="moveLecture(' + lec.id + ',' + lid + ',1)" title="Move down">▼</button>';
+      if (li > 0) html += '<button class="move-btn" onclick="moveLecture(' + lec.id + ',' + lid + ',-1)" title="Move up">?</button>';
+      if (li < arr.length - 1) html += '<button class="move-btn" onclick="moveLecture(' + lec.id + ',' + lid + ',1)" title="Move down">?</button>';
       html += '<button class="btn btn-ghost btn-sm" onclick="editLectureForm(' + lec.id + ')">Edit</button>';
-      html += '<button class="btn btn-danger btn-sm" onclick="deleteLecture(' + lec.id + ')">×</button>';
+      html += '<button class="btn btn-danger btn-sm" onclick="deleteLecture(' + lec.id + ')">�</button>';
       html += '</span></div>';
     });
     html += '</div>';
@@ -1037,19 +1039,19 @@ async function manageContent(lid) {
     html += '<input id="f-hw-pass" type="number" value="' + hw.pass_score + '" style="width:60px;padding:6px 10px;border:1px solid var(--border);border-radius:6px;font-size:.8125rem">';
     html += '<button class="btn btn-ghost btn-sm" onclick="updatePassScore(\'homework\',' + hw.id + ')">Save</button>';
     html += '<div style="flex:1"></div>';
-    html += '<span style="font-size:.6875rem;color:var(--muted)">' + (hw.hw_questions||[]).length + ' std · ' + (hw.hw_image_questions||[]).length + ' img</span>';
+    html += '<span style="font-size:.6875rem;color:var(--muted)">' + (hw.hw_questions||[]).length + ' std � ' + (hw.hw_image_questions||[]).length + ' img</span>';
     html += '<button class="btn btn-danger btn-sm" onclick="deleteHW(' + hw.id + ',' + lid + ')">Delete</button>';
     html += '</div>';
     // Standard questions
     html += '<div class="sec-heading">Standard Questions</div>';
     html += '<div class="qs-list">';
     (hw.hw_questions||[]).sort((a,b)=>(a.sort_order||0)-(b.sort_order||0)).forEach(q => {
-      html += '<div class="q-row"><div class="q-info"><span class="q-text">' + esc(q.question) + '</span><span class="q-meta">' + q.options.length + ' opts · ' + String.fromCharCode(65 + q.correct) + (q.math ? '<span class="q-meta-tag math">∑ math</span>' : '') + (q.image_url ? '<span class="q-meta-tag img">🖼 img</span>' : '') + '</span></div><span class="q-actions"><button class="btn btn-ghost btn-sm" onclick="editHWQForm(' + q.id + ')">Edit</button><button class="btn btn-danger btn-sm" onclick="deleteHWQ(' + q.id + ')">×</button></span></div>';
+      html += '<div class="q-row"><div class="q-info"><span class="q-text">' + esc(q.question) + '</span><span class="q-meta">' + q.options.length + ' opts � ' + String.fromCharCode(65 + q.correct) + (q.math ? '<span class="q-meta-tag math">? math</span>' : '') + (q.image_url ? '<span class="q-meta-tag img">?? img</span>' : '') + '</span></div><span class="q-actions"><button class="btn btn-ghost btn-sm" onclick="editHWQForm(' + q.id + ')">Edit</button><button class="btn btn-danger btn-sm" onclick="deleteHWQ(' + q.id + ')">�</button></span></div>';
     });
     html += '</div>';
     html += '<div style="display:flex;gap:8px;margin-top:8px;flex-wrap:wrap">';
     html += '<button class="btn btn-primary btn-sm" onclick="addHWQForm(' + hw.id + ')">+ Add Standard</button>';
-    html += '<button class="btn btn-ghost btn-sm" onclick="showCategoryPicker(\'hw\',' + hw.id + ')">📂 Import from Category</button>';
+    html += '<button class="btn btn-ghost btn-sm" onclick="showCategoryPicker(\'hw\',' + hw.id + ')">?? Import from Category</button>';
     html += '</div>';
     html += '<hr class="sec-hr">';
     // Image questions
@@ -1058,7 +1060,7 @@ async function manageContent(lid) {
     if (hw.hw_image_questions && hw.hw_image_questions.length) {
       hw.hw_image_questions.sort((a,b)=>(a.sort_order||0)-(b.sort_order||0)).forEach(q => {
         const imgUrl = SUPABASE_URL + '/storage/v1/object/public/question-images/' + q.image_url;
-        html += '<div class="q-row"><img class="q-row-image" src="' + imgUrl + '" onclick="window.open(this.src)"><div class="q-info"><span class="q-text">Image Question</span><span class="q-meta">correct: ' + q.correct + (q.explanation ? ' · explanation' : '') + (q.option_images && q.option_images.some(Boolean) ? ' · 🖼 opts' : '') + '</span></div><span class="q-actions"><button class="btn btn-ghost btn-sm" onclick="editHWImgQForm(' + q.id + ')">Edit</button><button class="btn btn-danger btn-sm" onclick="deleteHWImgQ(' + q.id + ')">×</button></span></div>';
+        html += '<div class="q-row"><img class="q-row-image" src="' + imgUrl + '" onclick="window.open(this.src)"><div class="q-info"><span class="q-text">Image Question</span><span class="q-meta">correct: ' + q.correct + (q.explanation ? ' � explanation' : '') + (q.option_images && q.option_images.some(Boolean) ? ' � ?? opts' : '') + '</span></div><span class="q-actions"><button class="btn btn-ghost btn-sm" onclick="editHWImgQForm(' + q.id + ')">Edit</button><button class="btn btn-danger btn-sm" onclick="deleteHWImgQ(' + q.id + ')">�</button></span></div>';
       });
     } else {
       html += '<div style="padding:12px 0;text-align:center;color:var(--muted);font-size:.75rem">No image questions.</div>';
@@ -1066,7 +1068,7 @@ async function manageContent(lid) {
     html += '</div>';
     html += '<button class="btn btn-primary btn-sm" onclick="addHWImgQForm(' + hw.id + ')" style="margin-top:8px">+ Add Image Question</button>';
   } else {
-    html += '<div class="empty-state" style="padding:24px 12px"><div class="empty-icon" style="font-size:1.5rem">✎</div><h3 style="font-size:.875rem">No homework</h3><p style="font-size:.75rem">Create homework for this lesson.</p><button class="btn btn-primary btn-sm" onclick="createHW(' + lid + ')">Create Homework</button></div>';
+    html += '<div class="empty-state" style="padding:24px 12px"><div class="empty-icon" style="font-size:1.5rem">?</div><h3 style="font-size:.875rem">No homework</h3><p style="font-size:.75rem">Create homework for this lesson.</p><button class="btn btn-primary btn-sm" onclick="createHW(' + lid + ')">Create Homework</button></div>';
   }
   html += '</div>';
   // === EXAM TAB ===
@@ -1083,11 +1085,11 @@ async function manageContent(lid) {
     html += '</div>';
     // Dynamic Exam Config Panel
     html += '<div class="exam-config' + (isDynamic ? ' open' : '') + '">';
-    html += '<div class="exam-config-header" onclick="this.parentElement.classList.toggle(\'open\')">⚙️ Dynamic Exam Setup <span class="ec-toggle">▼</span></div>';
+    html += '<div class="exam-config-header" onclick="this.parentElement.classList.toggle(\'open\')">?? Dynamic Exam Setup <span class="ec-toggle">?</span></div>';
     html += '<div class="exam-config-body">';
     html += '<div class="ec-grid">';
     html += '<label>Total Pool Questions<input id="f-ex-total" type="number" value="' + (ex.total_questions||0) + '"></label>';
-    html += '<label>Questions per Attempt<input id="f-ex-qpa" type="number" value="' + (ex.questions_per_attempt||0) + '"><span style="font-size:.6875rem;color:var(--muted);font-weight:400;text-transform:none;letter-spacing:0">0 = auto (pool ÷ attempts)</span></label>';
+    html += '<label>Questions per Attempt<input id="f-ex-qpa" type="number" value="' + (ex.questions_per_attempt||0) + '"><span style="font-size:.6875rem;color:var(--muted);font-weight:400;text-transform:none;letter-spacing:0">0 = auto (pool � attempts)</span></label>';
     html += '<label>Max Attempts<input id="f-ex-max-att" type="number" value="' + (ex.max_attempts||0) + '"></label>';
     html += '<label>Pass Score per Attempt<input id="f-ex-att-pass" type="number" value="' + (ex.attempt_pass_score||60) + '"></label>';
     html += '</div>';
@@ -1095,20 +1097,20 @@ async function manageContent(lid) {
     html += '<button class="btn btn-primary btn-sm" onclick="saveExamConfig(' + ex.id + ')">Save Config</button>';
     if (isDynamic) {
       var qpaVal = (ex.questions_per_attempt > 0) ? ex.questions_per_attempt : (ex.total_questions > 0 && ex.max_attempts > 0 ? Math.floor(ex.total_questions / ex.max_attempts) : 10);
-      html += '<div class="ec-summary"><span>📦 Pool: <strong>' + (ex.exam_questions||[]).length + '</strong> std + <strong>' + (ex.exam_image_questions||[]).length + '</strong> img</span><span>🎯 Per attempt: ' + qpaVal + ' questions</span></div>';
+      html += '<div class="ec-summary"><span>?? Pool: <strong>' + (ex.exam_questions||[]).length + '</strong> std + <strong>' + (ex.exam_image_questions||[]).length + '</strong> img</span><span>?? Per attempt: ' + qpaVal + ' questions</span></div>';
     }
     html += '</div></div>';
     // Standard questions
     html += '<div class="sec-heading">Standard Questions</div>';
     html += '<div class="qs-list">';
     (ex.exam_questions||[]).sort((a,b)=>(a.sort_order||0)-(b.sort_order||0)).forEach(q => {
-      html += '<div class="q-row"><div class="q-info"><span class="q-text">' + esc(q.question) + '</span><span class="q-meta">' + q.options.length + ' opts · ' + String.fromCharCode(65 + q.correct) + (q.math ? '<span class="q-meta-tag math">∑ math</span>' : '') + (q.image_url ? '<span class="q-meta-tag img">🖼 img</span>' : '') + '</span></div><span class="q-actions"><button class="btn btn-ghost btn-sm" onclick="editExamQForm(' + q.id + ')">Edit</button><button class="btn btn-danger btn-sm" onclick="deleteExamQ(' + q.id + ')">×</button></span></div>';
+      html += '<div class="q-row"><div class="q-info"><span class="q-text">' + esc(q.question) + '</span><span class="q-meta">' + q.options.length + ' opts � ' + String.fromCharCode(65 + q.correct) + (q.math ? '<span class="q-meta-tag math">? math</span>' : '') + (q.image_url ? '<span class="q-meta-tag img">?? img</span>' : '') + '</span></div><span class="q-actions"><button class="btn btn-ghost btn-sm" onclick="editExamQForm(' + q.id + ')">Edit</button><button class="btn btn-danger btn-sm" onclick="deleteExamQ(' + q.id + ')">�</button></span></div>';
     });
     html += '</div>';
     html += '<div style="display:flex;gap:8px;margin-top:8px;flex-wrap:wrap">';
     html += '<button class="btn btn-primary btn-sm" onclick="addExamQForm(' + ex.id + ')">+ Add Question</button>';
-    html += '<button class="btn btn-ghost btn-sm" onclick="document.getElementById(\'f-word-file\').click()">📄 Import from Word</button>';
-    html += '<button class="btn btn-ghost btn-sm" onclick="showCategoryPicker(\'exam\',' + ex.id + ')">📂 Import from Category</button>';
+    html += '<button class="btn btn-ghost btn-sm" onclick="document.getElementById(\'f-word-file\').click()">?? Import from Word</button>';
+    html += '<button class="btn btn-ghost btn-sm" onclick="showCategoryPicker(\'exam\',' + ex.id + ')">?? Import from Category</button>';
     html += '<input id="f-word-file" type="file" accept=".docx" style="display:none" onchange="importWordExam(' + ex.id + ',this)">';
     html += '</div>';
     html += '<hr class="sec-hr">';
@@ -1118,7 +1120,7 @@ async function manageContent(lid) {
     if (ex.exam_image_questions && ex.exam_image_questions.length) {
       ex.exam_image_questions.sort((a,b)=>(a.sort_order||0)-(b.sort_order||0)).forEach(q => {
         const imgUrl = SUPABASE_URL + '/storage/v1/object/public/question-images/' + q.image_url;
-        html += '<div class="q-row"><img class="q-row-image" src="' + imgUrl + '" onclick="window.open(this.src)"><div class="q-info"><span class="q-text">Image Question</span><span class="q-meta">correct: ' + q.correct + (q.explanation ? ' · explanation' : '') + (q.option_images && q.option_images.some(Boolean) ? ' · 🖼 opts' : '') + '</span></div><span class="q-actions"><button class="btn btn-ghost btn-sm" onclick="editExamImgQForm(' + q.id + ')">Edit</button><button class="btn btn-danger btn-sm" onclick="deleteExamImgQ(' + q.id + ')">×</button></span></div>';
+        html += '<div class="q-row"><img class="q-row-image" src="' + imgUrl + '" onclick="window.open(this.src)"><div class="q-info"><span class="q-text">Image Question</span><span class="q-meta">correct: ' + q.correct + (q.explanation ? ' � explanation' : '') + (q.option_images && q.option_images.some(Boolean) ? ' � ?? opts' : '') + '</span></div><span class="q-actions"><button class="btn btn-ghost btn-sm" onclick="editExamImgQForm(' + q.id + ')">Edit</button><button class="btn btn-danger btn-sm" onclick="deleteExamImgQ(' + q.id + ')">�</button></span></div>';
       });
     } else {
       html += '<div style="padding:12px 0;text-align:center;color:var(--muted);font-size:.75rem">No image questions.</div>';
@@ -1126,7 +1128,7 @@ async function manageContent(lid) {
     html += '</div>';
     html += '<button class="btn btn-primary btn-sm" onclick="addExamImgQForm(' + ex.id + ')" style="margin-top:8px">+ Add Image Question</button>';
   } else {
-    html += '<div class="empty-state" style="padding:24px 12px"><div class="empty-icon" style="font-size:1.5rem">📝</div><h3 style="font-size:.875rem">No exam</h3><p style="font-size:.75rem">Create an exam for this lesson.</p><button class="btn btn-primary btn-sm" onclick="createExam(' + lid + ')">Create Exam</button></div>';
+    html += '<div class="empty-state" style="padding:24px 12px"><div class="empty-icon" style="font-size:1.5rem">??</div><h3 style="font-size:.875rem">No exam</h3><p style="font-size:.75rem">Create an exam for this lesson.</p><button class="btn btn-primary btn-sm" onclick="createExam(' + lid + ')">Create Exam</button></div>';
   }
   html += '</div>';
   showModal(html);
@@ -1174,7 +1176,7 @@ function lectureFormHtml(lec) {
   html += '<div class="lf-video-header"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" width="16" height="16"><polygon points="23 7 16 12 23 17 23 7"/><rect x="1" y="5" width="15" height="14" rx="2" ry="2"/></svg>Video Sources</div>';
   html += '<div class="lf-upload-row"><label class="lf-upload-btn"><input id="f-lect-video-file" type="file" accept="video/mp4,video/webm">Upload MP4</label><span class="lf-upload-hint">or drag & drop a file</span></div>';
   html += '<div class="upload-progress" id="f-lect-upload-progress" style="display:none"><div class="upload-progress-bar"><div class="upload-progress-fill" id="f-lect-upload-bar"></div></div><span class="upload-progress-text" id="f-lect-upload-text">0%</span></div>';
-  html += '<div class="lf-urls"><div class="lf-urls-label">URL Sources <span class="lf-urls-note">— add quality versions (optional)</span></div>';
+  html += '<div class="lf-urls"><div class="lf-urls-label">URL Sources <span class="lf-urls-note">� add quality versions (optional)</span></div>';
   qualityLabels.forEach(function(ql, qi) {
     var existing = qualities.find(function(q) { return q.label === ql; });
     var val = existing ? existing.src : '';
@@ -1439,7 +1441,7 @@ function questionOptsHtml(opts, correct, optImages) {
     '<div class="opt-row"><input type="radio" name="f-q-correct" value="' + i + '"' + (i === correct ? ' checked' : '') + ' title="Correct answer">' +
     '<input class="opt-input" value="' + esc(o) + '" placeholder="Option ' + String.fromCharCode(65 + i) + '">' +
     (imgs[i] ? '<img class="opt-img" src="' + SUPABASE_URL + '/storage/v1/object/public/question-images/' + esc(imgs[i]) + '" onclick="window.open(this.src)">' : '') +
-    '<button type="button" class="opt-img-btn" onclick="uploadOptImage(this,' + i + ')" title="Add image to option">📷</button>' +
+    '<button type="button" class="opt-img-btn" onclick="uploadOptImage(this,' + i + ')" title="Add image to option">??</button>' +
     (i >= 2 ? '<button class="opt-del" onclick="this.parentElement.remove()">&times;</button>' : '') +
     '</div>'
   ).join('');
@@ -1509,7 +1511,7 @@ function uploadOptImage(btn, idx) {
       if (e.lengthComputable) btn.textContent = Math.round(e.loaded / e.total * 100) + '%';
     });
     if (path) {
-      btn.textContent = '✅';
+      btn.textContent = '?';
       btn.className = 'opt-img-btn has-image';
       _optImagePaths[idx] = path;
       const existing = btn.parentElement.querySelector('.opt-img');
@@ -1521,7 +1523,7 @@ function uploadOptImage(btn, idx) {
         img.onclick = function() { window.open(this.src); };
         btn.parentElement.insertBefore(img, btn);
       }
-    } else { btn.textContent = '❌'; setTimeout(() => { btn.textContent = '📷'; btn.className = 'opt-img-btn'; }, 2000); }
+    } else { btn.textContent = '?'; setTimeout(() => { btn.textContent = '??'; btn.className = 'opt-img-btn'; }, 2000); }
   };
   inp.click();
 }
@@ -1536,11 +1538,11 @@ function uploadQuestionImage(btn) {
       if (e.lengthComputable) btn.textContent = Math.round(e.loaded / e.total * 100) + '%';
     });
     if (path) {
-      btn.textContent = '✅ Image added';
+      btn.textContent = '? Image added';
       _qImagePath = path;
       const prev = document.getElementById('f-q-img-preview');
       if (prev) prev.innerHTML = '<img class="q-img-preview" src="' + SUPABASE_URL + '/storage/v1/object/public/question-images/' + path + '" onclick="window.open(this.src)">';
-    } else { btn.textContent = '❌ Error'; setTimeout(() => { btn.textContent = '📷 Add Image'; }, 2000); }
+    } else { btn.textContent = '? Error'; setTimeout(() => { btn.textContent = '?? Add Image'; }, 2000); }
   };
   inp.click();
 }
@@ -1551,16 +1553,16 @@ function qFormHtml(title, q, opts, correct, sort_order, math, qImage, optImages,
   _qExplImagePath = explImage || null;
   return '<h2>' + title + '</h2>' +
     '<label>Question <span style="font-weight:400;text-transform:none;letter-spacing:0;font-size:.75rem;color:var(--muted)">(use $$...$$ for LaTeX, paste image: 1st = question, 2nd = explanation)</span></label><input id="f-q-q" value="' + esc(q) + '">' +
-    '<div style="display:flex;align-items:center;gap:8px;margin:-4px 0 8px;flex-wrap:wrap"><button type="button" class="btn-word-paste" onclick="uploadQuestionImage(this)">📷 Add Image</button><span id="f-q-img-preview">' + (qImage ? '<img class="q-img-preview" src="' + SUPABASE_URL + '/storage/v1/object/public/question-images/' + esc(qImage) + '" onclick="window.open(this.src)">' : '') + '</span>' + (explImage ? '<span style="font-size:.75rem;color:var(--muted);margin:0 4px">شرح:</span><img class="q-img-preview" src="' + SUPABASE_URL + '/storage/v1/object/public/question-images/' + esc(explImage) + '" onclick="window.open(this.src)">' : '') + '<span id="f-q-expl-img-preview" style="display:' + (explImage?'none':'inline') + '"></span></div>' +
+    '<div style="display:flex;align-items:center;gap:8px;margin:-4px 0 8px;flex-wrap:wrap"><button type="button" class="btn-word-paste" onclick="uploadQuestionImage(this)">?? Add Image</button><span id="f-q-img-preview">' + (qImage ? '<img class="q-img-preview" src="' + SUPABASE_URL + '/storage/v1/object/public/question-images/' + esc(qImage) + '" onclick="window.open(this.src)">' : '') + '</span>' + (explImage ? '<span style="font-size:.75rem;color:var(--muted);margin:0 4px">???:</span><img class="q-img-preview" src="' + SUPABASE_URL + '/storage/v1/object/public/question-images/' + esc(explImage) + '" onclick="window.open(this.src)">' : '') + '<span id="f-q-expl-img-preview" style="display:' + (explImage?'none':'inline') + '"></span></div>' +
     '<label>Math (LaTeX) <span style="font-weight:400;text-transform:none;letter-spacing:0;font-size:.75rem;color:var(--muted)">(one equation per line for multiple equations)</span></label>' +
-    '<div class="math-toolbar"><button type="button" class="btn-word-paste" onclick="toggleWordPasteBox()">📋 Paste from Word</button></div>' +
+    '<div class="math-toolbar"><button type="button" class="btn-word-paste" onclick="toggleWordPasteBox()">?? Paste from Word</button></div>' +
     '<div id="f-q-word-paste-box"></div>' +
     '<div class="math-field-wrap">' +
     '<textarea id="f-q-math" rows="4" placeholder="\\frac{-b \\pm \\sqrt{b^2 - 4ac}}{2a}" oninput="previewMath()" onpaste="handleMathFieldPaste(event)">' + esc(math || '') + '</textarea>' +
     '</div>' +
     '<div class="math-hint">Pasting from Word auto-converts symbols to LaTeX. Use "Paste from Word" to preview before inserting.</div>' +
     '<div class="modal-math-preview" id="f-q-math-preview"></div>' +
-    '<label>Answer Options <span style="font-weight:400;text-transform:none;letter-spacing:0;font-size:.75rem;color:var(--muted)">(click radio for correct, 📷 for image)</span></label>' +
+    '<label>Answer Options <span style="font-weight:400;text-transform:none;letter-spacing:0;font-size:.75rem;color:var(--muted)">(click radio for correct, ?? for image)</span></label>' +
     '<div id="f-q-opts-list" style="margin:4px 0">' + questionOptsHtml(opts, correct, _optImagePaths) + '</div>' +
     '<button class="btn btn-sm btn-ghost" onclick="addOptRow()" style="margin-bottom:8px">+ Add Option</button>' +
     '<label>Sort Order</label><input id="f-q-order" type="number" value="' + (sort_order||1) + '" style="width:80px">' +
@@ -1585,7 +1587,7 @@ function addOptRow() {
   div.className = 'opt-row';
   div.innerHTML = '<input type="radio" name="f-q-correct" value="' + i + '" title="Correct answer">' +
     '<input class="opt-input" placeholder="Option ' + String.fromCharCode(65 + i) + '">' +
-    '<button type="button" class="opt-img-btn" onclick="uploadOptImage(this,' + i + ')" title="Add image to option">📷</button>' +
+    '<button type="button" class="opt-img-btn" onclick="uploadOptImage(this,' + i + ')" title="Add image to option">??</button>' +
     '<button class="opt-del" onclick="this.parentElement.remove()">&times;</button>';
   list.appendChild(div);
 }
@@ -1617,49 +1619,49 @@ function convertWordMathToLatex(raw) {
   let s = raw;
   s = s.replace(/\u00A0/g, ' ').replace(/[\u200B-\u200F\uFEFF]/g, '');
   const fractionMap = {
-    '½': '\\frac{1}{2}', '⅓': '\\frac{1}{3}', '⅔': '\\frac{2}{3}',
-    '¼': '\\frac{1}{4}', '¾': '\\frac{3}{4}', '⅕': '\\frac{1}{5}',
-    '⅖': '\\frac{2}{5}', '⅗': '\\frac{3}{5}', '⅘': '\\frac{4}{5}',
-    '⅙': '\\frac{1}{6}', '⅚': '\\frac{5}{6}', '⅛': '\\frac{1}{8}',
-    '⅜': '\\frac{3}{8}', '⅝': '\\frac{5}{8}', '⅞': '\\frac{7}{8}'
+    '�': '\\frac{1}{2}', '?': '\\frac{1}{3}', '?': '\\frac{2}{3}',
+    '�': '\\frac{1}{4}', '�': '\\frac{3}{4}', '?': '\\frac{1}{5}',
+    '?': '\\frac{2}{5}', '?': '\\frac{3}{5}', '?': '\\frac{4}{5}',
+    '?': '\\frac{1}{6}', '?': '\\frac{5}{6}', '?': '\\frac{1}{8}',
+    '?': '\\frac{3}{8}', '?': '\\frac{5}{8}', '?': '\\frac{7}{8}'
   };
   for (const [ch, tex] of Object.entries(fractionMap)) s = s.split(ch).join(tex);
-  const supMap = { '⁰':'0','¹':'1','²':'2','³':'3','⁴':'4','⁵':'5','⁶':'6','⁷':'7','⁸':'8','⁹':'9','⁺':'+','⁻':'-','ⁿ':'n' };
-  s = s.replace(/([A-Za-z0-9\)\]])([⁰¹²³⁴⁵⁶⁷⁸⁹⁺⁻ⁿ]+)/g, (m, base, sup) => {
+  const supMap = { '�':'0','�':'1','�':'2','�':'3','4':'4','5':'5','6':'6','7':'7','8':'8','?':'9','?':'+','?':'-','n':'n' };
+  s = s.replace(/([A-Za-z0-9\)\]])([����45678???n]+)/g, (m, base, sup) => {
     const mapped = sup.split('').map(c => supMap[c] || c).join('');
     return base + '^{' + mapped + '}';
   });
-  const subMap = { '₀':'0','₁':'1','₂':'2','₃':'3','₄':'4','₅':'5','₆':'6','₇':'7','₈':'8','₉':'9' };
-  s = s.replace(/([A-Za-z0-9\)\]])([₀₁₂₃₄₅₆₇₈₉]+)/g, (m, base, sub) => {
+  const subMap = { '0':'0','1':'1','2':'2','3':'3','4':'4','5':'5','6':'6','7':'7','8':'8','9':'9' };
+  s = s.replace(/([A-Za-z0-9\)\]])([0123456789]+)/g, (m, base, sub) => {
     const mapped = sub.split('').map(c => subMap[c] || c).join('');
     return base + '_{' + mapped + '}';
   });
-  s = s.replace(/∜\(([^()]+)\)/g, '\\sqrt[4]{$1}');
-  s = s.replace(/∛\(([^()]+)\)/g, '\\sqrt[3]{$1}');
-  s = s.replace(/√\(([^()]+)\)/g, '\\sqrt{$1}');
-  s = s.replace(/∜([A-Za-z0-9]+)/g, '\\sqrt[4]{$1}');
-  s = s.replace(/∛([A-Za-z0-9]+)/g, '\\sqrt[3]{$1}');
-  s = s.replace(/√([A-Za-z0-9]+)/g, '\\sqrt{$1}');
+  s = s.replace(/?\(([^()]+)\)/g, '\\sqrt[4]{$1}');
+  s = s.replace(/?\(([^()]+)\)/g, '\\sqrt[3]{$1}');
+  s = s.replace(/v\(([^()]+)\)/g, '\\sqrt{$1}');
+  s = s.replace(/?([A-Za-z0-9]+)/g, '\\sqrt[4]{$1}');
+  s = s.replace(/?([A-Za-z0-9]+)/g, '\\sqrt[3]{$1}');
+  s = s.replace(/v([A-Za-z0-9]+)/g, '\\sqrt{$1}');
   const symbolMap = {
-    '×': '\\times ', '÷': '\\div ', '·': '\\cdot ', '∙': '\\cdot ',
-    '≤': '\\leq ', '≥': '\\geq ', '≠': '\\neq ', '≈': '\\approx ', '≡': '\\equiv ',
-    '≅': '\\cong ', '≃': '\\simeq ', '∝': '\\propto ',
-    '±': '\\pm ', '∓': '\\mp ',
-    'π': '\\pi ', 'θ': '\\theta ', 'α': '\\alpha ', 'β': '\\beta ', 'γ': '\\gamma ',
-    'δ': '\\delta ', 'ε': '\\varepsilon ', 'λ': '\\lambda ', 'μ': '\\mu ',
-    'σ': '\\sigma ', 'τ': '\\tau ', 'φ': '\\phi ', 'ω': '\\omega ',
-    'Δ': '\\Delta ', 'Σ': '\\sum ', 'Π': '\\prod ', 'Ω': '\\Omega ',
-    '∞': '\\infty ', '∫': '\\int ', '∬': '\\iint ', '∂': '\\partial ',
-    '∇': '\\nabla ', '∀': '\\forall ', '∃': '\\exists ',
-    '∈': '\\in ', '∉': '\\notin ', '⊂': '\\subset ', '⊆': '\\subseteq ',
-    '⊃': '\\supset ', '⊇': '\\supseteq ', '∪': '\\cup ', '∩': '\\cap ',
-    '∅': '\\emptyset ', '∧': '\\wedge ', '∨': '\\vee ',
-    '→': '\\rightarrow ', '←': '\\leftarrow ', '⇒': '\\Rightarrow ',
-    '⇐': '\\Leftarrow ', '↔': '\\leftrightarrow ', '⇔': '\\Leftrightarrow ',
-    '∴': '\\therefore ', '∵': '\\because ',
-    '⊥': '\\perp ', '∥': '\\parallel ', '∠': '\\angle ',
-    '°': '^{\\circ}', '√': '\\sqrt', '∛': '\\sqrt[3]', '∜': '\\sqrt[4]',
-    'ℕ': '\\mathbb{N}', 'ℤ': '\\mathbb{Z}', 'ℚ': '\\mathbb{Q}', 'ℝ': '\\mathbb{R}', 'ℂ': '\\mathbb{C}'
+    '�': '\\times ', '�': '\\div ', '�': '\\cdot ', '�': '\\cdot ',
+    '=': '\\leq ', '=': '\\geq ', '?': '\\neq ', '�': '\\approx ', '=': '\\equiv ',
+    '?': '\\cong ', '?': '\\simeq ', '?': '\\propto ',
+    '�': '\\pm ', '�': '\\mp ',
+    'p': '\\pi ', '?': '\\theta ', 'a': '\\alpha ', '�': '\\beta ', '?': '\\gamma ',
+    'd': '\\delta ', 'e': '\\varepsilon ', '?': '\\lambda ', '�': '\\mu ',
+    's': '\\sigma ', 't': '\\tau ', 'f': '\\phi ', '?': '\\omega ',
+    '?': '\\Delta ', 'S': '\\sum ', '?': '\\prod ', 'O': '\\Omega ',
+    '8': '\\infty ', '?': '\\int ', '?': '\\iint ', '?': '\\partial ',
+    '?': '\\nabla ', '?': '\\forall ', '?': '\\exists ',
+    '?': '\\in ', '?': '\\notin ', '?': '\\subset ', '?': '\\subseteq ',
+    '?': '\\supset ', '?': '\\supseteq ', '?': '\\cup ', 'n': '\\cap ',
+    '�': '\\emptyset ', '?': '\\wedge ', '?': '\\vee ',
+    '?': '\\rightarrow ', '?': '\\leftarrow ', '?': '\\Rightarrow ',
+    '?': '\\Leftarrow ', '?': '\\leftrightarrow ', '?': '\\Leftrightarrow ',
+    '?': '\\therefore ', '?': '\\because ',
+    '?': '\\perp ', '?': '\\parallel ', '?': '\\angle ',
+    '�': '^{\\circ}', 'v': '\\sqrt', '?': '\\sqrt[3]', '?': '\\sqrt[4]',
+    'N': '\\mathbb{N}', 'Z': '\\mathbb{Z}', 'Q': '\\mathbb{Q}', 'R': '\\mathbb{R}', 'C': '\\mathbb{C}'
   };
   for (const [ch, tex] of Object.entries(symbolMap)) s = s.split(ch).join(tex);
   s = s.split('\n').map(line => line.replace(/[ \t]+/g, ' ').trim()).join('\n');
@@ -1671,7 +1673,7 @@ function handleMathFieldPaste(event) {
   if (!cd) return;
   const text = cd.getData('text/plain');
   if (!text) return;
-  if (/[√×÷≤≥≠±πθαβγΔδΣΠ∞∫∂∈∉⊂⊆∪∩→⇒↔°½⅓⅔¼¾⁰¹²³⁴⁵⁶⁷⁸⁹₀₁₂₃₄₅₆₇₈₉]/.test(text)) {
+  if (/[v��==?�p?a�??dS?8???????n???��??������45678?0123456789]/.test(text)) {
     event.preventDefault();
     const converted = convertWordMathToLatex(text);
     const ta = event.target;
@@ -1743,11 +1745,11 @@ function uploadExamImgImage(btn) {
       if (e.lengthComputable) btn.textContent = Math.round(e.loaded / e.total * 100) + '%';
     });
     if (path) {
-      btn.textContent = '✅ Image ready';
+      btn.textContent = '? Image ready';
       _imgQPath = path;
       const prev = document.getElementById('f-imgq-preview');
       if (prev) prev.innerHTML = '<img src="' + SUPABASE_URL + '/storage/v1/object/public/question-images/' + path + '" style="max-width:100%;max-height:300px;border-radius:var(--radius);border:1px solid var(--border);cursor:pointer" onclick="window.open(this.src)">';
-    } else { btn.textContent = '❌ Error'; setTimeout(() => { btn.textContent = '📷 Upload Image'; btn.disabled = false; }, 2000); }
+    } else { btn.textContent = '? Error'; setTimeout(() => { btn.textContent = '?? Upload Image'; btn.disabled = false; }, 2000); }
   };
   inp.click();
 }
@@ -1761,12 +1763,12 @@ function uploadImgQOptImage(btn, idx) {
       if (e.lengthComputable) btn.textContent = Math.round(e.loaded / e.total * 100) + '%';
     });
     if (path) {
-      btn.textContent = '✅';
+      btn.textContent = '?';
       btn.className = 'opt-img-btn has-image';
       _imgOptImagePaths[idx] = path;
       var prev = document.getElementById('f-imgq-opt-preview-' + idx);
       if (prev) prev.innerHTML = '<img src="' + SUPABASE_URL + '/storage/v1/object/public/question-images/' + path + '" style="max-width:40px;max-height:40px;border-radius:4px;border:1px solid var(--border);object-fit:cover;cursor:pointer" onclick="window.open(this.src)">';
-    } else { btn.textContent = '❌'; setTimeout(function() { btn.textContent = '📷'; btn.className = 'opt-img-btn'; }, 2000); }
+    } else { btn.textContent = '?'; setTimeout(function() { btn.textContent = '??'; btn.className = 'opt-img-btn'; }, 2000); }
   };
   inp.click();
 }
@@ -1777,12 +1779,12 @@ function imgQFormHtml(title, imgUrl, correct, explanation, explImageUrl, optImag
   return '<h2>' + title + '</h2>' +
     '<label>Question Image (paste or upload)</label>' +
     '<div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:10px">' +
-    '<button type="button" class="btn-word-paste" onclick="uploadExamImgImage(this)">📷 Upload Image</button>' +
+    '<button type="button" class="btn-word-paste" onclick="uploadExamImgImage(this)">?? Upload Image</button>' +
     '<span style="font-size:.75rem;color:var(--muted)">or paste image directly</span></div>' +
     '<div id="f-imgq-preview" style="margin-bottom:10px">' + (imgUrl ? '<img src="' + SUPABASE_URL + '/storage/v1/object/public/question-images/' + esc(imgUrl) + '" style="max-width:100%;max-height:300px;border-radius:var(--radius);border:1px solid var(--border);cursor:pointer" onclick="window.open(this.src)">' : '') + '</div>' +
-    '<label>Answer Images <span style="font-weight:400;text-transform:none;letter-spacing:0;font-size:.75rem;color:var(--muted)">(optional — click 📷 to add image per option)</span></label>' +
+    '<label>Answer Images <span style="font-weight:400;text-transform:none;letter-spacing:0;font-size:.75rem;color:var(--muted)">(optional � click ?? to add image per option)</span></label>' +
     '<div id="f-imgq-opt-imgs" style="display:flex;flex-direction:column;gap:6px;margin-bottom:10px">' +
-    (function() { var h = ''; for (var oi = 0; oi < 4; oi++) { var ol = ['A','B','C','D'][oi]; h += '<div class="img-opt-img-row" style="display:flex;align-items:center;gap:8px;padding:6px 10px;border-radius:var(--radius);border:1.5px solid var(--border);background:var(--surface)"><span style="font-weight:700;font-size:.8125rem;width:20px">' + ol + '</span><div id="f-imgq-opt-preview-' + oi + '" style="display:flex;align-items:center;gap:6px;flex:1">' + (_imgOptImagePaths[oi] ? '<img src="' + SUPABASE_URL + '/storage/v1/object/public/question-images/' + esc(_imgOptImagePaths[oi]) + '" style="max-width:40px;max-height:40px;border-radius:4px;border:1px solid var(--border);object-fit:cover;cursor:pointer" onclick="window.open(this.src)">' : '') + '</div><button type="button" class="opt-img-btn' + (_imgOptImagePaths[oi] ? ' has-image' : '') + '" onclick="uploadImgQOptImage(this,' + oi + ')" title="Add image to option ' + ol + '">' + (_imgOptImagePaths[oi] ? '✅' : '📷') + '</button></div>'; } return h; })() +
+    (function() { var h = ''; for (var oi = 0; oi < 4; oi++) { var ol = ['A','B','C','D'][oi]; h += '<div class="img-opt-img-row" style="display:flex;align-items:center;gap:8px;padding:6px 10px;border-radius:var(--radius);border:1.5px solid var(--border);background:var(--surface)"><span style="font-weight:700;font-size:.8125rem;width:20px">' + ol + '</span><div id="f-imgq-opt-preview-' + oi + '" style="display:flex;align-items:center;gap:6px;flex:1">' + (_imgOptImagePaths[oi] ? '<img src="' + SUPABASE_URL + '/storage/v1/object/public/question-images/' + esc(_imgOptImagePaths[oi]) + '" style="max-width:40px;max-height:40px;border-radius:4px;border:1px solid var(--border);object-fit:cover;cursor:pointer" onclick="window.open(this.src)">' : '') + '</div><button type="button" class="opt-img-btn' + (_imgOptImagePaths[oi] ? ' has-image' : '') + '" onclick="uploadImgQOptImage(this,' + oi + ')" title="Add image to option ' + ol + '">' + (_imgOptImagePaths[oi] ? '?' : '??') + '</button></div>'; } return h; })() +
     '</div>' +
     '<label>Correct Answer</label>' +
     '<select id="f-imgq-correct" style="width:100%;padding:10px 14px;border:1.5px solid var(--border);border-radius:var(--radius);margin-bottom:10px;font-size:.875rem;background:var(--bg);color:var(--ink);box-sizing:border-box">' +
@@ -1904,7 +1906,7 @@ function renderStudents(search, profiles, courses) {
   const filtered = profiles.filter(p => (p.name||'').toLowerCase().includes(q) || (p.id||'').toLowerCase().includes(q));
   let html = '<div class="admin-header"><h1>Students</h1><div style="display:flex;gap:8px"><input class="search-input" style="width:200px" placeholder="Search by name..." oninput="filterStudents(this.value)"><button class="btn btn-ghost btn-sm" onclick="exportCSV()">Export CSV</button></div></div>';
   if (filtered.length === 0) {
-    html += '<div class="empty-state"><div class="empty-icon">👤</div><h3>No students found</h3><p>Students will appear here once they sign up and start learning.</p></div>';
+    html += '<div class="empty-state"><div class="empty-icon">??</div><h3>No students found</h3><p>Students will appear here once they sign up and start learning.</p></div>';
   } else {
     html += '<div class="data-table-wrap"><table class="data-table"><thead><tr><th>Student</th><th>Progress</th><th>Completed</th><th style="text-align:right">Actions</th></tr></thead><tbody>';
     filtered.forEach(p => {
@@ -1941,8 +1943,8 @@ function exportCSV() {
     csv += (p.name || 'Unknown') + ',';
     allLessons.forEach(l => {
       const pp = prog.find(pr => pr.lesson_id === l.id);
-      if (pp?.exam_completed) csv += '✓,' + (pp.hw_score ?? '—') + ',' + (pp.exam_score ?? '—') + ',';
-      else csv += '—,' + (pp?.hw_score ?? '—') + ',' + (pp?.exam_score ?? '—') + ',';
+      if (pp?.exam_completed) csv += '?,' + (pp.hw_score ?? '�') + ',' + (pp.exam_score ?? '�') + ',';
+      else csv += '�,' + (pp?.hw_score ?? '�') + ',' + (pp?.exam_score ?? '�') + ',';
     });
     csv += '\n';
   });
@@ -1951,7 +1953,7 @@ function exportCSV() {
 }
 
 async function resetStudentProgress(userId, studentName) {
-  if (!confirm('Reset ALL progress for "' + studentName + '"?\n\nThis will delete:\n• All course progress\n• All exam attempts\n• All final exam results\n\nThis cannot be undone.')) return;
+  if (!confirm('Reset ALL progress for "' + studentName + '"?\n\nThis will delete:\n� All course progress\n� All exam attempts\n� All final exam results\n\nThis cannot be undone.')) return;
   if (!confirm('Are you sure? This will permanently remove all learning data for this student.')) return;
   try {
     await Promise.all([
@@ -1972,7 +1974,7 @@ async function loadAdminAdmins() {
   const { data: admins } = await sb.from('profiles').select('*').eq('role', 'admin');
   let html = '<div class="admin-header"><h1>Admins</h1><button class="btn btn-primary" onclick="addAdminForm()">+ Add Admin</button></div>';
   if (!admins || admins.length === 0) {
-    html += '<div class="empty-state"><div class="empty-icon">🔒</div><h3>No admins yet</h3><p>Add users with admin role to manage the platform.</p></div>';
+    html += '<div class="empty-state"><div class="empty-icon">??</div><h3>No admins yet</h3><p>Add users with admin role to manage the platform.</p></div>';
   } else {
     admins.forEach(a => {
       html += '<div class="admin-card"><div class="admin-row"><div><strong>' + esc(a.name) + '</strong></div>';
@@ -2013,7 +2015,7 @@ async function renderCategoryList() {
   var html = '<div class="admin-header"><h1>Question Categories</h1><div class="admin-header-actions"><button class="btn btn-primary" onclick="addCategoryForm()">+ New Category</button></div></div>';
   html += '<p style="font-size:.8125rem;color:var(--muted);margin-bottom:20px;line-height:1.5">Create reusable question banks. Add questions once, then import them into any exam or homework.</p>';
   if (!cats || cats.length === 0) {
-    html += '<div class="empty-state"><div class="empty-icon">📂</div><h3>No categories yet</h3><p>Create your first question category to reuse questions across exams and homework.</p></div>';
+    html += '<div class="empty-state"><div class="empty-icon">??</div><h3>No categories yet</h3><p>Create your first question category to reuse questions across exams and homework.</p></div>';
   } else {
     html += '<div class="cat-grid">';
     cats.forEach(function(c) {
@@ -2021,8 +2023,8 @@ async function renderCategoryList() {
       html += '<div class="cat-card" onclick="viewCategoryDetail(' + c.id + ')">';
       html += '<div class="cat-name">' + esc(c.name) + '</div>';
       if (c.description) html += '<div class="cat-desc">' + esc(c.description) + '</div>';
-      html += '<div class="cat-count">📝 ' + count + ' question' + (count !== 1 ? 's' : '') + '</div>';
-      html += '<div class="cat-actions"><button class="btn btn-ghost btn-sm" onclick="event.stopPropagation();editCategoryForm(' + c.id + ')">Edit</button><button class="btn btn-danger btn-sm" onclick="event.stopPropagation();deleteCategory(' + c.id + ')">×</button></div>';
+      html += '<div class="cat-count">?? ' + count + ' question' + (count !== 1 ? 's' : '') + '</div>';
+      html += '<div class="cat-actions"><button class="btn btn-ghost btn-sm" onclick="event.stopPropagation();editCategoryForm(' + c.id + ')">Edit</button><button class="btn btn-danger btn-sm" onclick="event.stopPropagation();deleteCategory(' + c.id + ')">�</button></div>';
       html += '</div>';
     });
     html += '</div>';
@@ -2058,7 +2060,7 @@ async function viewCategoryDetail(catId) {
   if (!cat) return;
   var qs = (cat.category_questions||[]).sort((a,b)=>(a.sort_order||0)-(b.sort_order||0));
   var html = '<div style="display:flex;align-items:center;gap:12px;margin-bottom:16px">';
-  html += '<button class="btn btn-ghost btn-sm" onclick="renderCategoryList()" style="flex-shrink:0">← Back</button>';
+  html += '<button class="btn btn-ghost btn-sm" onclick="renderCategoryList()" style="flex-shrink:0">? Back</button>';
   html += '<h2 style="margin:0">' + esc(cat.name) + '</h2>';
   html += '<span style="font-size:.75rem;color:var(--muted)">' + qs.length + ' question' + (qs.length !== 1 ? 's' : '') + '</span>';
   html += '<div style="flex:1"></div>';
@@ -2070,9 +2072,9 @@ async function viewCategoryDetail(catId) {
     html += '<div style="text-align:center;padding:24px;color:var(--muted);font-size:.8125rem">No questions in this category.</div>';
   } else {
     qs.forEach(function(q) {
-      var typeLabel = q.question_type === 'image' ? '<span class="q-meta-tag imgq">🖼 image</span>' : '<span class="q-meta-tag math">∑ text</span>';
+      var typeLabel = q.question_type === 'image' ? '<span class="q-meta-tag imgq">?? image</span>' : '<span class="q-meta-tag math">? text</span>';
       var text = q.question_type === 'image' ? 'Image Question' : esc(q.question);
-      html += '<div class="q-row"><div class="q-info"><span class="q-text">' + text + '</span><span class="q-meta">' + typeLabel + (q.question_type === 'standard' ? ' · ' + q.options.length + ' opts · ' + String.fromCharCode(65 + (q.correct||0)) : ' · correct: ' + q.correct_letter) + (q.math ? ' · math' : '') + (q.option_images && q.option_images.some(Boolean) ? ' · 🖼 opts' : '') + '</span></div><span class="q-actions"><button class="btn btn-ghost btn-sm" onclick="editCatQForm(' + q.id + ',' + catId + ')">Edit</button><button class="btn btn-danger btn-sm" onclick="deleteCatQ(' + q.id + ',' + catId + ')">×</button></span></div>';
+      html += '<div class="q-row"><div class="q-info"><span class="q-text">' + text + '</span><span class="q-meta">' + typeLabel + (q.question_type === 'standard' ? ' � ' + q.options.length + ' opts � ' + String.fromCharCode(65 + (q.correct||0)) : ' � correct: ' + q.correct_letter) + (q.math ? ' � math' : '') + (q.option_images && q.option_images.some(Boolean) ? ' � ?? opts' : '') + '</span></div><span class="q-actions"><button class="btn btn-ghost btn-sm" onclick="editCatQForm(' + q.id + ',' + catId + ')">Edit</button><button class="btn btn-danger btn-sm" onclick="deleteCatQ(' + q.id + ',' + catId + ')">�</button></span></div>';
     });
   }
   html += '</div>';
@@ -2083,7 +2085,7 @@ async function viewCategoryDetail(catId) {
 function addCatQForm(catId) {
   _catOptImagePaths = ['', '', '', ''];
   var h = '<h2>Add Category Question</h2>';
-  h += '<label>Type</label><select id="f-catq-type" onchange="toggleCatQType()"><option value="standard">Standard (text + options)</option><option value="image">Image (A/B/C/D) — supports paste</option></select>';
+  h += '<label>Type</label><select id="f-catq-type" onchange="toggleCatQType()"><option value="standard">Standard (text + options)</option><option value="image">Image (A/B/C/D) � supports paste</option></select>';
   h += '<div id="f-catq-standard">';
   h += '<label>Question</label><input id="f-catq-q" placeholder="Question text">';
   h += '<label>Options <span style="font-weight:400;text-transform:none;letter-spacing:0;font-size:.75rem;color:var(--muted)">(one per line)</span></label><textarea id="f-catq-opts" rows="4" placeholder="Option A&#10;Option B&#10;Option C&#10;Option D"></textarea>';
@@ -2093,17 +2095,17 @@ function addCatQForm(catId) {
   h += '<div id="f-catq-image" style="display:none">';
   h += '<label>Question Image</label>';
   h += '<div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:10px">';
-  h += '<button type="button" class="btn-word-paste" onclick="uploadCatQImage(this)">📷 Upload Image</button>';
+  h += '<button type="button" class="btn-word-paste" onclick="uploadCatQImage(this)">?? Upload Image</button>';
   h += '<span style="font-size:.75rem;color:var(--muted)">or paste image directly</span></div>';
   h += '<div id="f-imgq-preview" style="margin-bottom:10px"></div>';
-  h += '<label>Answer Images <span style="font-weight:400;text-transform:none;letter-spacing:0;font-size:.75rem;color:var(--muted)">(optional — click 📷 to add image per option)</span></label>';
+  h += '<label>Answer Images <span style="font-weight:400;text-transform:none;letter-spacing:0;font-size:.75rem;color:var(--muted)">(optional � click ?? to add image per option)</span></label>';
   h += '<div id="f-catq-opt-imgs" style="display:flex;flex-direction:column;gap:6px;margin-bottom:10px">';
   for (var oi = 0; oi < 4; oi++) {
     var ol = ['A','B','C','D'][oi];
     h += '<div class="cat-opt-img-row" style="display:flex;align-items:center;gap:8px;padding:6px 10px;border-radius:var(--radius);border:1.5px solid var(--border);background:var(--surface)">';
     h += '<span style="font-weight:700;font-size:.8125rem;width:20px">' + ol + '</span>';
     h += '<div id="f-catq-opt-preview-' + oi + '" style="display:flex;align-items:center;gap:6px;flex:1"></div>';
-    h += '<button type="button" class="opt-img-btn" onclick="uploadCatQOptImage(this,' + oi + ')" title="Add image to option ' + ol + '">📷</button>';
+    h += '<button type="button" class="opt-img-btn" onclick="uploadCatQOptImage(this,' + oi + ')" title="Add image to option ' + ol + '">??</button>';
     h += '</div>';
   }
   h += '</div>';
@@ -2125,14 +2127,14 @@ function uploadCatQOptImage(btn, idx) {
       if (e.lengthComputable) btn.textContent = Math.round(e.loaded / e.total * 100) + '%';
     });
     if (path) {
-      btn.textContent = '✅';
+      btn.textContent = '?';
       btn.className = 'opt-img-btn has-image';
       _catOptImagePaths[idx] = path;
       var prev = document.getElementById('f-catq-opt-preview-' + idx);
       if (prev) {
         prev.innerHTML = '<img src="' + SUPABASE_URL + '/storage/v1/object/public/question-images/' + path + '" style="max-width:40px;max-height:40px;border-radius:4px;border:1px solid var(--border);object-fit:cover;cursor:pointer" onclick="window.open(this.src)">';
       }
-    } else { btn.textContent = '❌'; setTimeout(function() { btn.textContent = '📷'; btn.className = 'opt-img-btn'; }, 2000); }
+    } else { btn.textContent = '?'; setTimeout(function() { btn.textContent = '??'; btn.className = 'opt-img-btn'; }, 2000); }
   };
   inp.click();
 }
@@ -2174,17 +2176,17 @@ async function editCatQForm(id, catId) {
     var h2 = '<h2>Edit Category Question</h2>';
     h2 += '<label>Question Image</label>';
     h2 += '<div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:10px">';
-    h2 += '<button type="button" class="btn-word-paste" onclick="uploadCatQImage(this)">📷 Upload Image</button>';
+    h2 += '<button type="button" class="btn-word-paste" onclick="uploadCatQImage(this)">?? Upload Image</button>';
     h2 += '<span style="font-size:.75rem;color:var(--muted)">or paste image directly</span></div>';
     h2 += '<div id="f-imgq-preview" style="margin-bottom:10px">' + (q.image_url ? '<img src="' + SUPABASE_URL + '/storage/v1/object/public/question-images/' + esc(q.image_url) + '" style="max-width:100%;max-height:300px;border-radius:var(--radius);border:1px solid var(--border);cursor:pointer" onclick="window.open(this.src)">' : '') + '</div>';
-    h2 += '<label>Answer Images <span style="font-weight:400;text-transform:none;letter-spacing:0;font-size:.75rem;color:var(--muted)">(optional — click 📷 to add image per option)</span></label>';
+    h2 += '<label>Answer Images <span style="font-weight:400;text-transform:none;letter-spacing:0;font-size:.75rem;color:var(--muted)">(optional � click ?? to add image per option)</span></label>';
     h2 += '<div id="f-catq-opt-imgs" style="display:flex;flex-direction:column;gap:6px;margin-bottom:10px">';
     for (var oi = 0; oi < 4; oi++) {
       var ol = ['A','B','C','D'][oi];
       h2 += '<div class="cat-opt-img-row" style="display:flex;align-items:center;gap:8px;padding:6px 10px;border-radius:var(--radius);border:1.5px solid var(--border);background:var(--surface)">';
       h2 += '<span style="font-weight:700;font-size:.8125rem;width:20px">' + ol + '</span>';
       h2 += '<div id="f-catq-opt-preview-' + oi + '" style="display:flex;align-items:center;gap:6px;flex:1">' + (_catOptImagePaths[oi] ? '<img src="' + SUPABASE_URL + '/storage/v1/object/public/question-images/' + esc(_catOptImagePaths[oi]) + '" style="max-width:40px;max-height:40px;border-radius:4px;border:1px solid var(--border);object-fit:cover;cursor:pointer" onclick="window.open(this.src)">' : '') + '</div>';
-      h2 += '<button type="button" class="opt-img-btn' + (_catOptImagePaths[oi] ? ' has-image' : '') + '" onclick="uploadCatQOptImage(this,' + oi + ')" title="Add image to option ' + ol + '">' + (_catOptImagePaths[oi] ? '✅' : '📷') + '</button>';
+      h2 += '<button type="button" class="opt-img-btn' + (_catOptImagePaths[oi] ? ' has-image' : '') + '" onclick="uploadCatQOptImage(this,' + oi + ')" title="Add image to option ' + ol + '">' + (_catOptImagePaths[oi] ? '?' : '??') + '</button>';
       h2 += '</div>';
     }
     h2 += '</div>';
@@ -2237,7 +2239,7 @@ async function showCategoryPicker(targetType, targetId) {
     var count = (c.category_questions||[]).length;
     html += '<div class="cat-card" onclick="showCategoryQuestions(' + c.id + ',\'' + targetType + '\',' + targetId + ',\'' + esc(c.name) + '\')">';
     html += '<div class="cat-name">' + esc(c.name) + '</div>';
-    html += '<div class="cat-count">📝 ' + count + ' question' + (count !== 1 ? 's' : '') + '</div>';
+    html += '<div class="cat-count">?? ' + count + ' question' + (count !== 1 ? 's' : '') + '</div>';
     html += '</div>';
   });
   html += '</div>';
@@ -2246,7 +2248,7 @@ async function showCategoryPicker(targetType, targetId) {
 }
 async function showCategoryQuestions(catId, targetType, targetId, catName) {
   var { data: qs } = await sb.from('category_questions').select('*').eq('category_id', catId).order('sort_order');
-  var html = '<h2>' + esc(catName) + ' — Select Questions to Import</h2>';
+  var html = '<h2>' + esc(catName) + ' � Select Questions to Import</h2>';
   html += '<p style="font-size:.8125rem;color:var(--muted);margin:-8px 0 16px">Check the questions you want to import into this ' + targetType + '.</p>';
   if (!qs || qs.length === 0) {
     html += '<p style="text-align:center;padding:24px;color:var(--muted)">Category is empty.</p>';
@@ -2260,19 +2262,19 @@ async function showCategoryQuestions(catId, targetType, targetId, catName) {
     html += '<input type="checkbox" class="cat-q-check" value="' + idx + '" checked>';
     if (q.question_type === 'standard') {
       var preview = esc(q.question || 'Standard Question');
-      if (preview.length > 80) preview = preview.substring(0, 80) + '…';
+      if (preview.length > 80) preview = preview.substring(0, 80) + '�';
       html += '<div class="ci-body"><div class="ci-text" title="' + esc(q.question || '') + '">' + preview + '</div>';
-      html += '<div class="ci-meta">∑ ' + (q.math ? 'LaTeX' : 'no math') + ' · ' + (q.options||[]).length + ' options</div></div>';
+      html += '<div class="ci-meta">? ' + (q.math ? 'LaTeX' : 'no math') + ' � ' + (q.options||[]).length + ' options</div></div>';
     } else {
       html += '<div class="ci-body"><div class="ci-img-wrap"><img src="' + SUPABASE_URL + '/storage/v1/object/public/question-images/' + esc(q.image_url) + '" onclick="window.open(this.src)" title="Click to enlarge"></div>';
-      html += '<div class="ci-meta">🖼 Image · Correct: ' + (q.correct_letter || 'A') + (q.explanation ? ' · ℹ has explanation' : '') + (q.option_images && q.option_images.some(Boolean) ? ' · 🖼 opts' : '') + '</div></div>';
+      html += '<div class="ci-meta">?? Image � Correct: ' + (q.correct_letter || 'A') + (q.explanation ? ' � ? has explanation' : '') + (q.option_images && q.option_images.some(Boolean) ? ' � ?? opts' : '') + '</div></div>';
     }
     html += '</div>';
   });
   html += '</div>';
   html += '<div class="ci-actions">';
   html += '<button class="btn btn-primary btn-sm" onclick="importSelectedCategoryQs(' + catId + ',\'' + targetType + '\',' + targetId + ')">Import Selected</button>';
-  html += '<button class="btn btn-ghost btn-sm" onclick="showCategoryPicker(\'' + targetType + '\',' + targetId + ')">← Back to Categories</button>';
+  html += '<button class="btn btn-ghost btn-sm" onclick="showCategoryPicker(\'' + targetType + '\',' + targetId + ')">? Back to Categories</button>';
   html += '<button class="btn btn-ghost btn-sm" onclick="hideModal()">Cancel</button></div>';
   showModal(html);
 }
@@ -2318,7 +2320,7 @@ async function importWordExam(examId, input) {
       const text = result.value;
       if (!text.trim()) { alert('No text found in the Word file.'); return; }
       const questions = parseWordText(text);
-      if (questions.length === 0) { alert('Could not detect any questions. Make sure questions are numbered (1., 2., etc.) with options (a., b., etc.) and correct answers marked with * or ✓.'); return; }
+      if (questions.length === 0) { alert('Could not detect any questions. Make sure questions are numbered (1., 2., etc.) with options (a., b., etc.) and correct answers marked with * or ?.'); return; }
       showWordPreview(questions, examId);
     } catch (err) {
       alert('Error reading Word file: ' + err.message);
@@ -2335,14 +2337,14 @@ function parseWordText(text) {
   const qRegex = /^(?:(\d+)[.)\]-])\s*(.+)/;
   const optRegex = /^([a-zA-Z])[.)\])]\s*(.*)/;
   const optParenRegex = /^\(?([a-zA-Z])\)\s*(.*)/;
-  const ansKeyRegex = /^(?:answer|key|solution|answers|keys|correct|الإجابات|الحل|المفتاح)/i;
+  const ansKeyRegex = /^(?:answer|key|solution|answers|keys|correct|????????|????|???????)/i;
 
   let inAnswerKey = false, errors = [];
   for (let li = 0; li < lines.length; li++) {
     const line = lines[li];
     if (ansKeyRegex.test(line) && /[:\-]/.test(line)) { inAnswerKey = true; continue; }
     if (inAnswerKey && /^\d/.test(line)) {
-      const m = line.match(/^(\d+)[.)\]]?\s*[-–:]\s*([a-zA-Z])/);
+      const m = line.match(/^(\d+)[.)\]]?\s*[-�:]\s*([a-zA-Z])/);
       if (m) {
         const num = parseInt(m[1]), ans = m[2].toLowerCase();
         const q = questions.find(q => q.number === num);
@@ -2363,8 +2365,8 @@ function parseWordText(text) {
     }
     if (!current) continue;
 
-    // Try option matching with * / ✓ stripped
-    const cleanLine = line.replace(/^[*✓✔]\s*/, '');
+    // Try option matching with * / ? stripped
+    const cleanLine = line.replace(/^[*??]\s*/, '');
     const isCorrect = line !== cleanLine;
     let optMatch = cleanLine.match(optRegex) || cleanLine.match(optParenRegex);
     if (optMatch) {
@@ -2395,7 +2397,7 @@ function parseWordText(text) {
 }
 
 function showWordPreview(questions, examId) {
-  let html = '<h2>📄 Import from Word — Preview</h2>';
+  let html = '<h2>?? Import from Word � Preview</h2>';
   html += '<p style="font-size:.8125rem;color:var(--muted);margin:-8px 0 12px">Found ' + questions.length + ' question(s). Review and click Save to add them to the exam.</p>';
   html += '<div class="word-import-list">';
   questions.forEach((q, i) => {
@@ -2403,7 +2405,7 @@ function showWordPreview(questions, examId) {
     q.options.forEach((o, oi) => {
       const prefix = String.fromCharCode(65 + oi);
       const cls = oi === q.correct ? ' wi-correct' : '';
-      html += '<span class="' + cls + '">' + prefix + '. ' + esc(o) + (oi === q.correct ? ' ✓' : '') + '</span>';
+      html += '<span class="' + cls + '">' + prefix + '. ' + esc(o) + (oi === q.correct ? ' ?' : '') + '</span>';
     });
     html += '</div></div>';
   });
@@ -2434,6 +2436,7 @@ async function saveWordExam(examId) {
 }
 
 function esc(s) { if (!s) return ''; return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;'); }
+function timeAgo(d) { if (!d) return ''; var sec = Math.floor((Date.now() - new Date(d).getTime()) / 1000); if (sec < 60) return 'just now'; var min = Math.floor(sec / 60); if (min < 60) return min + 'm ago'; var hr = Math.floor(min / 60); if (hr < 24) return hr + 'h ago'; var day = Math.floor(hr / 24); if (day < 30) return day + 'd ago'; return new Date(d).toLocaleDateString(); }
 
 // Global paste handler for image pasting into question/option inputs
 document.addEventListener('paste', function(e) {
@@ -2469,7 +2472,7 @@ document.addEventListener('paste', function(e) {
               if (!path) return;
               _catOptImagePaths[catOptIdx] = path;
               var catBtn = catOptRow.querySelector('.opt-img-btn');
-              if (catBtn) { catBtn.textContent = '✅'; catBtn.className = 'opt-img-btn has-image'; }
+              if (catBtn) { catBtn.textContent = '?'; catBtn.className = 'opt-img-btn has-image'; }
               var catPrev = document.getElementById('f-catq-opt-preview-' + catOptIdx);
               if (catPrev) catPrev.innerHTML = '<img src="' + SUPABASE_URL + '/storage/v1/object/public/question-images/' + path + '" style="max-width:40px;max-height:40px;border-radius:4px;border:1px solid var(--border);object-fit:cover;cursor:pointer" onclick="window.open(this.src)">';
             });
@@ -2494,7 +2497,7 @@ document.addEventListener('paste', function(e) {
               if (!path) return;
               _imgOptImagePaths[imgOptIdx] = path;
               var imgBtn = imgOptRow.querySelector('.opt-img-btn');
-              if (imgBtn) { imgBtn.textContent = '✅'; imgBtn.className = 'opt-img-btn has-image'; }
+              if (imgBtn) { imgBtn.textContent = '?'; imgBtn.className = 'opt-img-btn has-image'; }
               var imgPrev = document.getElementById('f-imgq-opt-preview-' + imgOptIdx);
               if (imgPrev) imgPrev.innerHTML = '<img src="' + SUPABASE_URL + '/storage/v1/object/public/question-images/' + path + '" style="max-width:40px;max-height:40px;border-radius:4px;border:1px solid var(--border);object-fit:cover;cursor:pointer" onclick="window.open(this.src)">';
             });
@@ -2557,7 +2560,7 @@ document.addEventListener('paste', function(e) {
             var pe = document.getElementById('f-q-expl-img-preview');
             if (pe) {
               pe.style.display = 'inline';
-              pe.innerHTML = '<span style="font-size:.75rem;color:var(--muted);margin:0 4px">شرح:</span><img class="q-img-preview" src="' + SUPABASE_URL + '/storage/v1/object/public/question-images/' + path + '" onclick="window.open(this.src)">';
+              pe.innerHTML = '<span style="font-size:.75rem;color:var(--muted);margin:0 4px">???:</span><img class="q-img-preview" src="' + SUPABASE_URL + '/storage/v1/object/public/question-images/' + path + '" onclick="window.open(this.src)">';
             }
           } else {
             _qImagePath = path;
@@ -2603,7 +2606,224 @@ document.addEventListener('paste', function(e) {
   }
 });
 
+
+// ========== COMMUNITY MODERATION ==========
+var _cmAllPosts = [];
+async function loadAdminCommunity() {
+  var el = document.getElementById('admin-page-community');
+  el.innerHTML = '<div style="text-align:center;padding:48px;color:var(--muted)">Loading…</div>';
+  try {
+    var [postsR, reportsR, wordsR, bansR, profilesR] = await Promise.all([
+      sb.from('community_posts').select('*, profiles!community_posts_user_id_fkey(name,profile_pic), reports:community_reports(*)').order('created_at', { ascending: false }),
+      sb.from('community_reports').select('*, reporter:profiles!community_reports_user_id_fkey(name)').order('created_at', { ascending: false }),
+      sb.from('banned_words').select('*').order('created_at', { ascending: false }),
+      sb.from('user_bans').select('*, admin:profiles!user_bans_admin_id_fkey(name), banned:profiles!user_bans_user_id_fkey(name)').order('created_at', { ascending: false }),
+      sb.from('profiles').select('id,name,email,role')
+    ]);
+    _cmAllPosts = postsR.data || [];
+    var activeTab = 'posts';
+    renderCommunityTab(activeTab, { postsR, reportsR, wordsR, bansR, profilesR });
+    el.innerHTML = '<div class="admin-header"><h1>Community Moderation</h1></div>'
+      + '<div class="md-tabs">'
+      + '<button class="active" onclick="switchCommunityTab(\'posts\',this)">Posts (' + ((postsR.data||[]).length) + ')</button>'
+      + '<button onclick="switchCommunityTab(\'reports\',this)">Reports (' + ((reportsR.data||[]).length) + ')</button>'
+      + '<button onclick="switchCommunityTab(\'words\',this)">Banned Words (' + ((wordsR.data||[]).length) + ')</button>'
+      + '<button onclick="switchCommunityTab(\'bans\',this)">Banned Users (' + ((bansR.data||[]).length) + ')</button>'
+      + '</div>'
+      + '<div id="cm-admin-tab-content"></div>';
+    renderCommunityTab(activeTab, { postsR, reportsR, wordsR, bansR, profilesR });
+  } catch (e) {
+    el.innerHTML = '<div class="empty-state"><div class="empty-icon">⚠️</div><h3>Error</h3><p>' + esc(e.message) + '</p></div>';
+  }
+}
+
+function switchCommunityTab(tab, btn) {
+  document.querySelectorAll('#admin-page-community .md-tabs button').forEach(function(b) { b.classList.remove('active'); });
+  if (btn) btn.classList.add('active');
+  renderCommunityTab(tab);
+}
+
+function renderCommunityTab(tab) {
+  var el = document.getElementById('cm-admin-tab-content');
+  if (tab === 'posts') renderCmPosts(el);
+  else if (tab === 'reports') renderCmReports(el);
+  else if (tab === 'words') renderCmWords(el);
+  else if (tab === 'bans') renderCmBans(el);
+}
+
+function renderCmPosts(el) {
+  var posts = _cmAllPosts;
+  var html = '<div class="data-table-wrap"><table class="data-table"><thead><tr><th>Post</th><th>Author</th><th>Reports</th><th>Status</th><th style="text-align:right">Actions</th></tr></thead><tbody>';
+  if (posts.length === 0) {
+    html = '<div class="empty-state"><div class="empty-icon">💬</div><h3>No posts yet</h3><p>The community is still growing.</p></div>';
+    el.innerHTML = html; return;
+  }
+  posts.forEach(function(p) {
+    var name = p.profiles?.name || 'Unknown';
+    var reportCount = (p.reports||[]).length;
+    var statusHtml = '';
+    if (p.is_pinned) statusHtml += '<span class="tag tag-warning" style="margin-right:4px">Pinned</span>';
+    if (p.is_solved) statusHtml += '<span class="tag tag-success">Solved</span>';
+    if (!statusHtml) statusHtml = '<span class="tag tag-neutral">Open</span>';
+    html += '<tr><td><div style="font-weight:600;font-size:.8125rem;max-width:280px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">' + esc(p.title) + '</div><span style="font-size:.75rem;color:var(--muted)">' + timeAgo(p.created_at) + '</span></td>';
+    html += '<td>' + esc(name) + '</td>';
+    html += '<td><span class="tag ' + (reportCount >= 3 ? 'tag-warning' : 'tag-neutral') + '">' + reportCount + '</span></td>';
+    html += '<td>' + statusHtml + '</td>';
+    html += '<td style="text-align:right"><button class="btn btn-ghost btn-sm" onclick="cmAdminDeletePost(' + p.id + ')">Delete</button> <button class="btn btn-ghost btn-sm" onclick="cmAdminTogglePin(' + p.id + ')">' + (p.is_pinned ? 'Unpin' : 'Pin') + '</button></td></tr>';
+  });
+  html += '</tbody></table></div>';
+  el.innerHTML = html;
+}
+
+function renderCmReports(el) {
+  var html = '<div class="data-table-wrap"><table class="data-table"><thead><tr><th>Target</th><th>Reporter</th><th>Reason</th><th>Date</th><th style="text-align:right">Actions</th></tr></thead><tbody>';
+  // We need to re-fetch with full data
+  sb.from('community_reports').select('*, reporter:profiles!community_reports_user_id_fkey(name), post:community_posts!community_reports_post_id_fkey(title), comment:community_comments!community_reports_comment_id_fkey(content)').order('created_at', { ascending: false }).then(function(r) {
+    var reports = r.data || [];
+    if (reports.length === 0) {
+      el.innerHTML = '<div class="empty-state"><div class="empty-icon">✅</div><h3>No reports</h3><p>No reported content. All clear!</p></div>'; return;
+    }
+    var html = '<div class="data-table-wrap"><table class="data-table"><thead><tr><th>Target</th><th>Reporter</th><th>Reason</th><th>Date</th><th style="text-align:right">Actions</th></tr></thead><tbody>';
+    reports.forEach(function(rp) {
+      var target = rp.post ? esc(rp.post.title) : (rp.comment ? esc(rp.comment.content.substring(0, 60)) : '—');
+      var reporterName = rp.reporter?.name || 'Unknown';
+      html += '<tr><td style="max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">' + target + '</td>';
+      html += '<td>' + esc(reporterName) + '</td>';
+      html += '<td style="max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">' + esc(rp.reason) + '</td>';
+      html += '<td style="font-size:.75rem;color:var(--muted)">' + timeAgo(rp.created_at) + '</td>';
+      html += '<td style="text-align:right"><button class="btn btn-ghost btn-sm" onclick="dismissReport(' + rp.id + ')">Dismiss</button>';
+      if (rp.post_id) html += ' <button class="btn btn-danger btn-sm" onclick="cmAdminDeletePost(' + rp.post_id + ')">Delete Post</button>';
+      html += '</td></tr>';
+    });
+    html += '</tbody></table></div>';
+    el.innerHTML = html;
+  }).catch(function(e) { el.innerHTML = '<div class="empty-state"><div class="empty-icon">⚠️</div><h3>Error</h3><p>' + esc(e.message) + '</p></div>'; });
+}
+
+function renderCmWords(el) {
+  sb.from('banned_words').select('*').order('created_at', { ascending: false }).then(function(r) {
+    var words = r.data || [];
+    var html = '<div style="margin-bottom:16px;display:flex;gap:8px"><input class="search-input" id="cm-new-word" style="max-width:240px" placeholder="Add banned word…"><button class="btn btn-primary" onclick="addBannedWord()">Add</button></div>';
+    if (words.length === 0) {
+      html += '<div class="empty-state" style="padding:24px"><div class="empty-icon">📝</div><h3>No banned words</h3><p>Add words that should be blocked in community posts and comments.</p></div>';
+    } else {
+      html += '<div style="display:flex;flex-wrap:wrap;gap:8px">';
+      words.forEach(function(w) {
+        html += '<span style="display:inline-flex;align-items:center;gap:6px;padding:6px 12px;background:var(--surface);border:1px solid var(--border);border-radius:8px;font-size:.8125rem;font-weight:500">' + esc(w.word) + ' <button class="btn btn-ghost btn-sm" style="color:var(--error);padding:0 4px;font-size:14px" onclick="removeBannedWord(' + w.id + ',\'' + esc(w.word.replace(/'/g,"\\'")) + '\')">×</button></span>';
+      });
+      html += '</div>';
+    }
+    el.innerHTML = html;
+  });
+}
+
+function renderCmBans(el) {
+  sb.from('user_bans').select('*, admin:profiles!user_bans_admin_id_fkey(name), banned:profiles!user_bans_user_id_fkey(name)').order('created_at', { ascending: false }).then(function(r) {
+    var bans = r.data || [];
+    var html = '<div style="margin-bottom:16px"><button class="btn btn-primary" onclick="showBanForm()">+ Ban User</button></div>';
+    if (bans.length === 0) {
+      html += '<div class="empty-state" style="padding:24px"><div class="empty-icon">🔨</div><h3>No banned users</h3><p>No users are currently banned.</p></div>';
+    } else {
+      html += '<div class="data-table-wrap"><table class="data-table"><thead><tr><th>User</th><th>Type</th><th>Reason</th><th>By</th><th>Expires</th><th style="text-align:right">Actions</th></tr></thead><tbody>';
+      bans.forEach(function(b) {
+        var userName = b.banned?.name || 'Unknown';
+        var adminName = b.admin?.name || 'Unknown';
+        var expiresStr = b.is_permanent ? 'Permanent' : (b.expires_at ? new Date(b.expires_at).toLocaleDateString() : '—');
+        var typeClass = b.ban_type === 'permanent' ? 'tag-warning' : (b.ban_type === 'temporary' ? 'tag-neutral' : 'tag-success');
+        html += '<tr><td>' + esc(userName) + '</td><td><span class="tag ' + typeClass + '">' + b.ban_type + '</span></td><td style="max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">' + esc(b.reason) + '</td><td>' + esc(adminName) + '</td><td style="font-size:.75rem">' + expiresStr + '</td><td style="text-align:right"><button class="btn btn-ghost btn-sm" style="color:var(--error)" onclick="revokeBan(' + b.id + ')">Revoke</button></td></tr>';
+      });
+      html += '</tbody></table></div>';
+    }
+    el.innerHTML = html;
+  });
+}
+
+// Community admin actions
+async function cmAdminDeletePost(postId) {
+  if (!confirm('Delete this post permanently? This cannot be undone.')) return;
+  try {
+    await sb.from('community_posts').delete().eq('id', postId);
+    _cmAllPosts = _cmAllPosts.filter(function(p) { return p.id !== postId; });
+    loadAdminCommunity();
+  } catch(e) { alert('Error: ' + e.message); }
+}
+
+async function cmAdminTogglePin(postId) {
+  var p = _cmAllPosts.find(function(p) { return p.id === postId; });
+  if (!p) return;
+  try {
+    await sb.from('community_posts').update({ is_pinned: !p.is_pinned }).eq('id', postId);
+    p.is_pinned = !p.is_pinned;
+    renderCommunityTab('posts');
+  } catch(e) { alert('Error: ' + e.message); }
+}
+
+async function dismissReport(reportId) {
+  try {
+    await sb.from('community_reports').delete().eq('id', reportId);
+    loadAdminCommunity();
+  } catch(e) { alert('Error: ' + e.message); }
+}
+
+async function addBannedWord() {
+  var input = document.getElementById('cm-new-word');
+  var word = input ? input.value.trim() : '';
+  if (!word) return;
+  try {
+    await sb.from('banned_words').insert({ word: word });
+    input.value = '';
+    renderCommunityTab('words');
+  } catch(e) { alert('Error: ' + e.message); }
+}
+
+async function removeBannedWord(id) {
+  try {
+    await sb.from('banned_words').delete().eq('id', id);
+    renderCommunityTab('words');
+  } catch(e) { alert('Error: ' + e.message); }
+}
+
+function showBanForm() {
+  showModal('<h2>Ban User</h2>'
+    + '<label>User ID</label><input id="f-ban-user-id" placeholder="Paste user UUID">'
+    + '<label>Ban Type</label><select id="f-ban-type"><option value="warning">Warning</option><option value="temporary">Temporary</option><option value="permanent">Permanent</option></select>'
+    + '<div id="f-ban-expires-wrap"><label>Expires At</label><input type="date" id="f-ban-expires"></div>'
+    + '<label>Reason</label><textarea id="f-ban-reason" rows="2"></textarea>'
+    + '<div class="admin-modal-footer"><button class="btn btn-primary" onclick="saveBan()">Save</button><button class="btn btn-ghost" onclick="hideModal()">Cancel</button></div>');
+  document.getElementById('f-ban-type').onchange = function() {
+    document.getElementById('f-ban-expires-wrap').style.display = this.value === 'permanent' ? 'none' : 'block';
+  };
+  if (document.getElementById('f-ban-type').value === 'permanent') {
+    document.getElementById('f-ban-expires-wrap').style.display = 'none';
+  }
+}
+
+async function saveBan() {
+  var userId = document.getElementById('f-ban-user-id').value.trim();
+  var banType = document.getElementById('f-ban-type').value;
+  var reason = document.getElementById('f-ban-reason').value.trim();
+  var expiresInput = document.getElementById('f-ban-expires');
+  if (!userId || !reason) { alert('Fill in all required fields'); return; }
+  var payload = { user_id: userId, admin_id: adminUser.id, reason: reason, ban_type: banType, is_permanent: banType === 'permanent' };
+  if (banType === 'temporary' && expiresInput.value) payload.expires_at = expiresInput.value + 'T23:59:59Z';
+  try {
+    await sb.from('user_bans').insert(payload);
+    hideModal();
+    loadAdminCommunity();
+  } catch(e) { alert('Error: ' + e.message); }
+}
+
+async function revokeBan(banId) {
+  if (!confirm('Revoke this ban?')) return;
+  try {
+    await sb.from('user_bans').delete().eq('id', banId);
+    loadAdminCommunity();
+  } catch(e) { alert('Error: ' + e.message); }
+}
+
 // Always show login form on page load
 </script>
 </body>
 </html>
+
+
