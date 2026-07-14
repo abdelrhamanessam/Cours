@@ -3056,7 +3056,7 @@ function showAdminReplyForm(tid) {
   if (!t) return;
   var userName = t.profiles?.name || 'Unknown';
   var h = '<h2>Reply to Ticket #' + t.id + '</h2>';
-  h += '<p style="font-size:.8125rem;color:var(--muted);margin-bottom:12px"><strong>' + esc(userName) + '</strong> wrote: ' + esc(t.subject)</p>';
+  h += '<p style="font-size:.8125rem;color:var(--muted);margin-bottom:12px"><strong>' + esc(userName) + '</strong> wrote: ' + esc(t.subject) + '</p>';
   h += '<p style="font-size:.8125rem;padding:8px;background:var(--surface);border-radius:var(--radius);margin-bottom:12px">' + esc(t.message.substring(0,200)) + (t.message.length > 200 ? '...' : '') + '</p>';
   h += '<textarea id="f-admin-reply" rows="5" style="width:100%;resize:vertical;font-family:inherit;font-size:.875rem" placeholder="Write your reply..."></textarea>';
   h += '<div class="admin-modal-footer" style="margin-top:12px"><button class="btn btn-primary" onclick="adminSaveTicketReply(' + tid + ')">Send Reply</button><button class="btn btn-ghost" onclick="hideModal()">Cancel</button></div>';
