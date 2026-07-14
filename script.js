@@ -182,6 +182,7 @@ function updateAuthUI() {
   } else {
     el.innerHTML = '<button class="btn btn-primary btn-sm" onclick="showAuthModal()">Log In</button>';
   }
+  updateNotifUI();
 }
 
 function showAuthModal() { document.getElementById('auth-modal').classList.add('show'); }
@@ -2115,9 +2116,26 @@ async function showPostDetail(postId) {
   h += '<div class="cm-comment-section"><h3 style="font-size:.9375rem;font-weight:700;margin-bottom:12px">Comments</h3>';
   h += '<div class="cm-comment-form"><textarea id="f-new-comment-' + postId + '" placeholder="Write a comment... Paste an image (Ctrl+V) to attach" rows="2" onpaste="handlePasteImage(event,\'cm-comment-preview-' + postId + '\',function(p){document.getElementById(\'f-comment-img-' + postId + '\').value=p})"></textarea><input type="hidden" id="f-comment-img-' + postId + '" value=""><div style="flex-shrink:0;display:flex;flex-direction:column;gap:4px"><button class="btn btn-primary btn-sm" onclick="addComment(' + postId + ',null)">Post</button></div></div><div id="cm-comment-preview-' + postId + '" style="margin-bottom:8px"></div>';
   h += '<div id="cm-comments-' + postId + '"><div style="text-align:center;padding:24px;color:var(--muted);font-size:.875rem">Loading comments...</div></div></div>';
+  h += '<div id="cm-related-' + postId + '"><div style="text-align:center;padding:16px;color:var(--muted);font-size:.8125rem">Loading related questions...</div></div>';
   h += '</div>';
   showModal(h);
   loadComments(postId);
+  loadRelatedPosts(post.lesson_id, postId);
+}
+
+async function loadRelatedPosts(lessonId, excludePostId) {
+  var container = document.getElementById('cm-related-' + excludePostId);
+  if (!container) return;
+  var { data: posts } = await sb.from('community_posts').select('id,title,likes:community_likes(count),comments:community_comments(count)').eq('lesson_id', lessonId).neq('id', excludePostId).order('created_at', { ascending: false });
+  if (!posts || posts.length === 0) { container.innerHTML = ''; return; }
+  posts.sort(function(a,b) { return ((b.likes?.[0]?.count||0)*2 + (b.comments?.[0]?.count||0)) - ((a.likes?.[0]?.count||0)*2 + (a.comments?.[0]?.count||0)); });
+  var top = posts.slice(0, 4);
+  var h = '<div class="cm-related"><div class="cm-related-head">Related Questions</div>';
+  top.forEach(function(p) {
+    h += '<div class="cm-related-item" onclick="hideModal();showPostDetail(' + p.id + ')"><div class="cm-related-title">' + esc(p.title) + '</div><div class="cm-related-meta">♥ ' + (p.likes?.[0]?.count||0) + ' · 💬 ' + (p.comments?.[0]?.count||0) + '</div></div>';
+  });
+  h += '</div>';
+  container.innerHTML = h;
 }
 
 async function loadComments(postId) {
@@ -2292,3 +2310,74 @@ async function showTopCommunityQuestions(lid, title) {
   h += '<div class="admin-modal-footer"><button class="btn btn-ghost" onclick="hideModal()">Close</button></div>';
   showModal(h);
 }
+
+// ========== NOTIFICATIONS ==========
+var _notifTimer = null;
+
+function updateNotifUI() {
+  var wrap = document.getElementById('nv-notif-wrap');
+  if (!wrap) return;
+  if (currentUser) {
+    wrap.style.display = 'flex';
+    loadNotifCount();
+    if (!_notifTimer) _notifTimer = setInterval(loadNotifCount, 30000);
+  } else {
+    wrap.style.display = 'none';
+    if (_notifTimer) { clearInterval(_notifTimer); _notifTimer = null; }
+  }
+}
+
+async function loadNotifCount() {
+  if (!currentUser) return;
+  var { count } = await sb.from('notifications').select('id', { count: 'exact', head: true }).eq('user_id', currentUser.id).eq('is_read', false);
+  var badge = document.getElementById('nv-notif-badge');
+  if (!badge) return;
+  if (count && count > 0) { badge.textContent = count > 99 ? '99+' : count; badge.style.display = 'flex'; }
+  else { badge.style.display = 'none'; }
+}
+
+async function toggleNotifPanel() {
+  var panel = document.getElementById('nv-notif-panel');
+  if (!panel) return;
+  var isOpen = panel.classList.contains('open');
+  document.querySelectorAll('.nv-notif-panel.open').forEach(function(p) { p.classList.remove('open'); });
+  if (!isOpen) {
+    panel.classList.add('open');
+    await loadNotifications();
+  }
+}
+
+async function loadNotifications() {
+  var list = document.getElementById('nv-notif-list');
+  if (!list || !currentUser) return;
+  var { data: notifs } = await sb.from('notifications').select('*, actor:actor_id(name,profile_pic)').eq('user_id', currentUser.id).order('created_at', { ascending: false }).limit(20);
+  if (!notifs || notifs.length === 0) { list.innerHTML = '<div class="nv-notif-empty">No notifications yet</div>'; return; }
+  var html = '';
+  notifs.forEach(function(n) {
+    var icons = { like: '♥', comment: '💬', reply: '💬', verified_answer: '✓' };
+    var labels = { like: 'liked your post', comment: 'commented on your post', reply: 'replied to your comment', verified_answer: 'verified your answer' };
+    var iconClass = n.type;
+    var actorName = n.actor?.name || 'Someone';
+    var unreadClass = n.is_read ? '' : ' unread';
+    html += '<div class="nv-notif-item' + unreadClass + '" onclick="markNotifRead(' + n.id + ',' + (n.post_id || 'null') + ',this)">';
+    html += '<div class="nv-notif-icon ' + iconClass + '">' + (icons[n.type] || '•') + '</div>';
+    html += '<div class="nv-notif-body"><div class="nv-notif-text"><strong>' + esc(actorName) + '</strong> ' + (labels[n.type] || 'interacted with your post') + '</div><div class="nv-notif-time">' + timeAgo(n.created_at) + '</div></div>';
+    html += '</div>';
+  });
+  list.innerHTML = html;
+}
+
+async function markNotifRead(id, postId, el) {
+  await sb.from('notifications').update({ is_read: true }).eq('id', id);
+  if (el) el.classList.remove('unread');
+  loadNotifCount();
+  if (postId) { document.getElementById('nv-notif-panel')?.classList.remove('open'); showPostDetail(postId); }
+}
+
+// Close notif panel on outside click
+document.addEventListener('click', function(e) {
+  var wrap = document.getElementById('nv-notif-wrap');
+  if (wrap && !wrap.contains(e.target)) {
+    document.getElementById('nv-notif-panel')?.classList.remove('open');
+  }
+});
