@@ -2202,11 +2202,6 @@ async function addComment(postId, parentId) {
   if (imgInputId) { var imgEl = document.getElementById(imgInputId); if (imgEl) imgEl.value = ''; }
   var previewId = parentId ? 'cm-reply-preview-' + parentId : 'cm-comment-preview-' + postId;
   var prev = document.getElementById(previewId); if (prev) prev.innerHTML = '';
-  var { data: post } = await sb.from('community_posts').select('user_id').eq('id', postId).single();
-  if (post && post.user_id !== currentUser.id) {
-    var notifType = parentId ? 'reply' : 'comment';
-    await sb.from('notifications').insert({ user_id: post.user_id, type: notifType, post_id: postId, actor_id: currentUser.id }).catch(function(){});
-  }
   var idx = _cmPosts.findIndex(function(p) { return p.id === postId; });
   if (idx >= 0 && _cmPosts[idx].comments?.[0]) _cmPosts[idx].comments[0].count = (_cmPosts[idx].comments[0].count || 0) + 1;
   applyCommunityFilters();
@@ -2226,10 +2221,6 @@ async function toggleLike(postId, btn) {
     if (error && error.code === '23505') return;
     _cmUserLikes[postId] = true;
     if (btn) { btn.classList.add('liked'); btn.innerHTML = '♥ <span id="cm-like-count-' + postId + '">' + (parseInt(btn.textContent.match(/\d+/)?.[0] || '0') + 1) + '</span>'; }
-    var { data: post } = await sb.from('community_posts').select('user_id').eq('id', postId).single();
-    if (post && post.user_id !== currentUser.id) {
-      await sb.from('notifications').insert({ user_id: post.user_id, type: 'like', post_id: postId, actor_id: currentUser.id }).catch(function(){});
-    }
     var idx = _cmPosts.findIndex(function(p) { return p.id === postId; });
     if (idx >= 0 && _cmPosts[idx].likes?.[0]) _cmPosts[idx].likes[0].count = (_cmPosts[idx].likes[0].count || 0) + 1;
   }
@@ -2257,10 +2248,6 @@ async function togglePin(postId) {
 async function markVerifiedAnswer(commentId, postId) {
   if (!currentUser || userProfile?.role !== 'teacher') return;
   await sb.from('community_comments').update({ is_verified_answer: true }).eq('id', commentId);
-  var { data: c } = await sb.from('community_comments').select('user_id').eq('id', commentId).single();
-  if (c && c.user_id !== currentUser.id) {
-    await sb.from('notifications').insert({ user_id: c.user_id, type: 'verified_answer', post_id: postId, actor_id: currentUser.id }).catch(function(){});
-  }
   loadComments(postId);
 }
 
@@ -2329,7 +2316,8 @@ function updateNotifUI() {
 
 async function loadNotifCount() {
   if (!currentUser) return;
-  var { count } = await sb.from('notifications').select('id', { count: 'exact', head: true }).eq('user_id', currentUser.id).eq('is_read', false);
+  var { count, error } = await sb.from('notifications').select('id', { count: 'exact', head: true }).eq('user_id', currentUser.id).eq('is_read', false);
+  if (error) { console.error('Notif count error:', error); return; }
   var badge = document.getElementById('nv-notif-badge');
   if (!badge) return;
   if (count && count > 0) { badge.textContent = count > 99 ? '99+' : count; badge.style.display = 'flex'; }
