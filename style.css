@@ -1049,6 +1049,6 @@ details[open] .rv-mistake-summary::before{transform:rotate(90deg)}
 .custom-ring{position:fixed;width:34px;height:34px;border-radius:50%;border:2px solid rgba(216,161,6,.55);pointer-events:none;z-index:99998;transform:translate(-50%,-50%);transition:width .3s,height .3s,border-color .3s,transform .12s;left:-100px;top:-100px}
 .custom-cursor.active{width:18px;height:18px;background:#13294B}
 .custom-ring.active{width:55px;height:55px;border-color:#d8a106}
-@media(hover:none)and(pointer:coarse){*{cursor:auto!important}.custom-cursor,.custom-ring{display:none!important}}
+@media(pointer:coarse){*{cursor:auto!important}.custom-cursor,.custom-ring{display:none!important}}
 @media(prefers-reduced-motion:reduce){*{cursor:auto!important}.custom-cursor,.custom-ring{display:none!important}}
 
