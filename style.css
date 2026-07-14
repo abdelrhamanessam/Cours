@@ -430,6 +430,7 @@ footer .legal{border-top:1px solid oklch(0.25 0 0);padding-top:24px;display:flex
 .quiz-progress-bar{flex:1;height:6px;background:var(--border);border-radius:99px;overflow:hidden;max-width:400px}
 .quiz-progress-bar .bar{height:100%;background:var(--primary);border-radius:99px;transition:width 0.4s ease}
 .quiz-progress-text{font-size:0.8125rem;color:var(--muted);font-weight:600;min-width:60px;text-align:right}
+.quiz-timer{font-size:.8125rem;font-weight:700;color:var(--ink);font-variant-numeric:tabular-nums;white-space:nowrap;padding:4px 10px;border-radius:var(--radius);background:var(--surface);border:1px solid var(--border);min-width:48px;text-align:center;letter-spacing:.02em}
 .quiz-body{padding:48px 0 64px}
 .quiz-body .container{max-width:680px}
 

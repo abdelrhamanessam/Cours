@@ -955,7 +955,7 @@ async function duplicateLesson(id, courseId) {
   }
   const ex = exms?.[0];
   if (ex) {
-    const { data: newEx } = await sb.from('exams').insert({ lesson_id: newId, pass_score: ex.pass_score }).select('id').single();
+    const { data: newEx } = await sb.from('exams').insert({ lesson_id: newId, pass_score: ex.pass_score, time_limit_minutes: ex.time_limit_minutes || 20 }).select('id').single();
     if (newEx) for (const q of ex.exam_questions || []) await sb.from('exam_questions').insert({ exam_id: newEx.id, question: q.question, options: q.options, correct: q.correct, sort_order: q.sort_order });
   }
   loadAdminCourses();
@@ -1084,7 +1084,9 @@ async function manageContent(lid) {
     html += '<div style="display:flex;gap:10px;align-items:center;margin-bottom:16px;flex-wrap:wrap;padding:12px 14px;background:var(--surface);border-radius:8px;border:1px solid var(--border)">';
     html += '<span style="font-size:.75rem;font-weight:600;color:var(--muted)">Pass Score:</span>';
     html += '<input id="f-ex-pass" type="number" value="' + ex.pass_score + '" style="width:60px;padding:6px 10px;border:1px solid var(--border);border-radius:6px;font-size:.8125rem">';
-    html += '<button class="btn btn-ghost btn-sm" onclick="updatePassScore(\'exams\',' + ex.id + ')">Save</button>';
+    html += '<span style="font-size:.75rem;font-weight:600;color:var(--muted);margin-left:8px">Time (min):</span>';
+    html += '<input id="f-ex-time" type="number" value="' + (ex.time_limit_minutes || 20) + '" style="width:60px;padding:6px 10px;border:1px solid var(--border);border-radius:6px;font-size:.8125rem">';
+    html += '<button class="btn btn-ghost btn-sm" onclick="updateExamTime(' + ex.id + ')">Save</button>';
     html += '<div style="flex:1"></div>';
     html += '<button class="btn btn-danger btn-sm" onclick="deleteExam(' + ex.id + ',' + lid + ')">Delete Exam</button>';
     html += '</div>';
@@ -1153,6 +1155,13 @@ async function updateLessonFromContent(lid) {
 async function updatePassScore(table, id) {
   const val = parseInt((table === 'homework' ? document.getElementById('f-hw-pass') : document.getElementById('f-ex-pass')).value) || 60;
   const { error } = await sb.from(table).update({ pass_score: val }).eq('id', id);
+  if (error) { alert('Error: ' + error.message); return; }
+  manageContent(_contentLid);
+}
+
+async function updateExamTime(id) {
+  const val = parseInt(document.getElementById('f-ex-time').value) || 20;
+  const { error } = await sb.from('exams').update({ time_limit_minutes: val }).eq('id', id);
   if (error) { alert('Error: ' + error.message); return; }
   manageContent(_contentLid);
 }

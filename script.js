@@ -113,6 +113,7 @@ async function fetchCourses() {
         attemptPassScore: l.exams?.attempt_pass_score || 60,
         hasFinalExam: l.exams?.has_final_exam || false,
         questionsPerAttempt: l.exams?.questions_per_attempt || 0,
+        timeLimit: l.exams?.time_limit_minutes || 20,
         questions: (l.exams?.exam_questions || []).sort((a,b) => (a.sort_order||0) - (b.sort_order||0)).map(q => ({ id: q.id, q: q.question, opts: q.options, correct: q.correct, math: q.math || '', image_url: q.image_url || '', option_images: q.option_images || [], explanation: q.explanation || '', explanation_image_url: q.explanation_image_url || '' })),
         imageQuestions: (l.exams?.exam_image_questions || []).sort((a,b) => (a.sort_order||0) - (b.sort_order||0)).map(q => ({ id: q.id, imgQ: q.image_url, correct: q.correct, explanation: q.explanation || '', explanation_image_url: q.explanation_image_url || '', option_images: q.option_images || [] }))
       }
@@ -1548,6 +1549,7 @@ function startQuiz(lessonId, type) {
   const txt = document.getElementById('quiz-progress-text');
   if (bar) bar.style.width = '0%';
   if (txt) txt.textContent = '0/' + qs.length;
+  if (type === 'exam') startTimer(found.lesson.امتحان.timeLimit || 20);
   showView('quiz');
   renderAllQuestions();
 }
@@ -1596,7 +1598,43 @@ function selectAnswer(qi, oi) {
   if (txt) txt.textContent = answered + '/' + quizState.total;
 }
 
+// ── Exam Timer ──
+var _examTimer = null;
+var _examTimeLeft = 0;
+function startTimer(minutes) {
+  clearTimer();
+  if (!minutes || minutes <= 0) { var t = document.getElementById('quiz-timer'); if (t) t.style.display = 'none'; return; }
+  _examTimeLeft = minutes * 60;
+  updateTimerDisplay();
+  var el = document.getElementById('quiz-timer');
+  if (el) el.style.display = '';
+  _examTimer = setInterval(function() {
+    _examTimeLeft--;
+    updateTimerDisplay();
+    if (_examTimeLeft <= 0) {
+      clearTimer();
+      submitAll();
+    }
+  }, 1000);
+}
+function clearTimer() {
+  if (_examTimer) { clearInterval(_examTimer); _examTimer = null; }
+  var el = document.getElementById('quiz-timer');
+  if (el) el.style.display = 'none';
+}
+function updateTimerDisplay() {
+  var el = document.getElementById('quiz-timer');
+  if (!el) return;
+  if (_examTimeLeft <= 0) { el.textContent = 'Time up!'; el.style.color = 'var(--error)'; return; }
+  var m = Math.floor(_examTimeLeft / 60);
+  var s = _examTimeLeft % 60;
+  el.textContent = m + ':' + (s < 10 ? '0' : '') + s;
+  if (_examTimeLeft <= 120) el.style.color = 'var(--error)';
+  else el.style.color = '';
+}
+
 async function submitAll() {
+  clearTimer();
   try {
   if (!quizState || quizState.submitted) return;
   quizState.submitted = true;
@@ -2053,6 +2091,7 @@ async function startDynamicExam(lid) {
   var txt = document.getElementById('quiz-progress-text');
   if (bar) bar.style.width = '0%';
   if (txt) txt.textContent = '0/' + qs.length;
+  startTimer(found.lesson.امتحان.timeLimit || 20);
   showView('quiz');
   renderAllQuestions();
   } catch(e) { console.error('startDynamicExam error:', e); alert('Error starting exam: ' + e.message); }
@@ -2102,6 +2141,7 @@ async function startFinalExam(lid) {
   var txt = document.getElementById('quiz-progress-text');
   if (bar) bar.style.width = '0%';
   if (txt) txt.textContent = '0/' + qs.length;
+  startTimer(found.lesson.امتحان.timeLimit || 20);
   showView('quiz');
   renderAllQuestions();
 }
