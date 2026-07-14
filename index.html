@@ -208,36 +208,41 @@
 </footer>
 
 <script>
-// Animations for landing page
 (function() {
   if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
   var AE = window.AnimEngine;
   if (!AE) return;
-  // Hero entrance
+  // ── Hero entrance (staggered cascade) ──
   setTimeout(function() {
-    AE.animate2D('.hero-tag', 'slideInUp', { duration: 500 });
-    AE.animate2D('#ht-title', 'slideInUp', { duration: 600, delay: 150 });
-    AE.animate2D('.hero-desc', 'slideInUp', { duration: 500, delay: 300 });
-    AE.animate2D('.hero-actions', 'fadeIn', { duration: 400, delay: 450 });
-    AE.animate2D('.hero-img-col', 'slideInRight', { duration: 700, delay: 200 });
-  }, 100);
-  // Sections on scroll
+    AE.animate2D('.hero-tag', 'slideInUp',    { duration: 400, easing: 'easeOutQuart' });
+    AE.animate2D('#ht-title', 'slideInUp',    { duration: 500, easing: 'easeOutQuart', delay: 100 });
+    AE.animate2D('.hero-desc', 'slideInUp',   { duration: 450, easing: 'easeOutQuart', delay: 200 });
+    AE.animate2D('.hero-actions', 'fadeIn',   { duration: 350, easing: 'easeOutQuad',  delay: 300 });
+    AE.animate2D('.hero-img-col', 'slideInRight', { duration: 600, easing: 'easeOutQuart', delay: 150 });
+  }, 80);
+  // ── Scroll-triggered reveals ──
+  AE.animate2D('.section-header', 'slideInUp', {
+    duration: 450, scrollTrigger: { threshold: 0.15, once: true }
+  });
   AE.animate2D('.step-card', 'slideInUp', {
-    duration: 500, stagger: 120,
-    scrollTrigger: { threshold: 0.2, once: true }
+    duration: 450, stagger: 100,
+    scrollTrigger: { threshold: 0.15, once: true }
   });
   AE.animate2D('.testimonial-card', 'slideInUp', {
-    duration: 500, stagger: 100,
-    scrollTrigger: { threshold: 0.15, once: true }
+    duration: 450, stagger: 80,
+    scrollTrigger: { threshold: 0.1, once: true }
   });
   AE.animate2D('.lc-grid', 'fadeIn', {
-    duration: 600,
-    scrollTrigger: { threshold: 0.15, once: true }
-  });
-  // Section headers
-  AE.animate2D('.section-header', 'slideInUp', {
     duration: 500,
-    scrollTrigger: { threshold: 0.2, once: true }
+    scrollTrigger: { threshold: 0.1, once: true }
+  });
+  // ── Continuous float on step numbers ──
+  AE.animate2D('.step-number', 'float', { duration: 2500 });
+  // ── CTA hover pulse ──
+  document.querySelectorAll('.hero-actions .btn-primary').forEach(function(el) {
+    el.addEventListener('mouseenter', function() {
+      AE.animate2D(this, 'pulse', { duration: 400 });
+    });
   });
 })();
 </script>
