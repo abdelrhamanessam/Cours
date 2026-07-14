@@ -322,7 +322,16 @@
     <button class="cm-filter" data-filter="most_liked" onclick="setCommunityFilter('most_liked',this)">Most Liked</button>
     <button class="cm-filter" data-filter="solved" onclick="setCommunityFilter('solved',this)">Solved</button>
     <button class="cm-filter" data-filter="unsolved" onclick="setCommunityFilter('unsolved',this)">Unsolved</button>
-    <select class="cm-filter-select" id="cm-lesson-filter" onchange="applyCommunityFilters()"><option value="">All Lessons</option></select>
+    <select class="cm-filter-select" id="cm-lesson-filter" onchange="applyCommunityFilters()" style="display:none"><option value="">All Lessons</option></select>
+    <div class="cm-dropdown" id="cm-dropdown">
+      <button class="cm-dropdown-trigger" onclick="toggleLessonDropdown()" type="button">
+        <span id="cm-dropdown-label">All Lessons</span>
+        <svg class="cm-dropdown-arrow" width="10" height="6" viewBox="0 0 10 6" fill="none"><path d="M1 1l4 4 4-4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      </button>
+      <div class="cm-dropdown-menu" id="cm-dropdown-menu">
+        <div class="cm-dropdown-item active" data-value="" onclick="selectLessonDropdown('')">All Lessons</div>
+      </div>
+    </div>
   </div>
   <div class="cm-list" id="cm-list">
     <div class="cm-shimmer"></div><div class="cm-shimmer"></div><div class="cm-shimmer"></div>

@@ -1879,7 +1879,7 @@ async function showCommunity() {
   var list = document.getElementById('cm-list');
   if (!list) return;
   list.innerHTML = '<div class="cm-shimmer"></div><div class="cm-shimmer"></div><div class="cm-shimmer"></div>';
-  // Populate lesson filter
+  // Populate lesson filter (native select stays hidden, custom dropdown gets populated)
   var sel = document.getElementById('cm-lesson-filter');
   if (sel && sel.options.length <= 1) {
     var userLevel = userProfile?.level || 'sec1';
@@ -1893,13 +1893,58 @@ async function showCommunity() {
       }
     }
   }
+  // Sync custom dropdown from hidden select
+  var menu = document.getElementById('cm-dropdown-menu');
+  if (menu && sel) {
+    menu.innerHTML = '<div class="cm-dropdown-item active" data-value="" onclick="selectLessonDropdown(\'\')">All Lessons</div>';
+    for (var i = 1; i < sel.options.length; i++) {
+      var o = sel.options[i];
+      var di = document.createElement('div');
+      di.className = 'cm-dropdown-item';
+      di.textContent = o.textContent;
+      di.dataset.value = o.value;
+      di.onclick = function(v) { return function() { selectLessonDropdown(v); }; }(o.value);
+      menu.appendChild(di);
+    }
+  }
   await loadCommunityPosts();
 }
+
+function toggleLessonDropdown() {
+  var dd = document.getElementById('cm-dropdown');
+  if (!dd) return;
+  dd.classList.toggle('open');
+}
+
+function selectLessonDropdown(value) {
+  var dd = document.getElementById('cm-dropdown');
+  var sel = document.getElementById('cm-lesson-filter');
+  var label = document.getElementById('cm-dropdown-label');
+  if (sel) sel.value = value;
+  if (label) {
+    if (!value) label.textContent = 'All Lessons';
+    else {
+      var opt = sel ? sel.options[sel.selectedIndex] : null;
+      label.textContent = opt ? opt.textContent : 'All Lessons';
+    }
+  }
+  // Update active class on items
+  var items = document.querySelectorAll('.cm-dropdown-item');
+  items.forEach(function(item) { item.classList.toggle('active', item.dataset.value === value); });
+  if (dd) dd.classList.remove('open');
+  applyCommunityFilters();
+}
+
+// Close dropdown on outside click
+document.addEventListener('click', function(e) {
+  var dd = document.getElementById('cm-dropdown');
+  if (dd && !dd.contains(e.target)) dd.classList.remove('open');
+});
 
 async function loadCommunityPosts() {
   try {
     if (!currentUser) { document.getElementById('cm-list').innerHTML = '<div class="cm-empty"><div class="cm-empty-icon">🔒</div><h3>Sign in to access the community</h3><p>Log in to ask questions and see posts from your level.</p></div>'; return; }
-    var { data: posts } = await sb.from('community_posts').select('*, profiles!community_posts_user_id_fkey(name), likes:community_likes(count), comments:community_comments(count)').order('created_at', { ascending: false });
+    var { data: posts } = await sb.from('community_posts').select('*, profiles!community_posts_user_id_fkey(name,profile_pic), likes:community_likes(count), comments:community_comments(count)').order('created_at', { ascending: false });
     if (!posts || posts.length === 0) { document.getElementById('cm-list').innerHTML = '<div class="cm-empty"><div class="cm-empty-icon">📭</div><h3>No posts yet</h3><p>Be the first to ask a question!</p></div>'; return; }
     _cmPosts = posts;
     var { data: myLikes } = await sb.from('community_likes').select('post_id').eq('user_id', currentUser.id);
@@ -1939,7 +1984,7 @@ function renderCommunityPosts(posts) {
     var likeCount = p.likes?.[0]?.count || 0;
     var commentCount = p.comments?.[0]?.count || 0;
     var liked = _cmUserLikes[p.id] ? ' liked' : '';
-    var avatarL = (p.profiles?.name || 'U')[0].toUpperCase();
+    var avatarHtml = '<div class="cm-card-avatar">' + (p.profiles?.profile_pic ? '<img src="' + esc(p.profiles.profile_pic) + '" alt="">' : (p.profiles?.name || 'U')[0].toUpperCase()) + '</div>';
     var pinned = p.is_pinned ? '<span class="cm-badge cm-badge-pinned">📌 Pinned</span>' : '';
     var solved = p.is_solved ? '<span class="cm-badge cm-badge-solved">✓ Solved</span>' : '';
     var lessonName = getLessonName(p.lesson_id);
@@ -1947,8 +1992,8 @@ function renderCommunityPosts(posts) {
     html += '<div class="cm-card-top"><div class="cm-card-title"><a href="#" onclick="event.stopPropagation();showPostDetail(' + p.id + ')">' + esc(p.title) + '</a></div><div style="display:flex;gap:4px;flex-shrink:0">' + pinned + solved + '</div></div>';
     html += '<div class="cm-card-body">' + esc(p.description.substring(0, 200)) + '</div>';
     if (p.image_url) html += '<div class="cm-card-img"><img src="' + SUPABASE_URL + '/storage/v1/object/public/question-images/' + esc(p.image_url) + '" loading="lazy" onclick="event.stopPropagation();showPostDetail(' + p.id + ')"></div>';
-    html += '<div class="cm-card-meta"><div class="cm-card-author"><div class="cm-card-avatar">' + avatarL + '</div>' + esc(p.profiles?.name || 'User') + '</div><span>·</span><span>' + esc(lessonName) + '</span><span>·</span><span>' + timeAgo(p.created_at) + '</span>';
-    html += '<div class="cm-card-stats"><span class="cm-card-stat' + liked + '">' + (liked ? '♥' : '♡') + ' ' + likeCount + '</span><span class="cm-card-stat">💬 ' + commentCount + '</span></div></div>';
+    html += '<div class="cm-card-meta"><div class="cm-card-author">' + avatarHtml + '<span>' + esc(p.profiles?.name || 'User') + '</span></div><span class="cm-dot">·</span><span>' + esc(lessonName) + '</span><span class="cm-dot">·</span><span>' + timeAgo(p.created_at) + '</span>';
+    html += '<div class="cm-card-stats"><span class="cm-card-stat' + liked + '"><span class="cm-stat-icon">' + (liked ? '♥' : '♡') + '</span><span class="cm-stat-num">' + likeCount + '</span></span><span class="cm-card-stat"><span class="cm-stat-icon">💬</span><span class="cm-stat-num">' + commentCount + '</span></span></div></div>';
     html += '</div>';
   });
   list.innerHTML = html;
@@ -2041,19 +2086,20 @@ async function submitPost() {
 }
 
 async function showPostDetail(postId) {
-  var { data: post } = await sb.from('community_posts').select('*, profiles!community_posts_user_id_fkey(name)').eq('id', postId).single();
+  var { data: post } = await sb.from('community_posts').select('*, profiles!community_posts_user_id_fkey(name,profile_pic)').eq('id', postId).single();
   if (!post) { alert('Post not found.'); return; }
   var { count: likeCount } = await sb.from('community_likes').select('id', { count: 'exact', head: true }).eq('post_id', postId);
   var liked = _cmUserLikes[postId] ? ' liked' : '';
   var isOwner = currentUser && currentUser.id === post.user_id;
   var isTeacher = currentUser && (userProfile?.role === 'teacher');
   var avatarL = (post.profiles?.name || 'U')[0].toUpperCase();
+  var avatarImg = post.profiles?.profile_pic ? '<img src="' + esc(post.profiles.profile_pic) + '" alt="" style="width:100%;height:100%;object-fit:cover;border-radius:50%">' : avatarL;
   var pinned = post.is_pinned ? '<span class="cm-badge cm-badge-pinned">📌 Pinned</span>' : '';
   var solved = post.is_solved ? '<span class="cm-badge cm-badge-solved">✓ Solved</span>' : '';
 
   var h = '<div class="cm-post-modal">';
   h += '<div style="display:flex;align-items:flex-start;justify-content:space-between;gap:12px;margin-bottom:8px"><h2 style="font-size:1.25rem;font-weight:700;letter-spacing:-.02em;flex:1">' + esc(post.title) + '</h2><div style="display:flex;gap:4px;flex-shrink:0">' + pinned + solved + '</div></div>';
-  h += '<div style="display:flex;align-items:center;gap:8px;margin-bottom:16px;font-size:.8125rem;color:var(--muted)"><div class="cm-card-avatar" style="width:28px;height:28px;font-size:.6875rem">' + avatarL + '</div><span style="font-weight:600;color:var(--ink)">' + esc(post.profiles?.name || 'User') + '</span><span>·</span><span>' + esc(getLessonName(post.lesson_id)) + '</span><span>·</span><span>' + timeAgo(post.created_at) + '</span></div>';
+  h += '<div style="display:flex;align-items:center;gap:8px;margin-bottom:16px;font-size:.8125rem;color:var(--muted)"><div class="cm-card-avatar" style="width:28px;height:28px;font-size:.6875rem">' + avatarImg + '</div><span style="font-weight:600;color:var(--ink)">' + esc(post.profiles?.name || 'User') + '</span><span>·</span><span>' + esc(getLessonName(post.lesson_id)) + '</span><span>·</span><span>' + timeAgo(post.created_at) + '</span></div>';
   if (post.image_url) h += '<img class="cm-post-img" src="' + SUPABASE_URL + '/storage/v1/object/public/question-images/' + esc(post.image_url) + '" onclick="window.open(this.src)">';
   h += '<div class="cm-post-body">' + esc(post.description) + '</div>';
 
@@ -2075,7 +2121,7 @@ async function showPostDetail(postId) {
 }
 
 async function loadComments(postId) {
-  var { data: comments } = await sb.from('community_comments').select('*, profiles!community_comments_user_id_fkey(name)').eq('post_id', postId).order('created_at', { ascending: true });
+  var { data: comments } = await sb.from('community_comments').select('*, profiles!community_comments_user_id_fkey(name,profile_pic)').eq('post_id', postId).order('created_at', { ascending: true });
   var container = document.getElementById('cm-comments-' + postId);
   if (!container) return;
   if (!comments || comments.length === 0) { container.innerHTML = '<div style="text-align:center;padding:24px;color:var(--muted);font-size:.875rem">No comments yet. Be the first!</div>'; return; }
@@ -2090,10 +2136,11 @@ function renderCommentTree(comments, parentId, postId) {
     var isTeacher = currentUser && (userProfile?.role === 'teacher');
     var isOwner = currentUser && currentUser.id === c.user_id;
     var avatarL = (c.profiles?.name || 'U')[0].toUpperCase();
+    var avatarImg = c.profiles?.profile_pic ? '<img src="' + esc(c.profiles.profile_pic) + '" alt="" style="width:100%;height:100%;object-fit:cover;border-radius:50%">' : avatarL;
     var verified = c.is_verified_answer ? '<span class="cm-verified-badge">✓ Verified Answer</span>' : '';
     var commentImg = c.image_url ? '<img src="' + SUPABASE_URL + '/storage/v1/object/public/question-images/' + esc(c.image_url) + '" style="max-width:100%;max-height:200px;border-radius:6px;border:1px solid var(--border);margin-top:6px" onclick="window.open(this.src)">' : '';
     html += '<div class="cm-comment">';
-    html += '<div class="cm-comment-avatar">' + avatarL + '</div>';
+    html += '<div class="cm-comment-avatar">' + avatarImg + '</div>';
     html += '<div class="cm-comment-body"><div class="cm-comment-header"><span class="cm-comment-author">' + esc(c.profiles?.name || 'User') + '</span>' + verified + '<span class="cm-comment-time">' + timeAgo(c.created_at) + '</span></div>';
     html += '<div class="cm-comment-text">' + esc(c.content) + commentImg + '</div>';
     html += '<div class="cm-comment-actions">';
