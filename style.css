@@ -60,18 +60,19 @@ nav .container{display:flex;align-items:center;height:100%;gap:32px;justify-cont
 .nl2 .nl-full{display:flex;flex-direction:column}
 .nl2 .nl-name{font-size:1rem;font-weight:800;letter-spacing:-.02em;line-height:1.2}
 .nl2 .nl-title{font-size:.625rem;color:var(--muted);font-weight:500;letter-spacing:.04em;text-transform:uppercase}
-.nv1{display:flex;align-items:center;gap:12px}
-.nv1 .nv-link{font-size:.875rem;font-weight:600;color:var(--ink);text-decoration:none;padding:6px 12px;border-radius:var(--radius);transition:background .15s}
-.nv1 .nv-link:hover{background:var(--surface)}
+.nv1{display:flex;align-items:center;gap:12px;position:relative}
+.nv-indicator{position:absolute;top:0;left:0;height:100%;border-radius:var(--radius);background:var(--primary-soft);z-index:0;opacity:0;pointer-events:none;transition:transform .35s cubic-bezier(.16,1,.3,1),width .35s cubic-bezier(.16,1,.3,1);will-change:transform,width}
+.nv1 .nv-link{position:relative;z-index:1;font-size:.875rem;font-weight:600;color:var(--ink);text-decoration:none;padding:6px 12px;border-radius:var(--radius);transition:color .2s}
+.nv1 .nv-link:hover{background:transparent}
+.nv1 .nv-link.active{color:var(--primary);background:transparent}
 @keyframes navScaleIn { from { opacity:0; transform:scale(.92); } to { opacity:1; transform:scale(1); } }
 .nav-anim .nl2,
-.nav-anim .nv1 > * { animation: navScaleIn .4s cubic-bezier(.16,1,.3,1) both; transform-origin:center; }
+.nav-anim .nv1 > :not(.nv-indicator) { animation: navScaleIn .4s cubic-bezier(.16,1,.3,1) both; transform-origin:center; }
 .nav-anim .nl2 { animation-delay: 0ms; }
 .nav-anim .nv1 > *:nth-child(1) { animation-delay: 60ms; }
 .nav-anim .nv1 > *:nth-child(2) { animation-delay: 110ms; }
 .nav-anim .nv1 > *:nth-child(3) { animation-delay: 160ms; }
 .nav-anim .nv1 > *:nth-child(4) { animation-delay: 210ms; }
-.nv1 .nv-link.active{background:var(--primary-soft);color:var(--primary)}
 .nv1 .nv-cta{display:flex;gap:8px}
 .nv1 .avatar{width:32px;height:32px;border-radius:50%;background:var(--primary);color:var(--bg);display:flex;align-items:center;justify-content:center;font-size:.75rem;font-weight:800;cursor:pointer;border:2px solid transparent;transition:border-color .15s;overflow:hidden;flex-shrink:0}
 .nv1 .avatar img{width:100%;height:100%;object-fit:cover;display:block}
@@ -557,6 +558,8 @@ details[open] .rv-mistake-summary::before{transform:rotate(90deg)}
   .nv1{position:fixed;top:0;right:-280px;width:260px;height:100vh;background:var(--bg);flex-direction:column;align-items:stretch;gap:4px;padding:80px 16px 24px;z-index:100;box-shadow:-4px 0 24px rgba(0,0,0,.08);transition:right .3s cubic-bezier(.16,1,.3,1)}
   .nv1.open{right:0}
   .nv1 .nv-link{padding:14px 16px;border-radius:var(--radius);font-size:1rem;display:block}
+  .nv1 .nv-link.active{background:var(--primary-soft);color:var(--primary)}
+  .nv-indicator{display:none}
   .nv1 .nv-cta{padding:14px 16px;flex-direction:column;gap:8px}
   .nv-overlay.show{display:block}
   .about-grid{grid-template-columns:1fr;gap:32px}

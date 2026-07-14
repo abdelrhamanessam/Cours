@@ -915,10 +915,26 @@ function closeMobileNav() {
   var nv = document.getElementById('nv1'); var ov = document.getElementById('nv-overlay');
   if (nv) nv.classList.remove('open'); if (ov) ov.classList.remove('show');
 }
+function updateNavIndicator() {
+  var active = document.querySelector('.nv1 .nv-link.active');
+  var indicator = document.getElementById('nv-indicator');
+  if (!active || !indicator || window.innerWidth <= 900) { if (indicator) indicator.style.opacity = '0'; return; }
+  requestAnimationFrame(function() {
+    indicator.style.opacity = '1';
+    indicator.style.width = active.offsetWidth + 'px';
+    indicator.style.transform = 'translateX(' + active.offsetLeft + 'px)';
+  });
+}
+// Reposition indicator on resize
+var _navResizeTimer = null;
+window.addEventListener('resize', function() {
+  clearTimeout(_navResizeTimer);
+  _navResizeTimer = setTimeout(updateNavIndicator, 100);
+});
 function showView(view, data) {
   closeMobileNav();
   document.querySelectorAll('.landing-view, .platform-view, .courses-view, .quiz-view, .content-view, .profile-view, .review-view, .community-view, .support-view').forEach(v => v.style.display = 'none');
-  if (view === 'landing') document.getElementById('view-landing').style.display = 'block';
+  if (view === 'landing') { document.getElementById('view-landing').style.display = 'block'; document.querySelectorAll('.nv1 .nv-link').forEach(l => l.classList.remove('active')); updateNavIndicator(); window.scrollTo({ top: 0, behavior: 'smooth' }); return; }
   else if (view === 'platform') { document.getElementById('view-platform').style.display = 'block'; renderPlatform(); }
   else if (view === 'courses') { document.getElementById('view-courses').style.display = 'block'; renderCourses(); }
   else if (view === 'quiz') { document.getElementById('view-quiz').style.display = 'block'; }
@@ -927,6 +943,10 @@ function showView(view, data) {
   else if (view === 'review') { document.getElementById('view-review').style.display = 'block'; renderReviewPage(); }
   else if (view === 'community') { document.getElementById('view-community').style.display = 'block'; showCommunity(); }
   else if (view === 'support') { document.getElementById('view-support').style.display = 'block'; showSupportPage(); }
+  document.querySelectorAll('.nv1 .nv-link').forEach(l => l.classList.remove('active'));
+  var activeLink = document.querySelector('.nv1 .nv-link[data-view="' + view + '"]');
+  if (activeLink) activeLink.classList.add('active');
+  updateNavIndicator();
   window.scrollTo({ top: 0, behavior: 'smooth' });
 }
 

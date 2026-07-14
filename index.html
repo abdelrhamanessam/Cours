@@ -28,12 +28,13 @@
       </span>
     </a>
     <div class="nv1" id="nv1">
-      <a href="#" class="nv-link active" onclick="showView('platform')">Dashboard</a>
-      <a href="#" class="nv-link" onclick="showView('courses')">Courses</a>
-      <a href="#" class="nv-link" onclick="showView('community')">Community</a>
-      <a href="#" class="nv-link" onclick="showView('profile')">Profile</a>
-      <a href="#" class="nv-link" onclick="showView('review')">Review</a>
-      <a href="#" class="nv-link" onclick="showView('support')">Support</a>
+      <div class="nv-indicator" id="nv-indicator"></div>
+      <a href="#" class="nv-link active" data-view="platform" onclick="showView('platform')">Dashboard</a>
+      <a href="#" class="nv-link" data-view="courses" onclick="showView('courses')">Courses</a>
+      <a href="#" class="nv-link" data-view="community" onclick="showView('community')">Community</a>
+      <a href="#" class="nv-link" data-view="profile" onclick="showView('profile')">Profile</a>
+      <a href="#" class="nv-link" data-view="review" onclick="showView('review')">Review</a>
+      <a href="#" class="nv-link" data-view="support" onclick="showView('support')">Support</a>
       <div class="nv-cta" id="auth-status"></div>
       <div class="nv-notif-wrap" id="nv-notif-wrap" style="display:none">
         <button class="nv-notif-bell" onclick="toggleNotifPanel()" aria-label="Notifications">
