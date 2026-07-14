@@ -2135,6 +2135,9 @@ async function addComment(postId, parentId) {
     var notifType = parentId ? 'reply' : 'comment';
     await sb.from('notifications').insert({ user_id: post.user_id, type: notifType, post_id: postId, actor_id: currentUser.id }).catch(function(){});
   }
+  var idx = _cmPosts.findIndex(function(p) { return p.id === postId; });
+  if (idx >= 0 && _cmPosts[idx].comments?.[0]) _cmPosts[idx].comments[0].count = (_cmPosts[idx].comments[0].count || 0) + 1;
+  applyCommunityFilters();
   loadComments(postId);
 }
 
@@ -2144,6 +2147,8 @@ async function toggleLike(postId, btn) {
     await sb.from('community_likes').delete().eq('user_id', currentUser.id).eq('post_id', postId);
     delete _cmUserLikes[postId];
     if (btn) { btn.classList.remove('liked'); btn.innerHTML = '♡ <span id="cm-like-count-' + postId + '">' + (parseInt(btn.textContent.match(/\d+/)?.[0] || '1') - 1) + '</span>'; }
+    var idx = _cmPosts.findIndex(function(p) { return p.id === postId; });
+    if (idx >= 0 && _cmPosts[idx].likes?.[0]) _cmPosts[idx].likes[0].count = Math.max(0, (_cmPosts[idx].likes[0].count || 0) - 1);
   } else {
     var { error } = await sb.from('community_likes').insert({ user_id: currentUser.id, post_id: postId });
     if (error && error.code === '23505') return;
@@ -2153,7 +2158,10 @@ async function toggleLike(postId, btn) {
     if (post && post.user_id !== currentUser.id) {
       await sb.from('notifications').insert({ user_id: post.user_id, type: 'like', post_id: postId, actor_id: currentUser.id }).catch(function(){});
     }
+    var idx = _cmPosts.findIndex(function(p) { return p.id === postId; });
+    if (idx >= 0 && _cmPosts[idx].likes?.[0]) _cmPosts[idx].likes[0].count = (_cmPosts[idx].likes[0].count || 0) + 1;
   }
+  applyCommunityFilters();
 }
 
 async function toggleSolved(postId) {
