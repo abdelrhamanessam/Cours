@@ -1882,7 +1882,9 @@ async function showCommunity() {
   // Populate lesson filter
   var sel = document.getElementById('cm-lesson-filter');
   if (sel && sel.options.length <= 1) {
+    var userLevel = userProfile?.level || 'sec1';
     for (var ci = 0; ci < COURSES.length; ci++) {
+      if (COURSES[ci].level !== userLevel) continue;
       for (var li = 0; li < COURSES[ci].lessons.length; li++) {
         var l = COURSES[ci].lessons[li];
         var opt = document.createElement('option');
@@ -1904,7 +1906,7 @@ async function loadCommunityPosts() {
     _cmUserLikes = {};
     if (myLikes) myLikes.forEach(function(l) { _cmUserLikes[l.post_id] = true; });
     applyCommunityFilters();
-  } catch(e) { console.error('Load posts error:', e); }
+  } catch(e) { console.error('Load posts error:', e); alert('Error loading posts: ' + e.message); }
 }
 
 function setCommunityFilter(filter, btn) {
@@ -1997,7 +1999,9 @@ async function showCreatePost() {
   _cmPostImage = null;
   var h = '<h2 style="margin-bottom:16px">New Post</h2>';
   h += '<label style="font-size:.8125rem;font-weight:600;color:var(--muted);display:block;margin-bottom:4px">Lesson</label><select id="f-post-lesson" class="auth-input">';
+  var userLevel = userProfile?.level || 'sec1';
   for (var ci = 0; ci < COURSES.length; ci++) {
+    if (COURSES[ci].level !== userLevel) continue;
     for (var li = 0; li < COURSES[ci].lessons.length; li++) {
       var l = COURSES[ci].lessons[li];
       h += '<option value="' + l.id + '">' + esc(COURSES[ci].title) + ' — ' + esc(l.title) + '</option>';
@@ -2013,6 +2017,7 @@ async function showCreatePost() {
 }
 
 async function submitPost() {
+  try {
   var lessonId = document.getElementById('f-post-lesson')?.value;
   var title = document.getElementById('f-post-title')?.value.trim();
   var desc = document.getElementById('f-post-desc')?.value.trim();
@@ -2031,6 +2036,7 @@ async function submitPost() {
   _cmPostImage = null;
   hideModal();
   await loadCommunityPosts();
+  } catch(e) { console.error('submitPost error:', e); alert('Error creating post: ' + e.message); }
 }
 
 async function showPostDetail(postId) {
