@@ -1,4 +1,4 @@
-const VIDEO_API = ''; // Leave empty for same-domain Pages Functions, or set to full URL
+const VIDEO_API = '';
 
 async function playEncryptedVideo(lessonId) {
   if (!currentUser) { alert('Please log in first.'); return; }
@@ -15,11 +15,11 @@ async function playEncryptedVideo(lessonId) {
     const headers = { 'Authorization': `Bearer ${token}` };
 
     const manifestResp = await fetch(`${base}/api/manifest/${lessonId}`, { headers });
-    if (!manifestResp.ok) { container.innerHTML = '<div class="vp-error">Video not available</div>'; return; }
+    if (!manifestResp.ok) throw new Error('Video not available');
     const manifest = await manifestResp.json();
 
     const keyResp = await fetch(`${base}/api/key/${lessonId}`, { headers });
-    if (!keyResp.ok) { container.innerHTML = '<div class="vp-error">Access denied</div>'; return; }
+    if (!keyResp.ok) throw new Error('Access denied');
     const keyData = await keyResp.arrayBuffer();
     const key = await crypto.subtle.importKey('raw', keyData, { name: 'AES-GCM' }, false, ['decrypt']);
 
@@ -27,42 +27,37 @@ async function playEncryptedVideo(lessonId) {
       <div class="vp-wrap">
         <video id="vp-video" controls autoplay class="vp-video" playsinline></video>
         <div class="vp-progress"><div class="vp-progress-bar" id="vp-progress-bar"></div></div>
-        <div class="vp-status" id="vp-status">Decrypting segments...</div>
+        <div class="vp-status" id="vp-status">Downloading and decrypting...</div>
       </div>
     `;
 
-    const ms = new MediaSource();
+    const status = document.getElementById('vp-status');
+    const progress = document.getElementById('vp-progress-bar');
+
+    const seg = manifest.segments[0];
+    status.textContent = 'Downloading...';
+    const resp = await fetch(seg.mega_link);
+    const encrypted = await resp.arrayBuffer();
+
+    status.textContent = 'Decrypting...';
+    progress.style.width = '50%';
+
+    const iv = hexToBytes(seg.iv);
+    const combined = new Uint8Array(encrypted.slice(16));
+
+    const decrypted = await crypto.subtle.decrypt(
+      { name: 'AES-GCM', iv, tagLength: 128 },
+      key, combined
+    );
+
+    progress.style.width = '100%';
+    status.textContent = 'Starting...';
+
     const video = document.getElementById('vp-video');
-    video.src = URL.createObjectURL(ms);
+    video.src = URL.createObjectURL(new Blob([decrypted], { type: 'video/mp4' }));
+    video.load();
 
-    ms.addEventListener('sourceopen', async () => {
-      const sb = ms.addSourceBuffer('video/mp2t');
-      const status = document.getElementById('vp-status');
-      const progress = document.getElementById('vp-progress-bar');
-
-      for (const seg of manifest.segments) {
-        status.textContent = `Decrypting segment ${seg.segment_num}/${manifest.totalSegments}...`;
-        progress.style.width = `${(seg.segment_num / manifest.totalSegments) * 100}%`;
-
-        const resp = await fetch(seg.mega_link);
-        const encrypted = await resp.arrayBuffer();
-
-        const iv = hexToBytes(seg.iv);
-        const combined = new Uint8Array(encrypted.slice(16));
-
-        const decrypted = await crypto.subtle.decrypt(
-          { name: 'AES-GCM', iv, tagLength: 128 },
-          key,
-          combined
-        );
-
-        await appendBuffer(sb, decrypted);
-      }
-
-      ms.endOfStream();
-      status.textContent = 'Done';
-      progress.style.width = '100%';
-    });
+    status.textContent = '';
 
   } catch (err) {
     container.innerHTML = `<div class="vp-error">Error: ${err.message}</div>`;
@@ -70,16 +65,8 @@ async function playEncryptedVideo(lessonId) {
   }
 }
 
-function appendBuffer(sourceBuffer, data) {
-  return new Promise((resolve, reject) => {
-    sourceBuffer.appendBuffer(data);
-    sourceBuffer.addEventListener('updateend', resolve, { once: true });
-    sourceBuffer.addEventListener('error', reject, { once: true });
-  });
-}
-
 function hexToBytes(hex) {
-  const bytes = new Uint8Array(hex.length / 2);
-  for (let i = 0; i < hex.length; i += 2) bytes[i / 2] = parseInt(hex.substr(i, 2), 16);
-  return bytes;
+  const b = new Uint8Array(hex.length / 2);
+  for (let i = 0; i < hex.length; i += 2) b[i >> 1] = parseInt(hex.substr(i, 2), 16);
+  return b;
 }
