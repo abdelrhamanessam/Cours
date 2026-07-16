@@ -20,14 +20,16 @@ export async function onRequest(context) {
   return new Response(key, { headers: { ...cors, 'Content-Type': 'application/octet-stream' } });
 }
 
+function sbUrl(env) { return env.SUPABASE_URL.replace(/\/+$/, ''); }
+
 async function supabaseGet(table, query, env) {
-  const r = await fetch(`${env.SUPABASE_URL}/rest/v1/${table}?${query}`, { headers: { 'apikey': env.SUPABASE_SERVICE_KEY, 'Authorization': `Bearer ${env.SUPABASE_SERVICE_KEY}` } });
+  const r = await fetch(`${sbUrl(env)}/rest/v1/${table}?${query}`, { headers: { 'apikey': env.SUPABASE_SERVICE_KEY, 'Authorization': `Bearer ${env.SUPABASE_SERVICE_KEY}` } });
   if (!r.ok) return null;
   return r.json();
 }
 
 async function verifyUser(token, env) {
-  const r = await fetch(`${env.SUPABASE_URL}/auth/v1/user`, { headers: { 'apikey': env.SUPABASE_ANON_KEY, 'Authorization': `Bearer ${token}` } });
+  const r = await fetch(`${sbUrl(env)}/auth/v1/user`, { headers: { 'apikey': env.SUPABASE_ANON_KEY, 'Authorization': `Bearer ${token}` } });
   if (!r.ok) return null;
   return r.json();
 }
