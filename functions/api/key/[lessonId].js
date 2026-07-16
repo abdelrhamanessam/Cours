@@ -1,5 +1,5 @@
 // /api/key/:lessonId
-// Returns the raw AES-256 master key for decryption
+// Returns the raw AES-256 key for decryption
 
 export async function onRequest(context) {
   const { request, env, params } = context;
@@ -20,8 +20,26 @@ export async function onRequest(context) {
   const manifests = await supabaseGet('video_manifests', query, env);
   if (!manifests || manifests.length === 0) return new Response(JSON.stringify({ error: 'not found' }), { status: 404, headers: cors });
 
-  const key = hexToBytes(manifests[0].master_key);
+  const manifest = manifests[0];
+  let key;
+
+  if (env.MASTER_SECRET && !manifest.master_key) {
+    key = await deriveKey(env.MASTER_SECRET, String(manifest.id));
+  } else {
+    key = hexToBytes(manifest.master_key);
+  }
+
   return new Response(key, { headers: { ...cors, 'Content-Type': 'application/octet-stream' } });
+}
+
+async function deriveKey(secret, manifestId) {
+  const encoder = new TextEncoder();
+  const keyMaterial = await crypto.subtle.importKey('raw', encoder.encode(secret), 'HKDF', false, ['deriveBits']);
+  const bits = await crypto.subtle.deriveBits(
+    { name: 'HKDF', hash: 'SHA-256', salt: encoder.encode('mr-maths-video-key-v1'), info: encoder.encode(manifestId) },
+    keyMaterial, 256
+  );
+  return new Uint8Array(bits);
 }
 
 function sbUrl(env) { return env.SUPABASE_URL.replace(/\/+$/, ''); }

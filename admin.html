@@ -1312,36 +1312,19 @@ async function uploadEncryptedVideo() {
   progress.style.display = 'block'; bar.style.width = '0%'; text.textContent = '0%';
 
   try {
-    text.textContent = 'Reading file...';
-    const fileData = await file.arrayBuffer();
-    bar.style.width = '20%';
-
-    text.textContent = 'Generating key...';
-    const key = await crypto.subtle.generateKey({ name: 'AES-GCM', length: 256 }, true, ['encrypt']);
-    const rawKey = await crypto.subtle.exportKey('raw', key);
-    const iv = crypto.getRandomValues(new Uint8Array(16));
+    text.textContent = 'Uploading...';
     bar.style.width = '30%';
 
-    text.textContent = 'Encrypting...';
-    const encrypted = await crypto.subtle.encrypt({ name: 'AES-GCM', iv, tagLength: 128 }, key, fileData);
-    bar.style.width = '50%';
-
-    const encData = new Blob([iv, encrypted]);
-    const keyHex = Array.from(new Uint8Array(rawKey)).map(b => b.toString(16).padStart(2, '0')).join('');
-    const ivHex = Array.from(iv).map(b => b.toString(16).padStart(2, '0')).join('');
-
-    text.textContent = 'Uploading via API...';
     const { data: { session } } = await sb.auth.getSession();
     const token = session?.access_token;
     if (!token) throw new Error('Not authenticated');
 
-    const fileName = 'admin_uploads/' + Date.now() + '_' + file.name.replace(/[^a-zA-Z0-9_.-]/g, '_') + '.enc';
     const form = new FormData();
-    form.append('file', encData, fileName);
-    form.append('fileName', fileName);
-    form.append('keyHex', keyHex);
-    form.append('ivHex', ivHex);
+    form.append('file', file);
     form.append('originalName', file.name);
+
+    bar.style.width = '50%';
+    text.textContent = 'Uploading to server...';
 
     const resp = await fetch('/api/upload', {
       method: 'POST',
@@ -1354,7 +1337,7 @@ async function uploadEncryptedVideo() {
     }
     const result = await resp.json();
     bar.style.width = '100%';
-    text.textContent = 'Complete!';
+    text.textContent = 'Complete! Manifest ID: ' + result.manifestId.slice(0, 8) + '...';
     await renderEncryptedVideoList();
   } catch (e) {
     text.textContent = 'Error: ' + e.message;

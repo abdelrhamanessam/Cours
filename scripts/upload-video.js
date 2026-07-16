@@ -51,22 +51,17 @@ async function main() {
   if (old.data) {
     await sb.from('mega_segments').delete().eq('manifest_id', old.data.id);
     await sb.from('video_manifests').delete().eq('id', old.data.id);
-    // Also delete old file from storage
-    try {
-      const oldMani = await sb.from('video_manifests').select('file_path').eq('lesson_id', lessonId).single();
-      if (oldMani.data?.file_path) await sb.storage.from('encrypted-videos').remove([oldMani.data.file_path]);
-    } catch(e) {}
   }
 
   console.log('Saving to Supabase...');
   const manifestId = crypto.randomUUID();
-  await sb.from('video_manifests').insert({
+  const { error: insertErr } = await sb.from('video_manifests').insert({
     id: manifestId, course_id: courseId, lesson_id: lessonId,
     master_key: masterKey.toString('hex'),
     total_segments: 1, segment_duration: 0,
-    file_path: fileName,
     created_at: new Date().toISOString()
   });
+  if (insertErr) { console.error('Insert error:', insertErr); process.exit(1); }
   await sb.from('mega_segments').insert({
     manifest_id: manifestId, segment_num: 1,
     account_index: 1, file_name: fileName,
