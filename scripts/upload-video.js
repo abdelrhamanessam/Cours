@@ -47,7 +47,14 @@ function uploadToMega(client, filePath, name, folder) {
   return new Promise((res, rej) => {
     const rs = fs.createReadStream(filePath);
     const up = client.upload({ name, size: fs.statSync(filePath).size }, rs);
-    up.on('complete', (f) => res(`https://mega.nz/file/${f.hash}`));
+    up.on('complete', async (f) => {
+      try {
+        const link = await f.link();
+        res(link);
+      } catch(e) {
+        res(`https://mega.nz/file/${f.nodeId}`);
+      }
+    });
     up.on('error', rej);
   });
 }
