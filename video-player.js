@@ -36,7 +36,7 @@ async function playEncryptedVideo(lessonId) {
 
     const seg = manifest.segments[0];
     status.textContent = 'Downloading...';
-    const resp = await fetch(seg.mega_link);
+    const resp = await fetch(seg.mega_link + '?t=' + Date.now());
     const encrypted = await resp.arrayBuffer();
 
     status.textContent = 'Decrypting...';
