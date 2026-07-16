@@ -1,19 +1,20 @@
 const VIDEO_API = '';
 
-async function playEncryptedVideo(lessonId) {
+async function playEncryptedVideo(lessonId, container) {
   if (!currentUser) { alert('Please log in first.'); return; }
   const { data: { session } } = await sb.auth.getSession();
   const token = session?.access_token;
   if (!token) { alert('Session expired. Please log in again.'); return; }
 
   const base = VIDEO_API || '';
-  showView('video-player');
-  const container = document.getElementById('video-player-container');
-  container.innerHTML = '<div class="vp-loading">Loading video...</div>';
+  const isInline = !!container;
+  if (!isInline) showView('video-player');
+  const wrap = container || document.getElementById('video-player-container');
+  if (!wrap) return;
+  wrap.innerHTML = '<div class="vp-loading">Loading video...</div>';
 
   try {
     const headers = { 'Authorization': `Bearer ${token}` };
-
     const manifestResp = await fetch(`${base}/api/manifest/${lessonId}`, { headers });
     if (!manifestResp.ok) throw new Error('Video not available');
     const manifest = await manifestResp.json();
@@ -23,16 +24,14 @@ async function playEncryptedVideo(lessonId) {
     const keyData = await keyResp.arrayBuffer();
     const key = await crypto.subtle.importKey('raw', keyData, { name: 'AES-GCM' }, false, ['decrypt']);
 
-    container.innerHTML = `
+    wrap.innerHTML = `
       <div class="vp-wrap">
         <video id="vp-video" controls autoplay class="vp-video" playsinline></video>
-        <div class="vp-progress"><div class="vp-progress-bar" id="vp-progress-bar"></div></div>
         <div class="vp-status" id="vp-status">Downloading and decrypting...</div>
       </div>
     `;
 
     const status = document.getElementById('vp-status');
-    const progress = document.getElementById('vp-progress-bar');
 
     const seg = manifest.segments[0];
     status.textContent = 'Downloading...';
@@ -40,7 +39,6 @@ async function playEncryptedVideo(lessonId) {
     const encrypted = await resp.arrayBuffer();
 
     status.textContent = 'Decrypting...';
-    progress.style.width = '50%';
 
     const iv = hexToBytes(seg.iv);
     const combined = new Uint8Array(encrypted.slice(16));
@@ -50,7 +48,6 @@ async function playEncryptedVideo(lessonId) {
       key, combined
     );
 
-    progress.style.width = '100%';
     status.textContent = 'Starting...';
 
     const video = document.getElementById('vp-video');
@@ -62,7 +59,7 @@ async function playEncryptedVideo(lessonId) {
     status.textContent = '';
 
   } catch (err) {
-    container.innerHTML = `<div class="vp-error">Error: ${err.message}</div>`;
+    wrap.innerHTML = `<div class="vp-error">Error: ${err.message}</div>`;
     console.error('Video player error:', err);
   }
 }

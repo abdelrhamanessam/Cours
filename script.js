@@ -1319,6 +1319,9 @@ content += '<div class="vp-help-overlay" id="vp-help-' + Date.now() + '" style="
   if (item.type === 'Image' && item.image_url) {
     content += '<div style="text-align:center;margin:20px 0"><img src="' + esc(item.image_url) + '" style="max-width:100%;border-radius:12px;border:1px solid var(--border);box-shadow:0 2px 12px rgba(0,0,0,0.08)" alt="' + esc(item.title) + '" loading="lazy"></div>';
   }
+  if (item.type === 'Video' && !item.video_url) {
+    content += '<div id="enc-video-container" class="video-container" style="background:#000;min-height:200px;display:flex;align-items:center;justify-content:center"><div style="color:var(--muted)">Encrypted video loading...</div></div>';
+  }
   content += '<div class="lesson-step"><h3>' + item.title + '</h3><p>' + item.content + '</p>' + (item.math ? '<div class="math-block">$$' + esc(item.math) + '$$</div>' : '') + '</div>';
   if (item.file_url) {
     var fn = item.file_url.split('/').pop();
@@ -1328,13 +1331,18 @@ content += '<div class="vp-help-overlay" id="vp-help-' + Date.now() + '" style="
     var pfn = item.pdf_url.split('/').pop();
     content += '<div class="pdf-section"><div class="pdf-header"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" width="18" height="18"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><path d="M9 15h6"/><path d="M12 12v6"/></svg><span>PDF Material</span><a class="pdf-dl-btn" href="' + esc(item.pdf_url) + '" target="_blank" rel="noopener noreferrer" download title="Download PDF"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="16" height="16"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg></a></div><div class="pdf-viewer"><iframe src="' + esc(item.pdf_url) + '#toolbar=0" class="pdf-iframe" loading="lazy" title="PDF Viewer"></iframe></div></div>';
   }
-  content += '<div class="lesson-nav"><button class="btn btn-ghost" onclick="showView(\'courses\')">&larr; Back to Courses</button><button class="btn btn-primary" onclick="playEncryptedVideo(' + l.id + ')" style="margin-left:auto">&#9654; Play Encrypted Video</button></div></div>';
+  content += '<div class="lesson-nav"><button class="btn btn-ghost" onclick="showView(\'courses\')">&larr; Back to Courses</button></div></div>';
   el.innerHTML = content;
   if (typeof renderMathInElement === 'function') renderMathInElement(el, { delimiters: [{ left: '$$', right: '$$', display: true }, { left: '\\(', right: '\\)', display: false }] });
-  if (item.type === 'Video' && item.video_url) {
-    const v = item.video_url;
-    if (!v.includes('youtube.com') && !v.includes('youtu.be') && !v.includes('vimeo.com')) {
-      vpInit(v, el.querySelector('.vp-wrap'));
+  if (item.type === 'Video') {
+    if (item.video_url) {
+      const v = item.video_url;
+      if (!v.includes('youtube.com') && !v.includes('youtu.be') && !v.includes('vimeo.com')) {
+        vpInit(v, el.querySelector('.vp-wrap'));
+      }
+    } else {
+      const encContainer = document.getElementById('enc-video-container');
+      if (encContainer) playEncryptedVideo(l.id, encContainer);
     }
   }
 }
