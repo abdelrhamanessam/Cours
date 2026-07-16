@@ -110,11 +110,26 @@ async function playEncryptedVideoById(manifestId, container) {
   try {
     const headers = { 'Authorization': `Bearer ${token}` };
     const isTicket = manifestId.length > 50;
+
     const manifestResp = await fetch(`${base}/api/manifest/0?${isTicket ? 'ticket=' : 'mid='}${manifestId}`, { headers });
     if (!manifestResp.ok) throw new Error('Video not available');
     const manifest = await manifestResp.json();
 
-    const keyResp = await fetch(`${base}/api/key/0?${isTicket ? 'ticket=' : 'mid='}${manifestId}`, { headers });
+    let keyParam = '';
+    if (isTicket) {
+      const atResp = await fetch(`${base}/api/access-token`, {
+        method: 'POST',
+        headers: { ...headers, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ ticket: manifestId })
+      });
+      if (!atResp.ok) throw new Error('Access denied');
+      const atData = await atResp.json();
+      keyParam = 'access_token=' + atData.accessToken;
+    } else {
+      keyParam = 'mid=' + manifestId;
+    }
+
+    const keyResp = await fetch(`${base}/api/key/0?${keyParam}`, { headers });
     if (!keyResp.ok) throw new Error('Access denied');
     const keyData = await keyResp.arrayBuffer();
     const key = await crypto.subtle.importKey('raw', keyData, { name: 'AES-GCM' }, false, ['decrypt']);
@@ -182,8 +197,21 @@ async function playEncryptedVideoById(manifestId, container) {
       setInterval(moveWatermark, 4000);
     }
 
-    video.load();
+    // Refresh access token every 3 minutes
+    let refreshTimer = null;
+    if (isTicket) {
+      refreshTimer = setInterval(async () => {
+        try {
+          await fetch(`${base}/api/access-token`, {
+            method: 'POST',
+            headers: { ...headers, 'Content-Type': 'application/json' },
+            body: JSON.stringify({ ticket: manifestId })
+          });
+        } catch(e) { /* silent */ }
+      }, 180000);
+    }
 
+    video.load();
     status.textContent = '';
 
   } catch (err) {

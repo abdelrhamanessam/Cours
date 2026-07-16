@@ -1,5 +1,5 @@
 // POST /api/ticket?mid=MANIFEST_ID
-// Creates a short-lived signed ticket for video access
+// Creates a page ticket (24h expiry) for video access
 
 export async function onRequest(context) {
   const { request, env } = context;
@@ -17,9 +17,9 @@ export async function onRequest(context) {
   if (!mid) return new Response(JSON.stringify({ error: 'Missing mid' }), { status: 400, headers: cors });
 
   const secret = env.MASTER_SECRET || env.SUPABASE_SERVICE_KEY;
-  const ttlMs = 7 * 24 * 60 * 60 * 1000; // 7 days
+  const ttlMs = 24 * 60 * 60 * 1000; // 24 hours
   const expiresAt = Date.now() + ttlMs;
-  const payload = `${mid}:${expiresAt}`;
+  const payload = `${mid}:${user.id}:${expiresAt}`;
 
   try {
     const encoder = new TextEncoder();
@@ -28,7 +28,7 @@ export async function onRequest(context) {
     const sigHex = Array.from(new Uint8Array(sig)).map(b => b.toString(16).padStart(2, '0')).join('');
     const ticket = btoa(payload + ':' + sigHex);
 
-    return new Response(JSON.stringify({ ticket, manifestId: mid, expiresAt }), {
+    return new Response(JSON.stringify({ ticket, manifestId: mid, expiresAt, userId: user.id }), {
       status: 200, headers: { ...cors, 'Content-Type': 'application/json' }
     });
   } catch (e) {

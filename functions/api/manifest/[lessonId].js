@@ -22,12 +22,12 @@ export async function onRequest(context) {
   let mid = url.searchParams.get('mid');
   const ticket = url.searchParams.get('ticket');
 
-  // If ticket is provided, verify it and extract manifestId
   if (ticket) {
     const ticketSecret = env.MASTER_SECRET || env.SUPABASE_SERVICE_KEY;
-    const verifiedMid = await verifyTicket(ticketSecret, ticket);
-    if (!verifiedMid) return new Response(JSON.stringify({ error: 'Invalid or expired ticket' }), { status: 403, headers: cors });
-    mid = verifiedMid;
+    const verified = await verifyTicket(ticketSecret, ticket);
+    if (!verified) return new Response(JSON.stringify({ error: 'Invalid or expired ticket' }), { status: 403, headers: cors });
+    if (verified.userId !== user.id) return new Response(JSON.stringify({ error: 'Ticket belongs to another user' }), { status: 403, headers: cors });
+    mid = verified.manifestId;
   }
 
   const query = mid ? `id=eq.${mid}&select=id,total_segments,segment_duration` : `lesson_id=eq.${lessonId}&select=id,total_segments,segment_duration`;
@@ -45,15 +45,17 @@ async function verifyTicket(secret, ticket) {
     const lastColon = decoded.lastIndexOf(':');
     const data = decoded.substring(0, lastColon);
     const sigHex = decoded.substring(lastColon + 1);
-    const lastDataColon = data.lastIndexOf(':');
-    const manifestId = data.substring(0, lastDataColon);
-    const expiresAt = parseInt(data.substring(lastDataColon + 1));
+    const parts = data.split(':');
+    if (parts.length < 3) return null;
+    const manifestId = parts[0];
+    const userId = parts[1];
+    const expiresAt = parseInt(parts[2]);
     if (Date.now() > expiresAt) return null;
     const encoder = new TextEncoder();
     const key = await crypto.subtle.importKey('raw', encoder.encode(secret), { name: 'HMAC', hash: 'SHA-256' }, false, ['verify']);
     const sigBytes = new Uint8Array(sigHex.match(/.{1,2}/g).map(b => parseInt(b, 16)));
     const valid = await crypto.subtle.verify('HMAC', key, sigBytes, encoder.encode(data));
-    return valid ? manifestId : null;
+    return valid ? { manifestId, userId } : null;
   } catch(e) { return null; }
 }
 
