@@ -11,7 +11,7 @@ async function playEncryptedVideo(lessonId, container) {
   if (!isInline) showView('video-player');
   const wrap = container || document.getElementById('video-player-container');
   if (!wrap) return;
-  wrap.innerHTML = '<div class="vp-loading">Loading video...</div>';
+    wrap.innerHTML = '<div class="vp-loading">Loading video...</div>';
 
   try {
     const headers = { 'Authorization': `Bearer ${token}` };
@@ -26,7 +26,7 @@ async function playEncryptedVideo(lessonId, container) {
 
     wrap.innerHTML = `
       <div class="vp-wrap">
-        <video id="vp-video" controls autoplay class="vp-video" playsinline></video>
+        <video id="vp-video" controls autoplay class="vp-video" playsinline controlsList="nodownload noremoteplayback" oncontextmenu="return false" disablePictureInPicture></video>
         <div class="vp-status" id="vp-status">Downloading and decrypting...</div>
       </div>
     `;
@@ -87,7 +87,7 @@ async function playEncryptedVideoById(manifestId, container) {
 
     container.innerHTML = `
       <div class="vp-wrap">
-        <video id="vp-video" controls autoplay class="vp-video" playsinline></video>
+        <video id="vp-video" controls autoplay class="vp-video" playsinline controlsList="nodownload noremoteplayback" oncontextmenu="return false" disablePictureInPicture></video>
         <div class="vp-status" id="vp-status">Downloading and decrypting...</div>
       </div>
     `;
