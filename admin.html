@@ -1370,7 +1370,7 @@ async function onEncVideoSelect() {
   try {
     hidden.value = '...';
     var { data: { session } } = await sb.auth.getSession();
-    var resp = await fetch('/api/ticket?mid=' + mid, { headers: { 'Authorization': 'Bearer ' + (session?.access_token || '') } });
+    var resp = await fetch('/api/ticket?mid=' + mid, { method: 'POST', headers: { 'Authorization': 'Bearer ' + (session?.access_token || '') } });
     if (!resp.ok) { hidden.value = ''; alert('Failed to create ticket'); return; }
     var result = await resp.json();
     hidden.value = result.ticket;
