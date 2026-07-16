@@ -83,16 +83,8 @@ async function handleKey(lessonId, userId, env, cors) {
   }
   const m = manifests[0];
 
-  const masterKey = hexToBytes(m.master_key);
-  const encoder = new TextEncoder();
-  const data = encoder.encode(`${userId}-${lessonId}-${todayStr()}`);
-  const combined = new Uint8Array(masterKey.length + data.length);
-  combined.set(masterKey);
-  combined.set(data, masterKey.length);
-  const hash = await crypto.subtle.digest('SHA-256', combined);
-  const sessionKey = new Uint8Array(hash).slice(0, 32);
-
-  return new Response(sessionKey, {
+  const key = hexToBytes(m.master_key);
+  return new Response(key, {
     headers: { ...cors, 'Content-Type': 'application/octet-stream' },
   });
 }
