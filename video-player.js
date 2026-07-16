@@ -2,7 +2,8 @@ const VIDEO_API = ''; // Leave empty for same-domain Pages Functions, or set to 
 
 async function playEncryptedVideo(lessonId) {
   if (!currentUser) { alert('Please log in first.'); return; }
-  const token = (await sb.auth.getSession())?.access_token;
+  const { data: { session } } = await sb.auth.getSession();
+  const token = session?.access_token;
   if (!token) { alert('Session expired. Please log in again.'); return; }
 
   const base = VIDEO_API || '';
