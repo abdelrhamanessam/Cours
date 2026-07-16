@@ -1288,7 +1288,9 @@ async function renderContentPage(data) {
   content += '<p class="lesson-topic-header">' + l.topic + ' &middot; ' + groupLabel + ' &middot; ' + typeTag + '</p>';
   if (item.type === 'Video' && item.video_url) {
     const v = item.video_url;
-    if (v.includes('youtube.com') || v.includes('youtu.be')) {
+    if (v.startsWith('encrypted:')) {
+      content += '<div id="enc-video-container" class="video-container" style="background:#000;min-height:200px;display:flex;align-items:center;justify-content:center"><div style="color:var(--muted)">Encrypted video loading...</div></div>';
+    } else if (v.includes('youtube.com') || v.includes('youtu.be')) {
       const id = v.match(/(?:youtube\.com\/(?:watch\?v=|embed\/)|youtu\.be\/)([a-zA-Z0-9_-]+)/)?.[1];
       content += '<div class="video-container" style="background:#000"><iframe class="video-player" src="https://youtube.com/embed/' + id + '?rel=0&modestbranding=1&playsinline=1" allow="autoplay; encrypted-media; fullscreen" allowfullscreen loading="lazy"></iframe></div>';
     } else if (v.includes('vimeo.com')) {
