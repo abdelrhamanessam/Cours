@@ -84,18 +84,15 @@ async function handleKey(lessonId, userId, env, cors) {
   const m = manifests[0];
 
   const masterKey = hexToBytes(m.master_key);
-  const keyMaterial = await crypto.subtle.importKey('raw', masterKey, 'HKDF', false, ['deriveKey']);
-  const info = new TextEncoder().encode(`${userId}-${lessonId}-${todayStr()}`);
-  const sessionKey = await crypto.subtle.deriveKey(
-    { name: 'HKDF', hash: 'SHA-256', salt: new Uint8Array(16), info },
-    keyMaterial,
-    { name: 'AES-GCM', length: 256 },
-    false,
-    ['decrypt']
-  );
+  const encoder = new TextEncoder();
+  const data = encoder.encode(`${userId}-${lessonId}-${todayStr()}`);
+  const combined = new Uint8Array(masterKey.length + data.length);
+  combined.set(masterKey);
+  combined.set(data, masterKey.length);
+  const hash = await crypto.subtle.digest('SHA-256', combined);
+  const sessionKey = new Uint8Array(hash).slice(0, 32);
 
-  const raw = await crypto.subtle.exportKey('raw', sessionKey);
-  return new Response(raw, {
+  return new Response(sessionKey, {
     headers: { ...cors, 'Content-Type': 'application/octet-stream' },
   });
 }
