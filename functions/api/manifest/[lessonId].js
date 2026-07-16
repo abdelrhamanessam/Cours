@@ -13,7 +13,11 @@ export async function onRequest(context) {
   if (!user) return new Response('Invalid token', { status: 401, headers: cors });
 
   const lessonId = params.lessonId;
-  const manifests = await supabaseGet('video_manifests', `lesson_id=eq.${lessonId}&select=id,total_segments,segment_duration`, env);
+  const url = new URL(request.url);
+  const mid = url.searchParams.get('mid');
+
+  const query = mid ? `id=eq.${mid}&select=id,total_segments,segment_duration` : `lesson_id=eq.${lessonId}&select=id,total_segments,segment_duration`;
+  const manifests = await supabaseGet('video_manifests', query, env);
   if (!manifests || manifests.length === 0) return new Response(JSON.stringify({ error: 'not found' }), { status: 404, headers: cors });
 
   const m = manifests[0];

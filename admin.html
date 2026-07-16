@@ -382,6 +382,7 @@
         <a onclick="switchAdminPage('admins',this)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>Admins</a>
         <a onclick="switchAdminPage('stats',this)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12v-2a5 5 0 0 0-5-5H8a5 5 0 0 0-5 5v2"/><circle cx="12" cy="16" r="5"/><path d="M12 11v5"/><path d="M9.5 13.5 12 16l2.5-2.5"/></svg>System</a>
         <a onclick="switchAdminPage('site',this)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/></svg>Site</a>
+        <a onclick="switchAdminPage('videos',this)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="23 7 16 12 23 17 23 7"/><rect x="1" y="5" width="15" height="14" rx="2" ry="2"/></svg>Videos</a>
         <a onclick="switchAdminPage('community',this)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>Community</a>
         <a onclick="switchAdminPage('support',this)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>Support</a>
       </div>
@@ -393,6 +394,7 @@
         <div id="admin-page-admins" class="admin-page"></div>
         <div id="admin-page-stats" class="admin-page sys-page"></div>
         <div id="admin-page-site" class="admin-page"></div>
+        <div id="admin-page-videos" class="admin-page"></div>
         <div id="admin-page-community" class="admin-page"></div>
         <div id="admin-page-support" class="admin-page"></div>
       </div>
@@ -487,6 +489,7 @@ function loadAdminPage(page) {
   else if (page === 'admins') loadAdminAdmins();
   else if (page === 'stats') loadAdminStats();
   else if (page === 'site') loadAdminSite();
+  else if (page === 'videos') loadAdminVideos();
   else if (page === 'community') loadAdminCommunity();
   else if (page === 'support') loadAdminSupport();
 }
@@ -1166,7 +1169,7 @@ async function updateExamTime(id) {
   manageContent(_contentLid);
 }
 
-function showAddLectureForm(lid) { showModal(lectureFormHtml(null) + '<div style="display:flex;gap:8px;margin-top:16px"><button class="btn btn-primary" onclick="saveLecture(' + lid + ')">Save</button><button class="btn btn-ghost" onclick="hideModal();manageContent(' + _contentLid + ')">Cancel</button></div>'); toggleLectureType(); }
+function showAddLectureForm(lid) { showModal(lectureFormHtml(null) + '<div style="display:flex;gap:8px;margin-top:16px"><button class="btn btn-primary" onclick="saveLecture(' + lid + ')">Save</button><button class="btn btn-ghost" onclick="hideModal();manageContent(' + _contentLid + ')">Cancel</button></div>'); toggleLectureType(); loadEncVideoDropdown(); }
 function lectureFormHtml(lec) {
   const title = lec ? esc(lec.title) : '';
   const content = lec ? esc(lec.content) : '';
@@ -1196,7 +1199,10 @@ function lectureFormHtml(lec) {
     var val = existing ? existing.src : '';
     html += '<div class="lf-url-row"><span class="lf-url-badge">' + ql + '</span><input class="lf-url-input" id="f-lect-q-' + ql + '" value="' + val + '" placeholder="https://..."></div>';
   });
-  html += '</div></div>';
+  html += '</div>';
+  var encSelected = vid.startsWith('encrypted:') ? vid.slice(10) : '';
+  html += '<div class="lf-field" style="margin-top:12px"><label>Encrypted Video <span class="st-label-note">(or choose from uploaded videos)</span></label><select id="f-lect-enc-video" onchange="onEncVideoSelect()"><option value="">None</option></select></div>';
+  html += '<input type="hidden" id="f-lect-enc-manifest" value="' + encSelected + '"></div>';
   // File upload section for Reading / Worksheet
   html += '<div id="f-lect-file-section" class="lf-video-section" style="' + (type==='Video'?'display:none':'') + '">';
   html += '<div class="lf-video-header"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" width="16" height="16"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>Attachments</div>';
@@ -1267,7 +1273,100 @@ async function uploadVideo(file, lessonId, progressEl, barEl, textEl) {
     xhr.send(file);
   });
 }
+
+// ========== ENCRYPTED VIDEOS ==========
+async function loadAdminVideos() {
+  const el = document.getElementById('admin-page-videos');
+  el.innerHTML = '<h2 style="margin-bottom:16px">Encrypted Videos</h2>';
+  el.innerHTML += '<div class="admin-card" style="padding:20px;margin-bottom:20px"><h3 style="margin-bottom:12px">Upload New Video</h3><input type="file" id="enc-video-file" accept="video/mp4,video/webm" style="margin-bottom:12px"><button class="btn btn-primary" onclick="uploadEncryptedVideo()">Upload & Encrypt</button><div id="enc-upload-progress" style="display:none;margin-top:12px"><div style="height:6px;background:var(--border);border-radius:4px;overflow:hidden"><div id="enc-upload-bar" style="height:100%;width:0%;background:var(--primary);transition:width .3s"></div></div><span id="enc-upload-text" style="font-size:.75rem;color:var(--muted);margin-top:4px;display:block"></span></div></div>';
+  el.innerHTML += '<div id="enc-video-list"></div>';
+  await renderEncryptedVideoList();
+}
+
+async function renderEncryptedVideoList() {
+  const list = document.getElementById('enc-video-list');
+  list.innerHTML = '<div style="color:var(--muted);padding:12px">Loading...</div>';
+  const { data, error } = await sb.from('video_manifests').select('id,created_at,lesson_id').order('created_at', { ascending: false }).limit(50);
+  if (error) { list.innerHTML = '<div style="color:red">Error loading videos</div>'; return; }
+  if (!data || data.length === 0) { list.innerHTML = '<div style="color:var(--muted);padding:12px">No videos uploaded yet.</div>'; return; }
+  const ids = data.map(m => m.id);
+  const { data: segs } = await sb.from('mega_segments').select('manifest_id,file_name').in('manifest_id', ids).order('segment_num', { ascending: true });
+  const nameMap = {};
+  if (segs) segs.forEach(s => { if (!nameMap[s.manifest_id]) nameMap[s.manifest_id] = s.file_name; });
+  let html = '<div style="display:flex;flex-direction:column;gap:8px">';
+  data.forEach(m => {
+    const d = new Date(m.created_at).toLocaleDateString();
+    const name = nameMap[m.manifest_id] || 'Unnamed';
+    html += '<div class="admin-card" style="display:flex;justify-content:space-between;align-items:center;padding:14px 18px"><div><strong>' + name.split('/').pop() + '</strong><div style="font-size:.75rem;color:var(--muted)">Uploaded ' + d + ' &middot; ID: ' + m.id.slice(0,8) + '...</div></div><div style="font-size:.75rem;color:var(--muted)">Lesson ' + m.lesson_id + '</div></div>';
+  });
+  html += '</div>';
+  list.innerHTML = html;
+}
+
+async function uploadEncryptedVideo() {
+  const file = document.getElementById('enc-video-file').files?.[0];
+  if (!file) { alert('Select a video file first.'); return; }
+  const progress = document.getElementById('enc-upload-progress');
+  const bar = document.getElementById('enc-upload-bar');
+  const text = document.getElementById('enc-upload-text');
+  progress.style.display = 'block'; bar.style.width = '0%'; text.textContent = '0%';
+
+  try {
+    text.textContent = 'Reading file...';
+    const fileData = await file.arrayBuffer();
+    bar.style.width = '20%';
+
+    text.textContent = 'Generating key...';
+    const key = await crypto.subtle.generateKey({ name: 'AES-GCM', length: 256 }, true, ['encrypt']);
+    const rawKey = await crypto.subtle.exportKey('raw', key);
+    const iv = crypto.getRandomValues(new Uint8Array(16));
+    bar.style.width = '30%';
+
+    text.textContent = 'Encrypting...';
+    const encrypted = await crypto.subtle.encrypt({ name: 'AES-GCM', iv, tagLength: 128 }, key, fileData);
+    bar.style.width = '50%';
+
+    const encData = new Uint8Array(iv.length + encrypted.byteLength);
+    encData.set(iv);
+    encData.set(new Uint8Array(encrypted), iv.length);
+
+    text.textContent = 'Uploading to storage...';
+    const fileName = 'admin_uploads/' + Date.now() + '_' + file.name.replace(/[^a-zA-Z0-9_.-]/g, '_') + '.enc';
+    const { error: upErr } = await sb.storage.from('encrypted-videos').upload(fileName, encData, { contentType: 'application/octet-stream', upsert: true });
+    if (upErr) throw new Error('Upload failed: ' + upErr.message);
+    bar.style.width = '80%';
+
+    const { data: { publicUrl } } = sb.storage.from('encrypted-videos').getPublicUrl(fileName);
+    const keyHex = Array.from(new Uint8Array(rawKey)).map(b => b.toString(16).padStart(2, '0')).join('');
+    const ivHex = Array.from(iv).map(b => b.toString(16).padStart(2, '0')).join('');
+    const manifestId = crypto.randomUUID();
+
+    text.textContent = 'Saving manifest...';
+    const { error: insErr } = await sb.from('video_manifests').insert({
+      id: manifestId, course_id: 0, lesson_id: 0,
+      master_key: keyHex, total_segments: 1, segment_duration: 0,
+      created_at: new Date().toISOString()
+    });
+    if (insErr) throw new Error('DB error: ' + insErr.message);
+    const { error: segErr } = await sb.from('mega_segments').insert({
+      manifest_id: manifestId, segment_num: 1, account_index: 1,
+      file_name: file.name, iv: ivHex, mega_link: publicUrl
+    });
+    if (segErr) throw new Error('DB error: ' + segErr.message);
+
+    bar.style.width = '100%';
+    text.textContent = 'Complete!';
+    await renderEncryptedVideoList();
+  } catch (e) {
+    text.textContent = 'Error: ' + e.message;
+    console.error(e);
+  }
+}
+// ========== END ENCRYPTED VIDEOS ==========
+
 function collectVideoUrl() {
+  var enc = document.getElementById('f-lect-enc-manifest');
+  if (enc && enc.value) return 'encrypted:' + enc.value;
   var qualityLabels = ['1080p','720p','480p','360p','Auto'];
   var qs = {};
   qualityLabels.forEach(function(ql) {
@@ -1280,6 +1379,28 @@ function collectVideoUrl() {
     if (only.startsWith('http')) return only;
   }
   return JSON.stringify(qs);
+}
+function onEncVideoSelect() {
+  var sel = document.getElementById('f-lect-enc-video');
+  var hidden = document.getElementById('f-lect-enc-manifest');
+  hidden.value = sel.value;
+}
+async function loadEncVideoDropdown() {
+  var sel = document.getElementById('f-lect-enc-video');
+  if (!sel) return;
+  var currentVal = document.getElementById('f-lect-enc-manifest').value;
+  var { data } = await sb.from('video_manifests').select('id,created_at').order('created_at', { ascending: false }).limit(50);
+  if (!data) return;
+  var ids = data.map(m => m.id);
+  var { data: segs } = await sb.from('mega_segments').select('manifest_id,file_name').in('manifest_id', ids).order('segment_num', { ascending: true });
+  var nameMap = {};
+  if (segs) segs.forEach(function(s) { if (!nameMap[s.manifest_id]) nameMap[s.manifest_id] = s.file_name; });
+  sel.innerHTML = '<option value="">None</option>';
+  data.forEach(function(m) {
+    var name = nameMap[m.manifest_id] || m.id.slice(0,8);
+    var selected = m.id === currentVal ? ' selected' : '';
+    sel.innerHTML += '<option value="' + m.id + '"' + selected + '>' + name.split('/').pop() + ' (' + new Date(m.created_at).toLocaleDateString() + ')</option>';
+  });
 }
 async function uploadLectureFile(file, lid, progressEl, barEl, textEl) {
   var ext = file.name.split('.').pop();
@@ -1387,7 +1508,7 @@ async function saveLecture(lid) {
   if (error) { alert('Error: ' + error.message); return; }
   hideModal(); manageContent(_contentLid);
 }
-async function editLectureForm(id) { const { data: lec } = await sb.from('lectures').select('*').eq('id', id).single(); if (!lec) return; showModal(lectureFormHtml(lec) + '<div style="display:flex;gap:8px;margin-top:16px"><button class="btn btn-primary" onclick="updateLecture(' + id + ')">Update</button><button class="btn btn-ghost" onclick="hideModal();manageContent(' + _contentLid + ')">Cancel</button></div>'); toggleLectureType(); }
+async function editLectureForm(id) { const { data: lec } = await sb.from('lectures').select('*').eq('id', id).single(); if (!lec) return; showModal(lectureFormHtml(lec) + '<div style="display:flex;gap:8px;margin-top:16px"><button class="btn btn-primary" onclick="updateLecture(' + id + ')">Update</button><button class="btn btn-ghost" onclick="hideModal();manageContent(' + _contentLid + ')">Cancel</button></div>'); toggleLectureType(); loadEncVideoDropdown(); }
 async function updateLecture(id) {
   const vidFile = document.getElementById('f-lect-video-file').files?.[0];
   let video_url = collectVideoUrl();

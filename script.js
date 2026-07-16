@@ -1337,7 +1337,10 @@ content += '<div class="vp-help-overlay" id="vp-help-' + Date.now() + '" style="
   if (item.type === 'Video') {
     if (item.video_url) {
       const v = item.video_url;
-      if (!v.includes('youtube.com') && !v.includes('youtu.be') && !v.includes('vimeo.com')) {
+      if (v.startsWith('encrypted:')) {
+        const encContainer = document.getElementById('enc-video-container');
+        if (encContainer) playEncryptedVideoById(v.slice(10), encContainer);
+      } else if (!v.includes('youtube.com') && !v.includes('youtu.be') && !v.includes('vimeo.com')) {
         vpInit(v, el.querySelector('.vp-wrap'));
       }
     } else {
