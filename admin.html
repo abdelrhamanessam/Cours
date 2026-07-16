@@ -1326,34 +1326,33 @@ async function uploadEncryptedVideo() {
     const encrypted = await crypto.subtle.encrypt({ name: 'AES-GCM', iv, tagLength: 128 }, key, fileData);
     bar.style.width = '50%';
 
-    const encData = new Uint8Array(iv.length + encrypted.byteLength);
-    encData.set(iv);
-    encData.set(new Uint8Array(encrypted), iv.length);
-
-    text.textContent = 'Uploading to storage...';
-    const fileName = 'admin_uploads/' + Date.now() + '_' + file.name.replace(/[^a-zA-Z0-9_.-]/g, '_') + '.enc';
-    const { error: upErr } = await sb.storage.from('encrypted-videos').upload(fileName, encData, { contentType: 'application/octet-stream', upsert: true });
-    if (upErr) throw new Error('Upload failed: ' + upErr.message);
-    bar.style.width = '80%';
-
-    const { data: { publicUrl } } = sb.storage.from('encrypted-videos').getPublicUrl(fileName);
+    const encData = new Blob([iv, encrypted]);
     const keyHex = Array.from(new Uint8Array(rawKey)).map(b => b.toString(16).padStart(2, '0')).join('');
     const ivHex = Array.from(iv).map(b => b.toString(16).padStart(2, '0')).join('');
-    const manifestId = crypto.randomUUID();
 
-    text.textContent = 'Saving manifest...';
-    const { error: insErr } = await sb.from('video_manifests').insert({
-      id: manifestId, course_id: 0, lesson_id: 0,
-      master_key: keyHex, total_segments: 1, segment_duration: 0,
-      created_at: new Date().toISOString()
-    });
-    if (insErr) throw new Error('DB error: ' + insErr.message);
-    const { error: segErr } = await sb.from('mega_segments').insert({
-      manifest_id: manifestId, segment_num: 1, account_index: 1,
-      file_name: file.name, iv: ivHex, mega_link: publicUrl
-    });
-    if (segErr) throw new Error('DB error: ' + segErr.message);
+    text.textContent = 'Uploading via API...';
+    const { data: { session } } = await sb.auth.getSession();
+    const token = session?.access_token;
+    if (!token) throw new Error('Not authenticated');
 
+    const fileName = 'admin_uploads/' + Date.now() + '_' + file.name.replace(/[^a-zA-Z0-9_.-]/g, '_') + '.enc';
+    const form = new FormData();
+    form.append('file', encData, fileName);
+    form.append('fileName', fileName);
+    form.append('keyHex', keyHex);
+    form.append('ivHex', ivHex);
+    form.append('originalName', file.name);
+
+    const resp = await fetch('/api/upload', {
+      method: 'POST',
+      headers: { 'Authorization': `Bearer ${token}` },
+      body: form
+    });
+    if (!resp.ok) {
+      const errText = await resp.text();
+      throw new Error('Upload failed: ' + (errText.slice(0, 200)));
+    }
+    const result = await resp.json();
     bar.style.width = '100%';
     text.textContent = 'Complete!';
     await renderEncryptedVideoList();
