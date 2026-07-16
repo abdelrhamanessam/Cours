@@ -1027,7 +1027,7 @@ window.addEventListener('resize', function() {
 });
 function showView(view, data) {
   closeMobileNav();
-  document.querySelectorAll('.landing-view, .platform-view, .courses-view, .quiz-view, .content-view, .profile-view, .review-view, .community-view, .support-view').forEach(v => v.style.display = 'none');
+  document.querySelectorAll('.landing-view, .platform-view, .courses-view, .quiz-view, .content-view, .profile-view, .review-view, .community-view, .support-view, .video-player-view').forEach(v => v.style.display = 'none');
   if (view === 'landing') { document.getElementById('view-landing').style.display = 'block'; document.querySelectorAll('.nv1 .nv-link').forEach(l => l.classList.remove('active')); updateNavIndicator(); window.scrollTo({ top: 0, behavior: 'smooth' }); return; }
   else if (view === 'platform') { document.getElementById('view-platform').style.display = 'block'; renderPlatform(); }
   else if (view === 'courses') { document.getElementById('view-courses').style.display = 'block'; renderCourses(); }
@@ -1037,6 +1037,7 @@ function showView(view, data) {
   else if (view === 'review') { document.getElementById('view-review').style.display = 'block'; renderReviewPage(); }
   else if (view === 'community') { document.getElementById('view-community').style.display = 'block'; showCommunity(); }
   else if (view === 'support') { document.getElementById('view-support').style.display = 'block'; showSupportPage(); }
+  else if (view === 'video-player') { document.getElementById('view-video-player').style.display = 'block'; }
   document.querySelectorAll('.nv1 .nv-link').forEach(l => l.classList.remove('active'));
   var activeLink = document.querySelector('.nv1 .nv-link[data-view="' + view + '"]');
   if (activeLink) activeLink.classList.add('active');
