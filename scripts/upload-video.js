@@ -123,6 +123,14 @@ async function main() {
     fs.unlinkSync(encPath);
   }
 
+  console.log('\nRemoving old manifest for this lesson (if any)...');
+  const oldMani = await sb.from('video_manifests').select('id').eq('lesson_id', lessonId).maybeSingle();
+  if (oldMani.data) {
+    await sb.from('mega_segments').delete().eq('manifest_id', oldMani.data.id);
+    await sb.from('video_manifests').delete().eq('id', oldMani.data.id);
+    console.log('  Removed old manifest:', oldMani.data.id);
+  }
+
   console.log('\nSaving to Supabase...');
   const manifestId = crypto.randomUUID();
   const { error: maniErr } = await sb.from('video_manifests').insert({
