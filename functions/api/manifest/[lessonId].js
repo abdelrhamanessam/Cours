@@ -12,6 +12,11 @@ export async function onRequest(context) {
   const user = await verifyUser(token, env);
   if (!user) return new Response('Invalid token', { status: 401, headers: cors });
 
+  const userId = user.id || user.sub;
+  if (!checkRateLimit('manifest:' + userId)) {
+    return new Response(JSON.stringify({ error: 'Too many requests' }), { status: 429, headers: cors });
+  }
+
   const lessonId = params.lessonId;
   const url = new URL(request.url);
   const mid = url.searchParams.get('mid');
@@ -37,4 +42,18 @@ async function verifyUser(token, env) {
   const r = await fetch(`${sbUrl(env)}/auth/v1/user`, { headers: { 'apikey': env.SUPABASE_ANON_KEY, 'Authorization': `Bearer ${token}` } });
   if (!r.ok) return null;
   return r.json();
+}
+
+const rateLimitStore = {};
+
+function checkRateLimit(key, limit = 20, windowMs = 60000) {
+  const now = Date.now();
+  let entry = rateLimitStore[key];
+  if (!entry || now > entry.resetAt) {
+    entry = { count: 1, resetAt: now + windowMs };
+    rateLimitStore[key] = entry;
+    return true;
+  }
+  entry.count++;
+  return entry.count <= limit;
 }

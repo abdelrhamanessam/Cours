@@ -12,6 +12,11 @@ export async function onRequest(context) {
   const user = await verifyUser(token, env);
   if (!user) return new Response('Invalid token', { status: 401, headers: cors });
 
+  const userId = user.id || user.sub;
+  if (!checkRateLimit('key:' + userId)) {
+    return new Response(JSON.stringify({ error: 'Too many requests' }), { status: 429, headers: cors });
+  }
+
   const lessonId = params.lessonId;
   const url = new URL(request.url);
   const mid = url.searchParams.get('mid');
@@ -28,6 +33,27 @@ export async function onRequest(context) {
   } else {
     key = hexToBytes(manifest.master_key);
   }
+
+  // Log access (non-blocking)
+  context.waitUntil((async () => {
+    try {
+      const sbUrlVal = env.SUPABASE_URL.replace(/\/+$/, '');
+      const svc = env.SUPABASE_SERVICE_KEY;
+      const manifestId = manifest.id;
+      const cf = request.cf || {};
+      await fetch(`${sbUrlVal}/rest/v1/video_access_log`, {
+        method: 'POST',
+        headers: { 'apikey': svc, 'Authorization': `Bearer ${svc}`, 'Content-Type': 'application/json', 'Prefer': 'return=minimal' },
+        body: JSON.stringify({
+          user_id: userId,
+          manifest_id: manifestId,
+          action: 'key_access',
+          ip_address: cf.ip || '',
+          user_agent: request.headers.get('User-Agent') || ''
+        })
+      });
+    } catch(e) { /* silent */ }
+  })());
 
   return new Response(key, { headers: { ...cors, 'Content-Type': 'application/octet-stream' } });
 }
@@ -60,4 +86,18 @@ function hexToBytes(hex) {
   const b = new Uint8Array(hex.length / 2);
   for (let i = 0; i < hex.length; i += 2) b[i >> 1] = parseInt(hex.substr(i, 2), 16);
   return b;
+}
+
+const rateLimitStore = {};
+
+function checkRateLimit(key, limit = 20, windowMs = 60000) {
+  const now = Date.now();
+  let entry = rateLimitStore[key];
+  if (!entry || now > entry.resetAt) {
+    entry = { count: 1, resetAt: now + windowMs };
+    rateLimitStore[key] = entry;
+    return true;
+  }
+  entry.count++;
+  return entry.count <= limit;
 }
