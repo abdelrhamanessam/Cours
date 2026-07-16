@@ -62,7 +62,7 @@ async function handleManifest(lessonId, env, cors) {
   }
   const m = manifests[0];
   const segments = await supabaseGet('mega_segments',
-    `manifest_id=eq.${m.id}&select=segment_num,mega_link,iv&order=segment_num.asc`,
+    `manifest_id=eq.${m.id}&select=segment_num,mega_link,iv,file_name&order=segment_num.asc`,
     env
   );
   return new Response(JSON.stringify({

@@ -54,7 +54,9 @@ async function playEncryptedVideo(lessonId) {
     status.textContent = 'Starting...';
 
     const video = document.getElementById('vp-video');
-    video.src = URL.createObjectURL(new Blob([decrypted], { type: 'video/mp4' }));
+    const ext = (seg.file_name || '').split('.').slice(-2, -1)[0] || 'mp4';
+    const mime = ext === 'webm' ? 'video/webm' : ext === 'ogg' ? 'video/ogg' : 'video/mp4';
+    video.src = URL.createObjectURL(new Blob([decrypted], { type: mime }));
     video.load();
 
     status.textContent = '';
