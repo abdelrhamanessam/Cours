@@ -1,5 +1,8 @@
 {
   "dependencies": {
-    "mammoth": "^1.12.0"
+    "@supabase/supabase-js": "^2.110.6",
+    "mammoth": "^1.12.0",
+    "mega": "^0.2.0",
+    "megajs": "^1.3.10"
   }
 }

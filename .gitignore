@@ -25,3 +25,5 @@ temp/
 *.heapsnapshot
 .DS_Store
 Thumbs.db
+scripts/config.json
+temp_segments_*

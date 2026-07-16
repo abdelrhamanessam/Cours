@@ -13,6 +13,7 @@
 <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/contrib/auto-render.min.js" crossorigin="anonymous" onload="if(typeof renderMathInElement==='function'){document.querySelectorAll('.math-render').forEach(function(el){renderMathInElement(el,{delimiters:[{left:'$$',right:'$$',display:true},{left:'\\(',right:'\\)',display:false}]});});}"></script>
 
 <script defer src="animengine.min.js"></script>
+<script defer src="video-player.js"></script>
 
 </head>
 <body>
@@ -347,6 +348,21 @@
   </div>
 </div>
 </div>
+
+<!-- ============ VIDEO PLAYER VIEW ============ -->
+<div id="view-video-player" class="video-player-view" style="display:none">
+<div class="vp-header">
+  <div class="container">
+    <button class="back-btn" onclick="showView('courses')">&larr; Back to Courses</button>
+  </div>
+</div>
+<div class="vp-body">
+  <div class="container" id="video-player-container">
+    <div style="text-align:center;padding:48px;color:var(--muted)">Select a video to play</div>
+  </div>
+</div>
+</div>
+<!-- END VIDEO PLAYER VIEW -->
 
 <!-- ============ COMMUNITY VIEW ============ -->
 <div id="view-community" class="community-view" style="display:none">

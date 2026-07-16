@@ -1052,3 +1052,13 @@ details[open] .rv-mistake-summary::before{transform:rotate(90deg)}
 @media(pointer:coarse){*{cursor:auto!important}.custom-cursor,.custom-ring{display:none!important}}
 @media(prefers-reduced-motion:reduce){*{cursor:auto!important}.custom-cursor,.custom-ring{display:none!important}}
 
+.vp-header{padding:16px 0;border-bottom:1px solid var(--border);background:var(--surface)}
+.vp-body{padding:24px 0}
+.vp-wrap{max-width:960px;margin:0 auto}
+.vp-video{width:100%;border-radius:12px;background:#000}
+.vp-loading,.vp-error{text-align:center;padding:48px;color:var(--muted)}
+.vp-error{color:var(--error)}
+.vp-progress{height:4px;background:var(--border);border-radius:2px;margin:12px 0;overflow:hidden}
+.vp-progress-bar{height:100%;background:var(--primary);transition:width .3s;width:0}
+.vp-status{font-size:.8125rem;color:var(--muted);text-align:center}
+
