@@ -109,11 +109,12 @@ async function playEncryptedVideoById(manifestId, container) {
 
   try {
     const headers = { 'Authorization': `Bearer ${token}` };
-    const manifestResp = await fetch(`${base}/api/manifest/0?mid=${manifestId}`, { headers });
+    const isTicket = manifestId.length > 50;
+    const manifestResp = await fetch(`${base}/api/manifest/0?${isTicket ? 'ticket=' : 'mid='}${manifestId}`, { headers });
     if (!manifestResp.ok) throw new Error('Video not available');
     const manifest = await manifestResp.json();
 
-    const keyResp = await fetch(`${base}/api/key/0?mid=${manifestId}`, { headers });
+    const keyResp = await fetch(`${base}/api/key/0?${isTicket ? 'ticket=' : 'mid='}${manifestId}`, { headers });
     if (!keyResp.ok) throw new Error('Access denied');
     const keyData = await keyResp.arrayBuffer();
     const key = await crypto.subtle.importKey('raw', keyData, { name: 'AES-GCM' }, false, ['decrypt']);

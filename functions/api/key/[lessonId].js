@@ -19,7 +19,16 @@ export async function onRequest(context) {
 
   const lessonId = params.lessonId;
   const url = new URL(request.url);
-  const mid = url.searchParams.get('mid');
+  let mid = url.searchParams.get('mid');
+  const ticket = url.searchParams.get('ticket');
+
+  // If ticket is provided, verify it and extract manifestId
+  if (ticket) {
+    const ticketSecret = env.MASTER_SECRET || env.SUPABASE_SERVICE_KEY;
+    const verifiedMid = await verifyTicket(ticketSecret, ticket);
+    if (!verifiedMid) return new Response(JSON.stringify({ error: 'Invalid or expired ticket' }), { status: 403, headers: cors });
+    mid = verifiedMid;
+  }
 
   const query = mid ? `id=eq.${mid}&select=id,master_key` : `lesson_id=eq.${lessonId}&select=id,master_key`;
   const manifests = await supabaseGet('video_manifests', query, env);
@@ -80,6 +89,24 @@ async function verifyUser(token, env) {
   const r = await fetch(`${sbUrl(env)}/auth/v1/user`, { headers: { 'apikey': env.SUPABASE_ANON_KEY, 'Authorization': `Bearer ${token}` } });
   if (!r.ok) return null;
   return r.json();
+}
+
+async function verifyTicket(secret, ticket) {
+  try {
+    const decoded = atob(ticket);
+    const lastColon = decoded.lastIndexOf(':');
+    const data = decoded.substring(0, lastColon);
+    const sigHex = decoded.substring(lastColon + 1);
+    const lastDataColon = data.lastIndexOf(':');
+    const manifestId = data.substring(0, lastDataColon);
+    const expiresAt = parseInt(data.substring(lastDataColon + 1));
+    if (Date.now() > expiresAt) return null;
+    const encoder = new TextEncoder();
+    const key = await crypto.subtle.importKey('raw', encoder.encode(secret), { name: 'HMAC', hash: 'SHA-256' }, false, ['verify']);
+    const sigBytes = new Uint8Array(sigHex.match(/.{1,2}/g).map(b => parseInt(b, 16)));
+    const valid = await crypto.subtle.verify('HMAC', key, sigBytes, encoder.encode(data));
+    return valid ? manifestId : null;
+  } catch(e) { return null; }
 }
 
 function hexToBytes(hex) {

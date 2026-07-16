@@ -19,7 +19,16 @@ export async function onRequest(context) {
 
   const lessonId = params.lessonId;
   const url = new URL(request.url);
-  const mid = url.searchParams.get('mid');
+  let mid = url.searchParams.get('mid');
+  const ticket = url.searchParams.get('ticket');
+
+  // If ticket is provided, verify it and extract manifestId
+  if (ticket) {
+    const ticketSecret = env.MASTER_SECRET || env.SUPABASE_SERVICE_KEY;
+    const verifiedMid = await verifyTicket(ticketSecret, ticket);
+    if (!verifiedMid) return new Response(JSON.stringify({ error: 'Invalid or expired ticket' }), { status: 403, headers: cors });
+    mid = verifiedMid;
+  }
 
   const query = mid ? `id=eq.${mid}&select=id,total_segments,segment_duration` : `lesson_id=eq.${lessonId}&select=id,total_segments,segment_duration`;
   const manifests = await supabaseGet('video_manifests', query, env);
@@ -28,6 +37,24 @@ export async function onRequest(context) {
   const m = manifests[0];
   const segments = await supabaseGet('mega_segments', `manifest_id=eq.${m.id}&select=segment_num,mega_link,iv,file_name&order=segment_num.asc`, env);
   return new Response(JSON.stringify({ manifestId: m.id, totalSegments: m.total_segments, segmentDuration: m.segment_duration, segments: segments || [] }), { headers: { ...cors, 'Content-Type': 'application/json' } });
+}
+
+async function verifyTicket(secret, ticket) {
+  try {
+    const decoded = atob(ticket);
+    const lastColon = decoded.lastIndexOf(':');
+    const data = decoded.substring(0, lastColon);
+    const sigHex = decoded.substring(lastColon + 1);
+    const lastDataColon = data.lastIndexOf(':');
+    const manifestId = data.substring(0, lastDataColon);
+    const expiresAt = parseInt(data.substring(lastDataColon + 1));
+    if (Date.now() > expiresAt) return null;
+    const encoder = new TextEncoder();
+    const key = await crypto.subtle.importKey('raw', encoder.encode(secret), { name: 'HMAC', hash: 'SHA-256' }, false, ['verify']);
+    const sigBytes = new Uint8Array(sigHex.match(/.{1,2}/g).map(b => parseInt(b, 16)));
+    const valid = await crypto.subtle.verify('HMAC', key, sigBytes, encoder.encode(data));
+    return valid ? manifestId : null;
+  } catch(e) { return null; }
 }
 
 function sbUrl(env) { return env.SUPABASE_URL.replace(/\/+$/, ''); }
