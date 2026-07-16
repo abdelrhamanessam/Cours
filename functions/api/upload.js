@@ -40,7 +40,7 @@ export async function onRequest(context) {
       method: 'POST',
       headers: { 'apikey': svc, 'Authorization': `Bearer ${svc}`, 'Content-Type': 'application/json', 'Prefer': 'return=minimal' },
       body: JSON.stringify({
-        id: manifestId, course_id: 0, lesson_id: 0,
+        id: manifestId, course_id: 1, lesson_id: 0,
         master_key: keyHex, total_segments: 1, segment_duration: 0,
         created_at: new Date().toISOString()
       })
