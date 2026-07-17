@@ -11,6 +11,7 @@
 <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/contrib/auto-render.min.js" crossorigin="anonymous"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="https://cdn.jsdelivr.net/npm/mammoth@1.8.0/mammoth.browser.min.js"></script>
+<script src="/mega-upload.js"></script>
 <style>
 :root{--z-modal:100;--z-modal-backdrop:99;--z-sticky:50;--z-tooltip:200;--z-toast:300}
 .admin-body{padding:40px 0}
@@ -1310,21 +1311,23 @@ async function uploadEncryptedVideo() {
   const bar = document.getElementById('enc-upload-bar');
   const text = document.getElementById('enc-upload-text');
   progress.style.display = 'block'; bar.style.width = '0%'; text.textContent = '0%';
+  var oldDetails = progress.nextElementSibling;
+  if (oldDetails && oldDetails.className === 'upload-details') oldDetails.remove();
+  const details = document.createElement('div');
+  details.className = 'upload-details';
+  details.style.cssText = 'font-size:.75rem;color:var(--muted);margin-top:6px;line-height:1.5';
+  progress.after(details);
 
   try {
-    text.textContent = 'Uploading...';
-    bar.style.width = '30%';
-
     const { data: { session } } = await sb.auth.getSession();
     const token = session?.access_token;
     if (!token) throw new Error('Not authenticated');
 
     const form = new FormData();
     form.append('file', file);
-    form.append('originalName', file.name);
 
     bar.style.width = '50%';
-    text.textContent = 'Uploading to server...';
+    text.textContent = 'Uploading & encrypting...';
 
     const resp = await fetch('/api/upload', {
       method: 'POST',
@@ -1335,12 +1338,75 @@ async function uploadEncryptedVideo() {
       const errText = await resp.text();
       throw new Error('Upload failed: ' + (errText.slice(0, 200)));
     }
-    const result = await resp.json();
-    bar.style.width = '100%';
-    text.textContent = 'Complete! Manifest ID: ' + result.manifestId.slice(0, 8) + '...';
-    await renderEncryptedVideoList();
+
+    const contentType = resp.headers.get('content-type') || '';
+
+    if (contentType.includes('application/octet-stream')) {
+      // Binary response with embedded segments — upload to Mega from browser
+      bar.style.width = '60%';
+      text.textContent = 'Parsing encrypted segments...';
+
+      const buf = await resp.arrayBuffer();
+      const view = new DataView(buf);
+      const headerLen = view.getUint32(0, true);
+      const headerBytes = new Uint8Array(buf, 4, headerLen);
+      const header = JSON.parse(new TextDecoder().decode(headerBytes));
+
+      details.innerHTML = 'Manifest: ' + header.manifestId.slice(0, 8) + '...<br>' + header.totalSegments + ' segments, uploading to Mega...';
+
+      // Login to Mega
+      // Note: Mega credentials are set below
+      const megaConfig = { email: window._MEGA_EMAIL || '', password: window._MEGA_PASSWORD || '' };
+      if (!megaConfig.email) {
+        megaConfig.email = prompt('Mega account email:');
+        megaConfig.password = prompt('Mega account password:');
+        window._MEGA_EMAIL = megaConfig.email;
+        window._MEGA_PASSWORD = megaConfig.password;
+      }
+
+      const storage = await new Promise((resolve, reject) => {
+        const s = new mega(megaConfig);
+        s.on('ready', () => resolve(s));
+        s.on('error', reject);
+      });
+
+      const dataStart = 4 + headerLen;
+      for (const seg of header.segments) {
+        const segData = new Uint8Array(buf.slice(dataStart + seg.offset, dataStart + seg.offset + seg.length));
+
+        details.innerHTML += '<br>Uploading segment ' + seg.segment_num + ' to Mega...';
+        const megaFileName = 'admin_uploads_' + header.manifestId + '_seg_' + seg.segment_num + '.enc';
+        const megaFile = await storage.upload({ name: megaFileName }, segData).complete;
+        const link = await megaFile.link();
+
+        // Store Mega link in DB
+        const storeResp = await fetch('/api/store-mega-link', {
+          method: 'POST',
+          headers: { 'Authorization': 'Bearer ' + token, 'Content-Type': 'application/json' },
+          body: JSON.stringify({ manifestId: header.manifestId, segmentNum: seg.segment_num, megaLink: link })
+        });
+        if (!storeResp.ok) {
+          details.innerHTML += ' <span style="color:var(--danger)">FAILED</span>';
+        } else {
+          details.innerHTML += ' <span style="color:var(--success)">OK</span>';
+        }
+      }
+
+      bar.style.width = '100%';
+      text.textContent = 'Complete! All segments on Mega.';
+      details.innerHTML += '<br><strong>Done!</strong>';
+      await renderEncryptedVideoList();
+    } else {
+      // JSON response (large file stored in Supabase)
+      const result = await resp.json();
+      bar.style.width = '100%';
+      text.textContent = 'Complete! Manifest ID: ' + result.manifestId.slice(0, 8) + '...';
+      details.innerHTML = 'Large video stored in Supabase.<br>Run: node scripts/migrate-to-mega.js --manifest=' + result.manifestId;
+      await renderEncryptedVideoList();
+    }
   } catch (e) {
     text.textContent = 'Error: ' + e.message;
+    details.innerHTML = '';
     console.error(e);
   }
 }

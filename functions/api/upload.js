@@ -1,6 +1,3 @@
-// POST /api/upload
-// Accepts raw video file, encrypts server-side, stores to private Supabase Storage
-
 export async function onRequest(context) {
   const { request, env } = context;
   const cors = { 'Access-Control-Allow-Origin': '*', 'Access-Control-Allow-Methods': 'POST, OPTIONS', 'Access-Control-Allow-Headers': 'Authorization, Content-Type' };
@@ -18,7 +15,6 @@ export async function onRequest(context) {
   try {
     const form = await request.formData();
     const file = form.get('file');
-    const originalName = form.get('originalName') || form.get('fileName') || 'video.mp4';
     if (!file) return new Response(JSON.stringify({ error: 'Missing file' }), { status: 400, headers: cors });
 
     const fileData = await file.arrayBuffer();
@@ -27,7 +23,7 @@ export async function onRequest(context) {
     const rawKey = await deriveKey(env.MASTER_SECRET, manifestId);
     const key = await crypto.subtle.importKey('raw', rawKey, { name: 'AES-GCM' }, false, ['encrypt']);
 
-    const CHUNK_SIZE = 5 * 1024 * 1024; // 5MB per segment
+    const CHUNK_SIZE = 5 * 1024 * 1024;
     const totalBytes = fileData.byteLength;
     const numSegments = Math.max(1, Math.ceil(totalBytes / CHUNK_SIZE));
 
@@ -43,7 +39,10 @@ export async function onRequest(context) {
     });
     if (!insRes.ok) return new Response(JSON.stringify({ error: 'DB insert failed', detail: await insRes.text() }), { status: 500, headers: cors });
 
-    const uploadedFileNames = [];
+    const segments = [];
+    const encDataArray = [];
+    let totalEncSize = 0;
+
     for (let i = 0; i < numSegments; i++) {
       const start = i * CHUNK_SIZE;
       const end = Math.min(start + CHUNK_SIZE, totalBytes);
@@ -57,14 +56,6 @@ export async function onRequest(context) {
       encData.set(new Uint8Array(encrypted), iv.byteLength);
 
       const storageName = `admin_uploads/${manifestId}/seg_${i}.enc`;
-      uploadedFileNames.push(storageName);
-
-      const upRes = await fetch(`${sbUrl}/storage/v1/object/encrypted-videos/${storageName}`, {
-        method: 'POST',
-        headers: { 'authorization': `Bearer ${svc}`, 'x-upsert': 'true', 'content-type': 'application/octet-stream' },
-        body: encData
-      });
-      if (!upRes.ok) return new Response(JSON.stringify({ error: `Segment ${i} upload failed`, detail: await upRes.text() }), { status: 500, headers: cors });
 
       const segRes = await fetch(`${sbUrl}/rest/v1/mega_segments`, {
         method: 'POST',
@@ -75,9 +66,47 @@ export async function onRequest(context) {
         })
       });
       if (!segRes.ok) return new Response(JSON.stringify({ error: `Segment ${i} insert failed`, detail: await segRes.text() }), { status: 500, headers: cors });
+
+      segments.push({ segment_num: i, iv: bytesToHex(iv), offset: totalEncSize, length: encData.byteLength });
+      encDataArray.push(encData);
+      totalEncSize += encData.byteLength;
     }
 
-    return new Response(JSON.stringify({ manifestId, totalSegments: numSegments, segments: uploadedFileNames }), { status: 200, headers: { ...cors, 'Content-Type': 'application/json' } });
+    // If total encrypted data fits in response (under 50MB), embed it
+    const MAX_INLINE = 50 * 1024 * 1024;
+    if (totalEncSize <= MAX_INLINE) {
+      const header = JSON.stringify({ manifestId, totalSegments: numSegments, format: 'embedded', segments });
+      const headerBytes = new TextEncoder().encode(header);
+      const headerLen = new Uint8Array(4);
+      new DataView(headerLen.buffer).setUint32(0, headerBytes.length, true);
+
+      const response = new Uint8Array(4 + headerBytes.length + totalEncSize);
+      response.set(headerLen, 0);
+      response.set(headerBytes, 4);
+      let off = 4 + headerBytes.length;
+      for (const d of encDataArray) { response.set(d, off); off += d.length; }
+
+      return new Response(response, {
+        status: 200,
+        headers: { ...cors, 'Content-Type': 'application/octet-stream', 'X-Upload-Format': 'embedded', 'X-Manifest-Id': manifestId }
+      });
+    }
+
+    // File too large for inline — store in Supabase storage and return JSON
+    for (let i = 0; i < numSegments; i++) {
+      const storageName = `admin_uploads/${manifestId}/seg_${i}.enc`;
+      const upRes = await fetch(`${sbUrl}/storage/v1/object/encrypted-videos/${storageName}`, {
+        method: 'POST',
+        headers: { 'authorization': `Bearer ${svc}`, 'x-upsert': 'true', 'content-type': 'application/octet-stream' },
+        body: encDataArray[i]
+      });
+      if (!upRes.ok) return new Response(JSON.stringify({ error: `Segment ${i} upload to storage failed`, detail: await upRes.text() }), { status: 500, headers: cors });
+    }
+
+    return new Response(JSON.stringify({
+      manifestId, totalSegments: numSegments, storage: 'supabase', format: 'stored',
+      note: 'Large file stored in Supabase. Run: node scripts/migrate-to-mega.js --manifest=' + manifestId
+    }), { status: 200, headers: { ...cors, 'Content-Type': 'application/json' } });
 
   } catch (e) {
     return new Response(JSON.stringify({ error: e.message }), { status: 500, headers: cors });
