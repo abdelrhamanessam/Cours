@@ -23,46 +23,61 @@ export async function onRequest(context) {
 
     const fileData = await file.arrayBuffer();
     const manifestId = crypto.randomUUID();
-    const iv = crypto.getRandomValues(new Uint8Array(16));
 
     const rawKey = await deriveKey(env.MASTER_SECRET, manifestId);
     const key = await crypto.subtle.importKey('raw', rawKey, { name: 'AES-GCM' }, false, ['encrypt']);
-    const encrypted = await crypto.subtle.encrypt({ name: 'AES-GCM', iv, tagLength: 128 }, key, fileData);
 
-    const encData = new Uint8Array(iv.byteLength + encrypted.byteLength);
-    encData.set(new Uint8Array(iv), 0);
-    encData.set(new Uint8Array(encrypted), iv.byteLength);
+    const CHUNK_SIZE = 5 * 1024 * 1024; // 5MB per segment
+    const totalBytes = fileData.byteLength;
+    const numSegments = Math.max(1, Math.ceil(totalBytes / CHUNK_SIZE));
 
-    const storageName = `admin_uploads/${Date.now()}_${originalName.replace(/[^a-zA-Z0-9_.-]/g, '_')}.enc`;
-    const upRes = await fetch(`${sbUrl}/storage/v1/object/encrypted-videos/${storageName}`, {
-      method: 'POST',
-      headers: { 'authorization': `Bearer ${svc}`, 'x-upsert': 'true', 'content-type': 'application/octet-stream' },
-      body: encData
-    });
-    if (!upRes.ok) return new Response(JSON.stringify({ error: 'Storage upload failed', detail: await upRes.text() }), { status: 500, headers: cors });
-
+    // Create manifest
     const insRes = await fetch(`${sbUrl}/rest/v1/video_manifests`, {
       method: 'POST',
       headers: { 'apikey': svc, 'Authorization': `Bearer ${svc}`, 'Content-Type': 'application/json', 'Prefer': 'return=minimal' },
       body: JSON.stringify({
         id: manifestId, course_id: null, lesson_id: null,
-        master_key: null, total_segments: 1, segment_duration: 0,
+        master_key: null, total_segments: numSegments, segment_duration: 0,
         created_at: new Date().toISOString()
       })
     });
     if (!insRes.ok) return new Response(JSON.stringify({ error: 'DB insert failed', detail: await insRes.text() }), { status: 500, headers: cors });
 
-    const segRes = await fetch(`${sbUrl}/rest/v1/mega_segments`, {
-      method: 'POST',
-      headers: { 'apikey': svc, 'Authorization': `Bearer ${svc}`, 'Content-Type': 'application/json', 'Prefer': 'return=minimal' },
-      body: JSON.stringify({
-        manifest_id: manifestId, segment_num: 1, account_index: 1,
-        file_name: storageName, iv: bytesToHex(iv), mega_link: ''
-      })
-    });
-    if (!segRes.ok) return new Response(JSON.stringify({ error: 'Segment insert failed', detail: await segRes.text() }), { status: 500, headers: cors });
+    const uploadedFileNames = [];
+    for (let i = 0; i < numSegments; i++) {
+      const start = i * CHUNK_SIZE;
+      const end = Math.min(start + CHUNK_SIZE, totalBytes);
+      const chunk = fileData.slice(start, end);
 
-    return new Response(JSON.stringify({ manifestId, fileName: storageName }), { status: 200, headers: { ...cors, 'Content-Type': 'application/json' } });
+      const iv = crypto.getRandomValues(new Uint8Array(16));
+      const encrypted = await crypto.subtle.encrypt({ name: 'AES-GCM', iv, tagLength: 128 }, key, chunk);
+
+      const encData = new Uint8Array(iv.byteLength + encrypted.byteLength);
+      encData.set(new Uint8Array(iv), 0);
+      encData.set(new Uint8Array(encrypted), iv.byteLength);
+
+      const storageName = `admin_uploads/${manifestId}/seg_${i}.enc`;
+      uploadedFileNames.push(storageName);
+
+      const upRes = await fetch(`${sbUrl}/storage/v1/object/encrypted-videos/${storageName}`, {
+        method: 'POST',
+        headers: { 'authorization': `Bearer ${svc}`, 'x-upsert': 'true', 'content-type': 'application/octet-stream' },
+        body: encData
+      });
+      if (!upRes.ok) return new Response(JSON.stringify({ error: `Segment ${i} upload failed`, detail: await upRes.text() }), { status: 500, headers: cors });
+
+      const segRes = await fetch(`${sbUrl}/rest/v1/mega_segments`, {
+        method: 'POST',
+        headers: { 'apikey': svc, 'Authorization': `Bearer ${svc}`, 'Content-Type': 'application/json', 'Prefer': 'return=minimal' },
+        body: JSON.stringify({
+          manifest_id: manifestId, segment_num: i, account_index: 1,
+          file_name: storageName, iv: bytesToHex(iv), mega_link: ''
+        })
+      });
+      if (!segRes.ok) return new Response(JSON.stringify({ error: `Segment ${i} insert failed`, detail: await segRes.text() }), { status: 500, headers: cors });
+    }
+
+    return new Response(JSON.stringify({ manifestId, totalSegments: numSegments, segments: uploadedFileNames }), { status: 200, headers: { ...cors, 'Content-Type': 'application/json' } });
 
   } catch (e) {
     return new Response(JSON.stringify({ error: e.message }), { status: 500, headers: cors });

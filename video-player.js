@@ -33,27 +33,32 @@ async function playEncryptedVideo(lessonId, container) {
 
     const status = document.getElementById('vp-status');
 
-    const seg = manifest.segments[0];
-    status.textContent = 'Downloading...';
-    const resp = await fetch(`${base}/api/download?mid=${manifest.manifestId}`, { headers });
-    const encrypted = await resp.arrayBuffer();
-
-    status.textContent = 'Decrypting...';
-
-    const iv = hexToBytes(seg.iv);
-    const combined = new Uint8Array(encrypted.slice(16));
-
-    const decrypted = await crypto.subtle.decrypt(
-      { name: 'AES-GCM', iv, tagLength: 128 },
-      key, combined
-    );
-
+    const totalSegments = manifest.segments.length;
+    const decryptedChunks = [];
+    for (let i = 0; i < totalSegments; i++) {
+      const seg = manifest.segments[i];
+      status.textContent = `Downloading segment ${i + 1}/${totalSegments}...`;
+      const resp = await fetch(`${base}/api/download?mid=${manifest.manifestId}&segment=${seg.segment_num}`, { headers });
+      const encrypted = await resp.arrayBuffer();
+      status.textContent = `Decrypting segment ${i + 1}/${totalSegments}...`;
+      const iv = hexToBytes(seg.iv);
+      const combined = new Uint8Array(encrypted.slice(16));
+      const chunk = await crypto.subtle.decrypt({ name: 'AES-GCM', iv, tagLength: 128 }, key, combined);
+      decryptedChunks.push(chunk);
+    }
     status.textContent = 'Starting...';
+    const totalLength = decryptedChunks.reduce((acc, c) => acc + c.byteLength, 0);
+    const allData = new Uint8Array(totalLength);
+    let offset = 0;
+    for (const chunk of decryptedChunks) {
+      allData.set(new Uint8Array(chunk), offset);
+      offset += chunk.byteLength;
+    }
 
     const video = document.getElementById('vp-video');
-    const ext = (seg.file_name || '').split('.').slice(-2, -1)[0] || 'mp4';
+    const ext = (manifest.segments[0].file_name || '').split('.').slice(-2, -1)[0] || 'mp4';
     const mime = ext === 'webm' ? 'video/webm' : ext === 'ogg' ? 'video/ogg' : 'video/mp4';
-    video.src = URL.createObjectURL(new Blob([decrypted], { type: mime }));
+    video.src = URL.createObjectURL(new Blob([allData], { type: mime }));
 
     // Watermark overlay
     const watermark = document.createElement('div');
@@ -143,27 +148,32 @@ async function playEncryptedVideoById(manifestId, container) {
 
     const status = document.getElementById('vp-status');
 
-    const seg = manifest.segments[0];
-    status.textContent = 'Downloading...';
-    const resp = await fetch(`${base}/api/download?mid=${manifest.manifestId}`, { headers });
-    const encrypted = await resp.arrayBuffer();
-
-    status.textContent = 'Decrypting...';
-
-    const iv = hexToBytes(seg.iv);
-    const combined = new Uint8Array(encrypted.slice(16));
-
-    const decrypted = await crypto.subtle.decrypt(
-      { name: 'AES-GCM', iv, tagLength: 128 },
-      key, combined
-    );
-
+    const totalSegments = manifest.segments.length;
+    const decryptedChunks = [];
+    for (let i = 0; i < totalSegments; i++) {
+      const seg = manifest.segments[i];
+      status.textContent = `Downloading segment ${i + 1}/${totalSegments}...`;
+      const resp = await fetch(`${base}/api/download?mid=${manifest.manifestId}&segment=${seg.segment_num}`, { headers });
+      const encrypted = await resp.arrayBuffer();
+      status.textContent = `Decrypting segment ${i + 1}/${totalSegments}...`;
+      const iv = hexToBytes(seg.iv);
+      const combined = new Uint8Array(encrypted.slice(16));
+      const chunk = await crypto.subtle.decrypt({ name: 'AES-GCM', iv, tagLength: 128 }, key, combined);
+      decryptedChunks.push(chunk);
+    }
     status.textContent = 'Starting...';
+    const totalLength = decryptedChunks.reduce((acc, c) => acc + c.byteLength, 0);
+    const allData = new Uint8Array(totalLength);
+    let offset = 0;
+    for (const chunk of decryptedChunks) {
+      allData.set(new Uint8Array(chunk), offset);
+      offset += chunk.byteLength;
+    }
 
     const video = document.getElementById('vp-video');
-    const ext = (seg.file_name || '').split('.').slice(-2, -1)[0] || 'mp4';
+    const ext = (manifest.segments[0].file_name || '').split('.').slice(-2, -1)[0] || 'mp4';
     const mime = ext === 'webm' ? 'video/webm' : ext === 'ogg' ? 'video/ogg' : 'video/mp4';
-    video.src = URL.createObjectURL(new Blob([decrypted], { type: mime }));
+    video.src = URL.createObjectURL(new Blob([allData], { type: mime }));
 
     // Watermark overlay
     const watermark = document.createElement('div');

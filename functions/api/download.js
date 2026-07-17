@@ -1,5 +1,5 @@
-// GET /api/download?mid=MANIFEST_ID
-// Downloads encrypted video file through API (auth required, private storage)
+// GET /api/download?mid=MANIFEST_ID[&segment=N]
+// Downloads encrypted video segment through API (auth required, private storage)
 
 export async function onRequest(context) {
   const { request, env } = context;
@@ -18,17 +18,20 @@ export async function onRequest(context) {
 
   const url = new URL(request.url);
   const mid = url.searchParams.get('mid');
+  const segmentNum = url.searchParams.get('segment');
   if (!mid) return new Response(JSON.stringify({ error: 'Missing mid' }), { status: 400, headers: cors });
 
   const sbUrl = env.SUPABASE_URL.replace(/\/+$/, '');
   const svc = env.SUPABASE_SERVICE_KEY;
 
   try {
-    const segs = await supabaseGet('mega_segments', `manifest_id=eq.${mid}&select=file_name&limit=1`, env);
+    const segQuery = segmentNum !== null
+      ? `manifest_id=eq.${mid}&segment_num=eq.${segmentNum}&select=file_name`
+      : `manifest_id=eq.${mid}&select=file_name&limit=1`;
+    const segs = await supabaseGet('mega_segments', segQuery, env);
     if (!segs || segs.length === 0) return new Response(JSON.stringify({ error: 'not found' }), { status: 404, headers: cors });
 
     const fileName = segs[0].file_name;
-    const storagePath = fileName.startsWith('admin_uploads/') || fileName.startsWith('course_') ? fileName : `admin_uploads/${fileName}`;
 
     const fileResp = await fetch(`${sbUrl}/storage/v1/object/encrypted-videos/${fileName}`, {
       headers: { 'authorization': `Bearer ${svc}` }
