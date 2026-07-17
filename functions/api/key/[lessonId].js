@@ -27,13 +27,11 @@ export async function onRequest(context) {
     const ticketSecret = env.MASTER_SECRET || env.SUPABASE_SERVICE_KEY;
     const verified = await verifyTicket(ticketSecret, ticket);
     if (!verified) return new Response(JSON.stringify({ error: 'Invalid or expired ticket' }), { status: 403, headers: cors });
-    if (verified.userId !== user.id) return new Response(JSON.stringify({ error: 'Ticket belongs to another user' }), { status: 403, headers: cors });
     mid = verified.manifestId;
   } else if (accessToken) {
     const tokenSecret = env.MASTER_SECRET || env.SUPABASE_SERVICE_KEY;
     const verified = await verifyTicket(tokenSecret, accessToken);
     if (!verified) return new Response(JSON.stringify({ error: 'Invalid or expired access token' }), { status: 403, headers: cors });
-    if (verified.userId !== user.id) return new Response(JSON.stringify({ error: 'Access token belongs to another user' }), { status: 403, headers: cors });
     mid = verified.manifestId;
   }
 

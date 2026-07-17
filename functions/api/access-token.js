@@ -21,9 +21,6 @@ export async function onRequest(context) {
     const verified = await verifyTicket(secret, pageTicket);
     if (!verified) return new Response(JSON.stringify({ error: 'Invalid or expired ticket' }), { status: 403, headers: cors });
 
-    // Verify ticket belongs to this user
-    if (verified.userId !== user.id) return new Response(JSON.stringify({ error: 'Ticket belongs to another user' }), { status: 403, headers: cors });
-
     // Create short-lived access token (5 min)
     const ttlMs = 5 * 60 * 1000;
     const expiresAt = Date.now() + ttlMs;
