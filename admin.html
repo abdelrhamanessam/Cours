@@ -11,7 +11,6 @@
 <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/contrib/auto-render.min.js" crossorigin="anonymous"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="https://cdn.jsdelivr.net/npm/mammoth@1.8.0/mammoth.browser.min.js"></script>
-<script src="/mega-upload.js"></script>
 <style>
 :root{--z-modal:100;--z-modal-backdrop:99;--z-sticky:50;--z-tooltip:200;--z-toast:300}
 .admin-body{padding:40px 0}
@@ -645,23 +644,8 @@ async function loadAdminStats() {
         '<div class="sys-card info"><div class="sys-card-icon">📦</div><div class="sys-card-value">' + fmtNum(fileStorageMB) + ' MB</div><div class="sys-card-label">File Storage</div></div>' +
         '</div></div>';
     }
-    // Mega Storage section
-    var megaAccs = getMegaAccounts();
-    if (megaAccs.length > 0) {
-      var megaTotalUsed = 0, megaTotalTotal = 0;
-      html += '<div class="sys-section"><div class="sys-section-title">📁 Mega.nz Storage <span>— per-account usage (click 🔄 to refresh)</span></div><div class="sys-grid">';
-      megaAccs.forEach(function(a) {
-        var used = a.storageUsed ? fmtBytes(a.storageUsed) : '?';
-        var total = a.storageTotal ? fmtBytes(a.storageTotal) : '?';
-        var pct = a.storageTotal > 0 ? Math.round(a.storageUsed / a.storageTotal * 100) + '%' : '?';
-        megaTotalUsed += a.storageUsed || 0;
-        megaTotalTotal += a.storageTotal || 0;
-        html += '<div class="sys-card"><div class="sys-card-icon">☁️</div><div class="sys-card-value">' + used + ' <span class="sys-unit">/ ' + total + '</span></div><div class="sys-card-label">' + a.label + '</div><div class="sys-card-bar"><div class="sys-card-bar-fill" style="width:' + pct + ';background:var(--accent)"></div></div></div>';
-      });
-      var megaTotalPct = megaTotalTotal > 0 ? Math.round(megaTotalUsed / megaTotalTotal * 100) + '%' : '?';
-      html += '<div class="sys-card accent"><div class="sys-card-icon">📊</div><div class="sys-card-value">' + fmtBytes(megaTotalUsed) + ' <span class="sys-unit">/ ' + fmtBytes(megaTotalTotal) + '</span></div><div class="sys-card-label">Total Across All Accounts</div><div class="sys-card-bar"><div class="sys-card-bar-fill" style="width:' + megaTotalPct + ';background:var(--primary)"></div></div></div>';
-      html += '</div></div>';
-    }
+    // Mega Storage section (fetched from server)
+    html += '<div class="sys-section"><div class="sys-section-title">📁 Mega.nz Storage <span id="mega-sys-status">loading...</span></div><div class="sys-grid" id="mega-sys-grid"></div></div>';
 
     // Database section
     html += '<div class="sys-section"><div class="sys-section-title">🗄️ Database <span>— Free tier: 500 MB max</span></div><div class="sys-table-wrap"><table class="sys-table"><thead><tr><th>Table</th><th style="text-align:right">Rows</th></tr></thead><tbody>';
@@ -689,6 +673,43 @@ async function loadAdminStats() {
     html += '<div class="sys-card info"><div class="sys-card-icon">⚙️</div><div class="sys-card-value">' + fmtNum(siteConfigR.count||0) + '</div><div class="sys-card-label">Site Config</div></div>';
     html += '</div></div>';
     el.innerHTML = html;
+
+    // Fetch Mega storage status (non-blocking)
+    try {
+      var { data: { session } } = await sb.auth.getSession();
+      var megaResp = await fetch('/api/mega-status', {
+        headers: { 'Authorization': 'Bearer ' + (session?.access_token || '') }
+      });
+      var megaData = await megaResp.json();
+      var megaStatusEl = document.getElementById('mega-sys-status');
+      var megaGridEl = document.getElementById('mega-sys-grid');
+      if (megaStatusEl && megaGridEl) {
+        if (megaData.configured && megaData.accounts.length > 0) {
+          megaStatusEl.textContent = megaData.accounts.length + ' account(s) configured';
+          var megaHtml = '';
+          var megaTotalUsed = 0, megaTotalTotal = 0;
+          megaData.accounts.forEach(function(a) {
+            var used = a.spaceUsed !== undefined ? fmtBytes(a.spaceUsed) : '?';
+            var total = a.spaceTotal !== undefined ? fmtBytes(a.spaceTotal) : '?';
+            var pct = a.spaceTotal > 0 ? Math.round(a.spaceUsed / a.spaceTotal * 100) + '%' : '?';
+            megaTotalUsed += a.spaceUsed || 0;
+            megaTotalTotal += a.spaceTotal || 0;
+            megaHtml += '<div class="sys-card"><div class="sys-card-icon">☁️</div><div class="sys-card-value">' + used + ' <span class="sys-unit">/ ' + total + '</span></div><div class="sys-card-label">' + a.label + '</div><div class="sys-card-bar"><div class="sys-card-bar-fill" style="width:' + pct + ';background:var(--accent)"></div></div></div>';
+          });
+          if (megaTotalTotal > 0) {
+            var totalPct = Math.round(megaTotalUsed / megaTotalTotal * 100) + '%';
+            megaHtml += '<div class="sys-card accent"><div class="sys-card-icon">📊</div><div class="sys-card-value">' + fmtBytes(megaTotalUsed) + ' <span class="sys-unit">/ ' + fmtBytes(megaTotalTotal) + '</span></div><div class="sys-card-label">Total</div><div class="sys-card-bar"><div class="sys-card-bar-fill" style="width:' + totalPct + ';background:var(--primary)"></div></div></div>';
+          }
+          megaGridEl.innerHTML = megaHtml;
+        } else {
+          megaStatusEl.textContent = 'not configured';
+          megaGridEl.innerHTML = '<div class="sys-card info" style="grid-column:1/-1"><div class="sys-card-icon">⚙️</div><div class="sys-card-value" style="font-size:.9rem">N/A</div><div class="sys-card-label">Set MEGA_EMAIL/MEGA_PASSWORD env vars</div></div>';
+        }
+      }
+    } catch (e) {
+      var es = document.getElementById('mega-sys-status');
+      if (es) es.textContent = 'unavailable';
+    }
   } catch (e) { el.innerHTML = '<div class="sys-empty">Error: ' + esc(e.message) + '</div>'; }
 }
 // ========== SITE SETTINGS ==========
@@ -1301,7 +1322,8 @@ function saveVideoMeta(meta) {
   localStorage.setItem('videoMeta', JSON.stringify(meta));
 }
 function fmtSize(bytes) {
-  if (!bytes) return '';
+  if (bytes === undefined || bytes === null) return '';
+  if (bytes === 0) return '0 B';
   if (bytes < 1024*1024) return (bytes/1024).toFixed(1)+' KB';
   if (bytes < 1024*1024*1024) return (bytes/1024/1024).toFixed(1)+' MB';
   return (bytes/1024/1024/1024).toFixed(2)+' GB';
@@ -1310,10 +1332,10 @@ function fmtSize(bytes) {
 async function loadAdminVideos() {
   const el = document.getElementById('admin-page-videos');
   el.innerHTML = '<h2 style="margin-bottom:16px">Encrypted Videos</h2>';
-  el.innerHTML += '<div class="admin-card" style="padding:20px;margin-bottom:20px"><h3 style="margin-bottom:12px">Upload New Video</h3><input type="text" id="enc-video-name" placeholder="Video name (e.g. Algebra Lesson 1)" style="width:100%;margin-bottom:8px;padding:8px 10px;background:var(--bg-card);color:var(--fg);border:1px solid var(--border);border-radius:6px;font-size:.875rem"><input type="file" id="enc-video-file" accept="video/mp4,video/webm" style="margin-bottom:12px"><div style="margin-bottom:10px"><label style="font-size:.8rem;color:var(--muted);display:block;margin-bottom:4px">Upload to Mega account:</label><select id="enc-mega-account" style="width:100%;padding:8px 10px;background:var(--bg-card);color:var(--fg);border:1px solid var(--border);border-radius:6px;font-size:.875rem"></select></div><button class="btn btn-primary" onclick="uploadEncryptedVideo()">Upload & Encrypt</button><div id="enc-upload-progress" style="display:none;margin-top:12px"><div style="height:6px;background:var(--border);border-radius:4px;overflow:hidden"><div id="enc-upload-bar" style="height:100%;width:0%;background:var(--primary);transition:width .3s"></div></div><span id="enc-upload-text" style="font-size:.75rem;color:var(--muted);margin-top:4px;display:block"></span></div></div>';
-  el.innerHTML += '<div class="admin-card" style="padding:20px;margin-bottom:20px"><h3 style="margin-bottom:12px">Mega Accounts</h3><div id="mega-accounts-list"></div><div style="display:flex;gap:8px;margin-top:10px"><input type="email" id="mega-acc-email" placeholder="Email" style="flex:2;padding:8px 10px;background:var(--bg-card);color:var(--fg);border:1px solid var(--border);border-radius:6px;font-size:.875rem"><input type="password" id="mega-acc-pass" placeholder="Password" style="flex:2;padding:8px 10px;background:var(--bg-card);color:var(--fg);border:1px solid var(--border);border-radius:6px;font-size:.875rem"><input type="text" id="mega-acc-label" placeholder="Label (e.g. Account 1)" style="flex:1;padding:8px 10px;background:var(--bg-card);color:var(--fg);border:1px solid var(--border);border-radius:6px;font-size:.875rem"><button class="btn btn-primary" onclick="addMegaAccount()" style="white-space:nowrap">Add</button></div></div>';
+  el.innerHTML += '<div class="admin-card" style="padding:20px;margin-bottom:20px"><h3 style="margin-bottom:12px">Upload New Video</h3><input type="text" id="enc-video-name" placeholder="Video name (e.g. Algebra Lesson 1)" style="width:100%;margin-bottom:8px;padding:8px 10px;background:var(--bg-card);color:var(--fg);border:1px solid var(--border);border-radius:6px;font-size:.875rem"><input type="file" id="enc-video-file" accept="video/mp4,video/webm" style="margin-bottom:12px"><p style="font-size:.75rem;color:var(--muted);margin-bottom:8px">Uploaded segments are sent server-side to Mega.nz. No credentials leave the server.</p><button class="btn btn-primary" onclick="uploadEncryptedVideo()">Upload & Encrypt</button><div id="enc-upload-progress" style="display:none;margin-top:12px"><div style="height:6px;background:var(--border);border-radius:4px;overflow:hidden"><div id="enc-upload-bar" style="height:100%;width:0%;background:var(--primary);transition:width .3s"></div></div><span id="enc-upload-text" style="font-size:.75rem;color:var(--muted);margin-top:4px;display:block"></span></div></div>';
+  el.innerHTML += '<div class="admin-card" style="padding:20px;margin-bottom:20px"><h3 style="margin-bottom:12px">Mega Storage</h3><p style="font-size:.85rem;color:var(--muted);margin-bottom:8px">Mega credentials are configured via server environment variables. No credentials are stored in the browser.</p><div id="mega-accounts-list"><div style="color:var(--muted);font-size:.85rem;padding:4px 0">Mega storage status unknown — upload a video to verify connectivity.</div></div><button class="btn btn-ghost btn-sm" onclick="checkMegaStatus()" style="margin-top:8px;width:100%">🔍 Check Mega Status</button></div>';
   el.innerHTML += '<div id="enc-video-list"></div>';
-  await renderMegaAccounts();
+  await checkMegaStatus();
   await renderEncryptedVideoList();
 }
 
@@ -1400,7 +1422,7 @@ async function uploadEncryptedVideo() {
     const contentType = resp.headers.get('content-type') || '';
 
     if (contentType.includes('application/octet-stream')) {
-      // Binary response with embedded segments — upload to Mega from browser
+      // Binary response with embedded segments — upload to Mega via server
       bar.style.width = '60%';
       text.textContent = 'Parsing encrypted segments...';
 
@@ -1412,35 +1434,33 @@ async function uploadEncryptedVideo() {
 
       details.innerHTML = 'Manifest: ' + header.manifestId.slice(0, 8) + '...<br>' + header.totalSegments + ' segments, uploading to Mega...';
 
-      // Login to Mega — use selected account from dropdown
-      const accIdx = parseInt(document.getElementById('enc-mega-account').value);
-      const accs = getMegaAccounts();
-      const megaConfig = Number.isFinite(accIdx) && accs[accIdx] ? { email: accs[accIdx].email, password: accs[accIdx].password } : null;
-      if (!megaConfig) { throw new Error('No Mega account selected. Add one in the Mega Accounts section.'); }
-
-      const storage = await new Promise((resolve, reject) => {
-        const s = new mega(megaConfig);
-        s.on('ready', () => resolve(s));
-        s.on('error', reject);
-      });
-
       const dataStart = 4 + headerLen;
       for (const seg of header.segments) {
         const segData = new Uint8Array(buf.slice(dataStart + seg.offset, dataStart + seg.offset + seg.length));
+        details.innerHTML += '<br>Uploading segment ' + seg.segment_num + ' via server...';
 
-        details.innerHTML += '<br>Uploading segment ' + seg.segment_num + ' to Mega...';
-        const megaFileName = 'admin_uploads_' + header.manifestId + '_seg_' + seg.segment_num + '.enc';
-        const megaFile = await storage.upload({ name: megaFileName }, segData).complete;
-        const link = await megaFile.link();
+        // Convert to base64 for JSON transport
+        var binary = '';
+        for (var j = 0; j < segData.length; j++) {
+          binary += String.fromCharCode(segData[j]);
+        }
+        var base64Data = btoa(binary);
 
-        // Store Mega link in DB
-        const storeResp = await fetch('/api/store-mega-link', {
+        const megaResp = await fetch('/api/mega-upload', {
           method: 'POST',
           headers: { 'Authorization': 'Bearer ' + token, 'Content-Type': 'application/json' },
-          body: JSON.stringify({ manifestId: header.manifestId, segmentNum: seg.segment_num, megaLink: link, name: videoName })
+          body: JSON.stringify({
+            segmentData: base64Data,
+            fileName: 'admin_uploads_' + header.manifestId + '_seg_' + seg.segment_num + '.enc',
+            manifestId: header.manifestId,
+            segmentNum: seg.segment_num,
+            iv: seg.iv,
+            videoName: videoName
+          })
         });
-        if (!storeResp.ok) {
-          details.innerHTML += ' <span style="color:var(--danger)">FAILED</span>';
+        if (!megaResp.ok) {
+          const err = await megaResp.text();
+          details.innerHTML += ' <span style="color:var(--danger)">FAILED: ' + err.slice(0, 100) + '</span>';
         } else {
           details.innerHTML += ' <span style="color:var(--success)">OK</span>';
         }
@@ -1505,89 +1525,40 @@ async function onEncVideoSelect() {
     hidden.value = result.ticket;
   } catch(e) { hidden.value = ''; alert('Error: ' + e.message); }
 }
-function getMegaAccounts() {
-  try { return JSON.parse(localStorage.getItem('megaAccounts') || '[]'); } catch { return []; }
-}
-function saveMegaAccounts(accs) {
-  localStorage.setItem('megaAccounts', JSON.stringify(accs));
-}
-function renderMegaAccounts() {
+async function checkMegaStatus() {
   const list = document.getElementById('mega-accounts-list');
-  const accs = getMegaAccounts();
-  if (accs.length === 0) {
-    list.innerHTML = '<div style="color:var(--muted);font-size:.85rem;padding:4px 0">No accounts saved yet.</div>';
-  } else {
-    var totalUsed = 0, totalTotal = 0;
-    list.innerHTML = accs.map(function(a, i) {
-      var used = a.storageUsed ? fmtSize(a.storageUsed) : '?';
-      var total = a.storageTotal ? fmtSize(a.storageTotal) : '?';
-      var pct = a.storageTotal > 0 ? ' (' + Math.round(a.storageUsed / a.storageTotal * 100) + '%)' : '';
-      totalUsed += a.storageUsed || 0;
-      totalTotal += a.storageTotal || 0;
-      return '<div style="display:flex;justify-content:space-between;align-items:center;padding:6px 0;border-bottom:1px solid var(--border)"><span><strong>' + a.label + '</strong> &middot; ' + a.email + '<br><span style="font-size:.75rem;color:var(--muted)">Used: ' + used + ' / ' + total + pct + '</span></span><button class="btn btn-danger" style="padding:4px 10px;font-size:.8rem" onclick="deleteMegaAccount(' + i + ')">Delete</button></div>';
-    }).join('');
-    var totalPct = totalTotal > 0 ? ' (' + Math.round(totalUsed / totalTotal * 100) + '%)' : '';
-    list.innerHTML += '<div style="padding:8px 0;font-size:.85rem;font-weight:600;text-align:right;color:var(--fg)">Total: ' + fmtSize(totalUsed) + ' / ' + fmtSize(totalTotal) + totalPct + '</div>';
-  }
-  list.innerHTML += '<button class="btn btn-ghost btn-sm" onclick="refreshMegaStorage()" style="margin-top:4px;width:100%" id="mega-storage-btn">🔄 Refresh Storage Usage</button>';
-  populateMegaDropdown();
-}
-
-async function refreshMegaStorage() {
-  var btn = document.getElementById('mega-storage-btn');
-  var accs = getMegaAccounts();
-  if (accs.length === 0) return;
-  btn.textContent = '⏳ Refreshing...';
-  btn.disabled = true;
-  for (var i = 0; i < accs.length; i++) {
-    btn.textContent = '⏳ Logging into ' + accs[i].label + '...';
-    try {
-      var s = await new Promise(function(resolve, reject) {
-        var m = new mega({ email: accs[i].email, password: accs[i].password });
-        m.on('ready', function() { resolve(m); });
-        m.on('error', reject);
-      });
-      // Get account storage from Mega (try both old and new property names)
-      if (s.account) {
-        accs[i].storageUsed = s.account.spaceUsed || s.account.storageUsed || 0;
-        accs[i].storageTotal = s.account.spaceTotal || s.account.storageMax || 0;
-      }
-    } catch (e) {
-      console.warn('Failed to get storage for', accs[i].label, e);
+  list.innerHTML = '<div style="color:var(--muted);font-size:.85rem;padding:4px 0">Checking server-side Mega configuration...</div>';
+  try {
+    const { data: { session } } = await sb.auth.getSession();
+    const token = session?.access_token;
+    const resp = await fetch('/api/mega-status', {
+      headers: { 'Authorization': 'Bearer ' + (token || '') }
+    });
+    if (!resp.ok) {
+      list.innerHTML = '<div style="color:var(--danger);font-size:.85rem;padding:4px 0">Mega not configured or unreachable. Set MEGA_EMAIL/MEGA_PASSWORD env vars.</div>';
+      return;
     }
+    const data = await resp.json();
+    var html = '';
+    if (data.accounts && data.accounts.length > 0) {
+      data.accounts.forEach(function(a) {
+        html += '<div style="padding:6px 0;border-bottom:1px solid var(--border);font-size:.85rem"><strong>' + a.label + '</strong> &middot; ' + a.email;
+        if (a.spaceUsed !== undefined) {
+          html += '<br><span style="color:var(--muted)">Used: ' + fmtSize(a.spaceUsed) + ' / ' + fmtSize(a.spaceTotal) + (a.spaceTotal > 0 ? ' (' + Math.round(a.spaceUsed / a.spaceTotal * 100) + '%)' : '') + '</span>';
+        }
+        html += '</div>';
+      });
+    }
+    if (data.totalUsed !== undefined) {
+      html += '<div style="padding:8px 0;font-size:.85rem;font-weight:600;text-align:right">Total: ' + fmtSize(data.totalUsed) + ' / ' + fmtSize(data.totalTotal) + '</div>';
+    }
+    if (data.configError) {
+      html += '<div style="color:var(--warning);font-size:.8rem;padding:4px 0;margin-top:4px">⚠ ' + data.configError + '</div>';
+    }
+    list.innerHTML = html || '<div style="color:var(--muted);font-size:.85rem;padding:4px 0">No Mega accounts configured.</div>';
+  } catch (e) {
+    list.innerHTML = '<div style="color:var(--danger);font-size:.85rem;padding:4px 0">Error: ' + e.message + '</div>';
   }
-  saveMegaAccounts(accs);
-  renderMegaAccounts();
-  btn.textContent = '🔄 Refresh Storage Usage';
-  btn.disabled = false;
-}
-function addMegaAccount() {
-  const email = document.getElementById('mega-acc-email').value.trim();
-  const pass = document.getElementById('mega-acc-pass').value;
-  const label = document.getElementById('mega-acc-label').value.trim() || email;
-  if (!email || !pass) { alert('Enter email and password'); return; }
-  const accs = getMegaAccounts();
-  accs.push({ id: Date.now(), email: email, password: pass, label: label });
-  saveMegaAccounts(accs);
-  document.getElementById('mega-acc-email').value = '';
-  document.getElementById('mega-acc-pass').value = '';
-  document.getElementById('mega-acc-label').value = '';
-  renderMegaAccounts();
-}
-function deleteMegaAccount(index) {
-  const accs = getMegaAccounts();
-  accs.splice(index, 1);
-  saveMegaAccounts(accs);
-  renderMegaAccounts();
-}
-function populateMegaDropdown() {
-  const sel = document.getElementById('enc-mega-account');
-  if (!sel) return;
-  const accs = getMegaAccounts();
-  sel.innerHTML = accs.length === 0 ? '<option value="">No accounts — add one above</option>' : '';
-  accs.forEach(function(a, i) {
-    sel.innerHTML += '<option value="' + i + '">' + a.label + ' (' + a.email + ')</option>';
-  });
 }
 
 async function loadEncVideoDropdown() {

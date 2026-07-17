@@ -1,43 +1,72 @@
 // POST /api/ticket?mid=MANIFEST_ID
-// Creates a page ticket (24h expiry) for video access
+// Creates a short-lived access ticket (60s) with session binding
+// Includes: userId, manifestId, sessionId, nonce, client IP, HMAC-SHA256
+
+import {
+  CORS_HEADERS, handleOptions, corsResponse, mergeHeaders, SECURITY_HEADERS,
+  verifyUser, checkRateLimit, parseAuthToken, getClientIp, generateNonce,
+} from '../_shared.js';
+
+const TICKET_TTL_MS = 60 * 1000; // 60 seconds
 
 export async function onRequest(context) {
   const { request, env } = context;
-  const cors = { 'Access-Control-Allow-Origin': '*', 'Access-Control-Allow-Methods': 'POST, OPTIONS', 'Access-Control-Allow-Headers': 'Authorization, Content-Type' };
-  if (request.method === 'OPTIONS') return new Response(null, { headers: cors });
-  if (request.method !== 'POST') return new Response('Method not allowed', { status: 405, headers: cors });
 
-  const token = request.headers.get('Authorization')?.slice(7);
-  if (!token) return new Response('Unauthorized', { status: 401, headers: cors });
+  const opt = handleOptions(request);
+  if (opt) return opt;
+
+  if (request.method !== 'POST') {
+    return corsResponse('Method not allowed', 405);
+  }
+
+  const token = parseAuthToken(request);
+  if (!token) return corsResponse({ error: 'Unauthorized' }, 401);
+
   const user = await verifyUser(token, env);
-  if (!user) return new Response('Invalid token', { status: 401, headers: cors });
+  if (!user) return corsResponse({ error: 'Invalid token' }, 401);
+
+  const userId = user.id || user.sub;
+
+  if (!checkRateLimit('ticket:' + userId, 30, 60000)) {
+    return corsResponse({ error: 'Too many requests' }, 429);
+  }
 
   const url = new URL(request.url);
   const mid = url.searchParams.get('mid');
-  if (!mid) return new Response(JSON.stringify({ error: 'Missing mid' }), { status: 400, headers: cors });
+  if (!mid) return corsResponse({ error: 'Missing mid' }, 400);
 
-  const secret = env.MASTER_SECRET || env.SUPABASE_SERVICE_KEY;
-  const ttlMs = 24 * 60 * 60 * 1000; // 24 hours
-  const expiresAt = Date.now() + ttlMs;
-  const payload = `${mid}:${user.id}:${expiresAt}`;
+  const secret = env.MASTER_SECRET;
+  if (!secret) return corsResponse({ error: 'Server misconfiguration' }, 500);
 
   try {
+    const sessionId = generateNonce();
+    const nonce = generateNonce();
+    const clientIp = getClientIp(request);
+    const expiresAt = Date.now() + TICKET_TTL_MS;
+
+    // Payload includes user + manifest + session + ip binding
+    const payload = `${mid}:${userId}:${sessionId}:${expiresAt}:${nonce}:${clientIp}`;
+
     const encoder = new TextEncoder();
-    const key = await crypto.subtle.importKey('raw', encoder.encode(secret), { name: 'HMAC', hash: 'SHA-256' }, false, ['sign']);
+    const key = await crypto.subtle.importKey(
+      'raw', encoder.encode(secret),
+      { name: 'HMAC', hash: 'SHA-256' }, false, ['sign']
+    );
     const sig = await crypto.subtle.sign('HMAC', key, encoder.encode(payload));
-    const sigHex = Array.from(new Uint8Array(sig)).map(b => b.toString(16).padStart(2, '0')).join('');
+    const sigHex = Array.from(new Uint8Array(sig))
+      .map(b => b.toString(16).padStart(2, '0')).join('');
+
     const ticket = btoa(payload + ':' + sigHex);
 
-    return new Response(JSON.stringify({ ticket, manifestId: mid, expiresAt, userId: user.id }), {
-      status: 200, headers: { ...cors, 'Content-Type': 'application/json' }
+    return corsResponse({
+      ticket,
+      manifestId: mid,
+      expiresAt,
+      userId,
+      sessionId,
     });
-  } catch (e) {
-    return new Response(JSON.stringify({ error: e.message }), { status: 500, headers: cors });
-  }
-}
 
-async function verifyUser(token, env) {
-  const r = await fetch(`${env.SUPABASE_URL.replace(/\/+$/, '')}/auth/v1/user`, { headers: { 'apikey': env.SUPABASE_ANON_KEY, 'Authorization': `Bearer ${token}` } });
-  if (!r.ok) return null;
-  return r.json();
+  } catch (e) {
+    return corsResponse({ error: e.message }, 500);
+  }
 }

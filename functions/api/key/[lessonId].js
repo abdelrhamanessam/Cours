@@ -1,20 +1,32 @@
 // /api/key/:lessonId
-// Returns the raw AES-256 key for decryption
+// Returns a session-bound decryption key (never the master key)
+// Authorization chain: JWT → enrollment → rate limit → derive
+
+import {
+  CORS_HEADERS, handleOptions, corsResponse, mergeHeaders, SECURITY_HEADERS,
+  verifyUser, checkEnrollment, supabaseGet, checkRateLimit,
+  verifyTokenSignature, deriveSessionKey,
+  parseAuthToken, getClientIp, generateNonce,
+} from '../_shared.js';
 
 export async function onRequest(context) {
   const { request, env, params } = context;
-  const cors = { 'Access-Control-Allow-Origin': '*', 'Access-Control-Allow-Methods': 'GET, OPTIONS', 'Access-Control-Allow-Headers': 'Authorization, Content-Type' };
-  if (request.method === 'OPTIONS') return new Response(null, { headers: cors });
 
-  const token = request.headers.get('Authorization')?.slice(7);
-  if (!token) return new Response('Unauthorized', { status: 401, headers: cors });
+  const opt = handleOptions(request);
+  if (opt) return opt;
+
+  // ── 1. Verify JWT ──────────────────────────────────
+  const token = parseAuthToken(request);
+  if (!token) return corsResponse({ error: 'Unauthorized' }, 401);
 
   const user = await verifyUser(token, env);
-  if (!user) return new Response('Invalid token', { status: 401, headers: cors });
+  if (!user) return corsResponse({ error: 'Invalid token' }, 401);
 
   const userId = user.id || user.sub;
-  if (!checkRateLimit('key:' + userId)) {
-    return new Response(JSON.stringify({ error: 'Too many requests' }), { status: 429, headers: cors });
+
+  // ── 2. Rate limit per user ─────────────────────────
+  if (!checkRateLimit('key:' + userId, 20, 60000)) {
+    return corsResponse({ error: 'Too many requests' }, 429);
   }
 
   const lessonId = params.lessonId;
@@ -23,115 +35,98 @@ export async function onRequest(context) {
   const ticket = url.searchParams.get('ticket');
   const accessToken = url.searchParams.get('access_token');
 
+  // ── 3. Ticket / Access Token verification ──────────
+  const secret = env.MASTER_SECRET;
+  if (!secret) return corsResponse({ error: 'Server misconfiguration' }, 500);
+
   if (ticket) {
-    const ticketSecret = env.MASTER_SECRET || env.SUPABASE_SERVICE_KEY;
-    const verified = await verifyTicket(ticketSecret, ticket);
-    if (!verified) return new Response(JSON.stringify({ error: 'Invalid or expired ticket' }), { status: 403, headers: cors });
+    const verified = await verifyTokenSignature(secret, ticket);
+    if (!verified) return corsResponse({ error: 'Invalid or expired ticket' }, 403);
     mid = verified.manifestId;
   } else if (accessToken) {
-    const tokenSecret = env.MASTER_SECRET || env.SUPABASE_SERVICE_KEY;
-    const verified = await verifyTicket(tokenSecret, accessToken);
-    if (!verified) return new Response(JSON.stringify({ error: 'Invalid or expired access token' }), { status: 403, headers: cors });
+    const verified = await verifyTokenSignature(secret, accessToken);
+    if (!verified) return corsResponse({ error: 'Invalid or expired access token' }, 403);
     mid = verified.manifestId;
   }
 
-  const query = mid ? `id=eq.${mid}&select=id,master_key` : `lesson_id=eq.${lessonId}&select=id,master_key`;
+  // ── 4. Find manifest ───────────────────────────────
+  const query = mid
+    ? `id=eq.${mid}&select=id,master_key`
+    : `lesson_id=eq.${lessonId}&select=id,master_key`;
   const manifests = await supabaseGet('video_manifests', query, env);
-  if (!manifests || manifests.length === 0) return new Response(JSON.stringify({ error: 'not found' }), { status: 404, headers: cors });
+  if (!manifests || manifests.length === 0) {
+    return corsResponse({ error: 'not found' }, 404);
+  }
 
   const manifest = manifests[0];
-  let key;
 
+  // ── 5. Enrollment check ────────────────────────────
+  const enrolled = await checkEnrollment(userId, lessonId, env);
+  if (!enrolled) {
+    return corsResponse({ error: 'Access denied: not enrolled' }, 403);
+  }
+
+  // ── 6. Derive session-bound key ────────────────────
+  // NEVER return the raw master key.
+  // Derive a key scoped to (user, session, day).
+  // This key is only useful for decrypting segments for this user today.
+  const sessionId = generateNonce();
+  let keyBytes;
   if (env.MASTER_SECRET && !manifest.master_key) {
-    key = await deriveKey(env.MASTER_SECRET, String(manifest.id));
+    // Path A: Derive from MASTER_SECRET (current upload.js)
+    keyBytes = await deriveSessionKey(
+      env.MASTER_SECRET, String(manifest.id), userId, sessionId
+    );
+  } else if (manifest.master_key) {
+    // Path B: Derive from stored master_key (legacy uploads)
+    // Still returns a session-bound derived key, not the raw master_key
+    keyBytes = await deriveSessionKey(
+      manifest.master_key, String(manifest.id), userId, sessionId
+    );
   } else {
-    key = hexToBytes(manifest.master_key);
+    return corsResponse({ error: 'Server misconfiguration: no key source' }, 500);
   }
 
-  // Log access (non-blocking)
-  context.waitUntil((async () => {
-    try {
-      const sbUrlVal = env.SUPABASE_URL.replace(/\/+$/, '');
-      const svc = env.SUPABASE_SERVICE_KEY;
-      const manifestId = manifest.id;
-      const cf = request.cf || {};
-      await fetch(`${sbUrlVal}/rest/v1/video_access_log`, {
-        method: 'POST',
-        headers: { 'apikey': svc, 'Authorization': `Bearer ${svc}`, 'Content-Type': 'application/json', 'Prefer': 'return=minimal' },
-        body: JSON.stringify({
-          user_id: userId,
-          manifest_id: manifestId,
-          action: 'key_access',
-          ip_address: cf.ip || '',
-          user_agent: request.headers.get('User-Agent') || ''
-        })
-      });
-    } catch(e) { /* silent */ }
-  })());
+  // ── 7. Log access (non-blocking) ───────────────────
+  context.waitUntil(logKeyAccess(userId, manifest.id, request, env));
 
-  return new Response(key, { headers: { ...cors, 'Content-Type': 'application/octet-stream' } });
+  // ── 8. Return session key ──────────────────────────
+  // NOTE: The browser still receives raw key bytes, but these are
+  // SESSION-BOUND DERIVED keys, not the master AES key.
+  // They are scoped to (manifestId + userId + sessionId + date).
+  // An attacker who extracts this key can only decrypt segments
+  // for this specific user+session+day combo.
+  // SessionId is included in the response so the client can
+  // use it for additional verification if needed.
+  const extraHeaders = {
+    'Content-Type': 'application/octet-stream',
+    'X-Session-Id': sessionId,
+  };
+  return new Response(keyBytes, {
+    headers: mergeHeaders(CORS_HEADERS, SECURITY_HEADERS, extraHeaders),
+  });
 }
 
-async function deriveKey(secret, manifestId) {
-  const encoder = new TextEncoder();
-  const keyMaterial = await crypto.subtle.importKey('raw', encoder.encode(secret), 'HKDF', false, ['deriveBits']);
-  const bits = await crypto.subtle.deriveBits(
-    { name: 'HKDF', hash: 'SHA-256', salt: encoder.encode('mr-maths-video-key-v1'), info: encoder.encode(manifestId) },
-    keyMaterial, 256
-  );
-  return new Uint8Array(bits);
-}
-
-function sbUrl(env) { return env.SUPABASE_URL.replace(/\/+$/, ''); }
-
-async function supabaseGet(table, query, env) {
-  const r = await fetch(`${sbUrl(env)}/rest/v1/${table}?${query}`, { headers: { 'apikey': env.SUPABASE_SERVICE_KEY, 'Authorization': `Bearer ${env.SUPABASE_SERVICE_KEY}` } });
-  if (!r.ok) return null;
-  return r.json();
-}
-
-async function verifyUser(token, env) {
-  const r = await fetch(`${sbUrl(env)}/auth/v1/user`, { headers: { 'apikey': env.SUPABASE_ANON_KEY, 'Authorization': `Bearer ${token}` } });
-  if (!r.ok) return null;
-  return r.json();
-}
-
-async function verifyTicket(secret, ticket) {
+async function logKeyAccess(userId, manifestId, request, env) {
   try {
-    const decoded = atob(ticket);
-    const lastColon = decoded.lastIndexOf(':');
-    const data = decoded.substring(0, lastColon);
-    const sigHex = decoded.substring(lastColon + 1);
-    const parts = data.split(':');
-    if (parts.length < 3) return null;
-    const manifestId = parts[0];
-    const userId = parts[1];
-    const expiresAt = parseInt(parts[2]);
-    if (Date.now() > expiresAt) return null;
-    const encoder = new TextEncoder();
-    const key = await crypto.subtle.importKey('raw', encoder.encode(secret), { name: 'HMAC', hash: 'SHA-256' }, false, ['verify']);
-    const sigBytes = new Uint8Array(sigHex.match(/.{1,2}/g).map(b => parseInt(b, 16)));
-    const valid = await crypto.subtle.verify('HMAC', key, sigBytes, encoder.encode(data));
-    return valid ? { manifestId, userId } : null;
-  } catch(e) { return null; }
-}
-
-function hexToBytes(hex) {
-  const b = new Uint8Array(hex.length / 2);
-  for (let i = 0; i < hex.length; i += 2) b[i >> 1] = parseInt(hex.substr(i, 2), 16);
-  return b;
-}
-
-const rateLimitStore = {};
-
-function checkRateLimit(key, limit = 20, windowMs = 60000) {
-  const now = Date.now();
-  let entry = rateLimitStore[key];
-  if (!entry || now > entry.resetAt) {
-    entry = { count: 1, resetAt: now + windowMs };
-    rateLimitStore[key] = entry;
-    return true;
+    const svc = env.SUPABASE_SERVICE_KEY;
+    const sb = env.SUPABASE_URL.replace(/\/+$/, '');
+    const cf = request.cf || {};
+    await fetch(`${sb}/rest/v1/video_access_log`, {
+      method: 'POST',
+      headers: {
+        'apikey': svc, 'Authorization': `Bearer ${svc}`,
+        'Content-Type': 'application/json', 'Prefer': 'return=minimal',
+      },
+      body: JSON.stringify({
+        user_id: userId,
+        manifest_id: manifestId,
+        action: 'key_access',
+        ip_address: getClientIp(request),
+        user_agent: request.headers.get('User-Agent') || '',
+      }),
+    });
+  } catch {
+    // silent — logging must never block playback
   }
-  entry.count++;
-  return entry.count <= limit;
 }

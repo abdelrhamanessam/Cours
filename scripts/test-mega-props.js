@@ -1,5 +1,12 @@
+// Usage: MEGA_EMAIL=your_email MEGA_PASSWORD=your_password node scripts/test-mega-props.js
 const M = require('megajs');
-const c = new M({email:'achbalmaser@gmail.com',password:'REMOVED_PASSWORD'});
+const email = process.env.MEGA_EMAIL;
+const password = process.env.MEGA_PASSWORD;
+if (!email || !password) {
+  console.log('Set MEGA_EMAIL and MEGA_PASSWORD env vars');
+  process.exit(1);
+}
+const c = new M({ email, password });
 c.on('ready', async () => {
   try {
     // Create a test file
