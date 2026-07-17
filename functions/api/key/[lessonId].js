@@ -5,8 +5,8 @@
 import {
   CORS_HEADERS, handleOptions, corsResponse, mergeHeaders, SECURITY_HEADERS,
   verifyUser, checkEnrollment, supabaseGet, checkRateLimit,
-  verifyTokenSignature, deriveSessionKey,
-  parseAuthToken, getClientIp, generateNonce,
+  verifyTokenSignature, deriveKey, hexToBytes,
+  parseAuthToken, getClientIp,
 } from '../_shared.js';
 
 export async function onRequest(context) {
@@ -66,23 +66,15 @@ export async function onRequest(context) {
     return corsResponse({ error: 'Access denied: not enrolled' }, 403);
   }
 
-  // ── 6. Derive session-bound key ────────────────────
-  // NEVER return the raw master key.
-  // Derive a key scoped to (user, session, day).
-  // This key is only useful for decrypting segments for this user today.
-  const sessionId = generateNonce();
+  // ── 6. Derive key ─────────────────────────────────
+  // Must match deriveKey() used in upload.js for new uploads.
   let keyBytes;
   if (env.MASTER_SECRET && !manifest.master_key) {
-    // Path A: Derive from MASTER_SECRET (current upload.js)
-    keyBytes = await deriveSessionKey(
-      env.MASTER_SECRET, String(manifest.id), userId, sessionId
-    );
+    // Path A: New uploads — match upload.js deriveKey(MASTER_SECRET, manifestId)
+    keyBytes = await deriveKey(env.MASTER_SECRET, String(manifest.id));
   } else if (manifest.master_key) {
-    // Path B: Derive from stored master_key (legacy uploads)
-    // Still returns a session-bound derived key, not the raw master_key
-    keyBytes = await deriveSessionKey(
-      manifest.master_key, String(manifest.id), userId, sessionId
-    );
+    // Path B: Legacy uploads — master_key stored as hex by old upload code
+    keyBytes = hexToBytes(manifest.master_key);
   } else {
     return corsResponse({ error: 'Server misconfiguration: no key source' }, 500);
   }
@@ -90,20 +82,11 @@ export async function onRequest(context) {
   // ── 7. Log access (non-blocking) ───────────────────
   context.waitUntil(logKeyAccess(userId, manifest.id, request, env));
 
-  // ── 8. Return session key ──────────────────────────
-  // NOTE: The browser still receives raw key bytes, but these are
-  // SESSION-BOUND DERIVED keys, not the master AES key.
-  // They are scoped to (manifestId + userId + sessionId + date).
-  // An attacker who extracts this key can only decrypt segments
-  // for this specific user+session+day combo.
-  // SessionId is included in the response so the client can
-  // use it for additional verification if needed.
-  const extraHeaders = {
-    'Content-Type': 'application/octet-stream',
-    'X-Session-Id': sessionId,
-  };
+  // ── 8. Return key bytes ────────────────────────────
   return new Response(keyBytes, {
-    headers: mergeHeaders(CORS_HEADERS, SECURITY_HEADERS, extraHeaders),
+    headers: mergeHeaders(CORS_HEADERS, SECURITY_HEADERS, {
+      'Content-Type': 'application/octet-stream',
+    }),
   });
 }
 
