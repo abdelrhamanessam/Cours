@@ -5,7 +5,7 @@
 import {
   CORS_HEADERS, handleOptions, corsResponse, mergeHeaders, SECURITY_HEADERS,
   verifyUser, checkRateLimit, parseAuthToken, getClientIp, generateNonce,
-} from '../_shared.js';
+} from './_shared.js';
 
 const TICKET_TTL_MS = 60 * 1000; // 60 seconds
 

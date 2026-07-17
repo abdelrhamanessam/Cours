@@ -6,7 +6,7 @@ import {
   CORS_HEADERS, handleOptions, corsResponse,
   verifyUser, checkRateLimit, verifyTokenSignature,
   parseAuthToken, getClientIp, generateNonce,
-} from '../_shared.js';
+} from './_shared.js';
 
 const ACCESS_TOKEN_TTL_MS = 5 * 60 * 1000; // 5 minutes
 

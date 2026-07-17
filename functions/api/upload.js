@@ -6,7 +6,7 @@ import {
   CORS_HEADERS, handleOptions, corsResponse,
   verifyUser, checkAdmin, supabaseGet, checkRateLimit,
   deriveKey, bytesToHex, parseAuthToken,
-} from '../_shared.js';
+} from './_shared.js';
 
 const MAX_FILE_SIZE = 500 * 1024 * 1024; // 500 MB
 const CHUNK_SIZE = 5 * 1024 * 1024;

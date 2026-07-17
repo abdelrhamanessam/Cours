@@ -6,7 +6,7 @@ import {
   CORS_HEADERS, handleOptions, corsResponse, mergeHeaders, SECURITY_HEADERS,
   verifyUser, checkEnrollment, supabaseGet, checkRateLimit,
   parseAuthToken, getClientIp,
-} from '../_shared.js';
+} from './_shared.js';
 
 export async function onRequest(context) {
   const { request, env } = context;

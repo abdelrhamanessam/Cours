@@ -7,7 +7,7 @@ import {
   verifyUser, checkEnrollment, supabaseGet, checkRateLimit,
   verifyTokenSignature, deriveSessionKey,
   parseAuthToken, getClientIp, generateNonce,
-} from '../_shared.js';
+} from './_shared.js';
 
 export async function onRequest(context) {
   const { request, env, params } = context;

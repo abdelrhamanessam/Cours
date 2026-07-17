@@ -5,7 +5,7 @@
 import {
   CORS_HEADERS, handleOptions, corsResponse,
   verifyUser, checkAdmin, parseAuthToken,
-} from '../_shared.js';
+} from './_shared.js';
 
 export async function onRequest(context) {
   const { request, env } = context;

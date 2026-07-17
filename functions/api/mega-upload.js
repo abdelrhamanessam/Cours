@@ -5,7 +5,7 @@
 import {
   CORS_HEADERS, handleOptions, corsResponse,
   verifyUser, checkAdmin, parseAuthToken,
-} from '../_shared.js';
+} from './_shared.js';
 
 // Mega credentials are stored in env vars:
 // MEGA_EMAIL, MEGA_PASSWORD
