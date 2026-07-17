@@ -134,13 +134,21 @@ function checkRateLimit(key, limit = 30, windowMs = 60000) {
 
 // ── Ticket / Access Token Verification ────────────────
 async function verifyTokenSignature(secret, token) {
+  // token is hex-encoded (was base64, but atob behaves inconsistently in CF Pages)
+  let decoded;
   try {
-    const decoded = atob(token);
+    const bytes = new Uint8Array(
+      token.match(/.{1,2}/g).map(b => parseInt(b, 16))
+    );
+    decoded = new TextDecoder().decode(bytes);
+  } catch { return null; }
+
+  try {
     const lastColon = decoded.lastIndexOf(':');
     const data = decoded.substring(0, lastColon);
     const sigHex = decoded.substring(lastColon + 1);
     const parts = data.split(':');
-    if (parts.length < 4) return null; // manifestId:userId:sessionId:expiresAt (or more with nonce+ip)
+    if (parts.length < 4) return null;
     const manifestId = parts[0];
     const userId = parts[1];
     const expiresAt = parseInt(parts[3]);

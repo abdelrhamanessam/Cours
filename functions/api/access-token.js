@@ -68,7 +68,10 @@ export async function onRequest(context) {
     const sigHex = Array.from(new Uint8Array(sig))
       .map(b => b.toString(16).padStart(2, '0')).join('');
 
-    const accessToken = btoa(payload + ':' + sigHex);
+    const tokenEncoder = new TextEncoder();
+    const atBytes = tokenEncoder.encode(payload + ':' + sigHex);
+    const accessToken = Array.from(new Uint8Array(atBytes))
+      .map(b => b.toString(16).padStart(2, '0')).join('');
 
     return corsResponse({
       accessToken,
