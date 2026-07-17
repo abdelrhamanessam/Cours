@@ -1276,6 +1276,19 @@ async function uploadVideo(file, lessonId, progressEl, barEl, textEl) {
 }
 
 // ========== ENCRYPTED VIDEOS ==========
+function getVideoMeta() {
+  try { return JSON.parse(localStorage.getItem('videoMeta') || '{}'); } catch { return {}; }
+}
+function saveVideoMeta(meta) {
+  localStorage.setItem('videoMeta', JSON.stringify(meta));
+}
+function fmtSize(bytes) {
+  if (!bytes) return '';
+  if (bytes < 1024*1024) return (bytes/1024).toFixed(1)+' KB';
+  if (bytes < 1024*1024*1024) return (bytes/1024/1024).toFixed(1)+' MB';
+  return (bytes/1024/1024/1024).toFixed(2)+' GB';
+}
+
 async function loadAdminVideos() {
   const el = document.getElementById('admin-page-videos');
   el.innerHTML = '<h2 style="margin-bottom:16px">Encrypted Videos</h2>';
@@ -1289,23 +1302,44 @@ async function loadAdminVideos() {
 async function renderEncryptedVideoList() {
   const list = document.getElementById('enc-video-list');
   list.innerHTML = '<div style="color:var(--muted);padding:12px">Loading...</div>';
-  const { data, error } = await sb.from('video_manifests').select('id,created_at,lesson_id').order('created_at', { ascending: false }).limit(50);
+  const { data, error } = await sb.from('video_manifests').select('id,created_at').order('created_at', { ascending: false }).limit(50);
   if (error) { list.innerHTML = '<div style="color:red">Error loading videos</div>'; return; }
   if (!data || data.length === 0) { list.innerHTML = '<div style="color:var(--muted);padding:12px">No videos uploaded yet.</div>'; return; }
-  const ids = data.map(m => m.id);
-  const { data: segs } = await sb.from('mega_segments').select('manifest_id,file_name,segment_num').in('manifest_id', ids).order('segment_num', { ascending: true });
-  const nameMap = {};
-  if (segs) segs.forEach(s => { if (!nameMap[s.manifest_id]) nameMap[s.manifest_id] = s.file_name; });
-  let html = '<div style="display:flex;flex-direction:column;gap:8px">';
-  data.forEach(m => {
-    const d = new Date(m.created_at).toLocaleDateString();
-    var raw = nameMap[m.manifest_id] || '';
-    var display = raw.split('/').pop();
-    if (!display || display.startsWith('seg_')) display = 'Video ' + d;
-    html += '<div class="admin-card" style="display:flex;justify-content:space-between;align-items:center;padding:14px 18px"><div><strong>' + display + '</strong><div style="font-size:.75rem;color:var(--muted)">Uploaded ' + d + ' &middot; ID: ' + m.id.slice(0,8) + '...</div></div><div style="font-size:.75rem;color:var(--muted)">Lesson ' + m.lesson_id + '</div></div>';
+  const localMeta = getVideoMeta();
+  var ids = data.map(function(m) { return m.id; });
+  var { data: segs } = await sb.from('mega_segments').select('manifest_id,file_name').in('manifest_id', ids).order('segment_num', { ascending: true });
+  var dbNameMap = {};
+  if (segs) segs.forEach(function(s) { if (!dbNameMap[s.manifest_id]) dbNameMap[s.manifest_id] = s.file_name; });
+  var html = '<div style="display:flex;flex-direction:column;gap:8px">';
+  data.forEach(function(m) {
+    var local = localMeta[m.id] || {};
+    var display = local.name || '';
+    if (!display) {
+      var raw = dbNameMap[m.id] || '';
+      display = raw.split('/').pop();
+    }
+    if (!display || display.startsWith('seg_')) display = 'Video ' + new Date(m.created_at).toLocaleDateString();
+    html += '<div class="admin-card" style="display:flex;justify-content:space-between;align-items:center;padding:14px 18px"><div><strong>' + display + '</strong><div style="font-size:.75rem;color:var(--muted)">' + fmtSize(local.size) + (local.size?' &middot; ':'') + new Date(m.created_at).toLocaleDateString() + ' &middot; ID: ' + m.id.slice(0,8) + '...</div></div><div><button class="btn btn-danger btn-sm" onclick="deleteEncVideo(\'' + m.id + '\')">×</button></div></div>';
   });
   html += '</div>';
   list.innerHTML = html;
+}
+
+async function deleteEncVideo(manifestId) {
+  if (!confirm('Delete this video and all its segments from Mega and the database?')) return;
+  try {
+    // Remove from localStorage
+    var meta = getVideoMeta();
+    delete meta[manifestId];
+    saveVideoMeta(meta);
+    // Best-effort DB delete
+    await sb.from('mega_segments').delete().eq('manifest_id', manifestId);
+    await sb.from('video_manifests').delete().eq('id', manifestId);
+    await renderEncryptedVideoList();
+  } catch (e) {
+    console.warn('Delete error (may be partial):', e);
+    await renderEncryptedVideoList();
+  }
 }
 
 async function uploadEncryptedVideo() {
@@ -1394,8 +1428,10 @@ async function uploadEncryptedVideo() {
         }
       }
 
-      // Save name directly via Supabase (fallback if functions not deployed)
-      try { await sb.from('mega_segments').update({ file_name: videoName }).eq('manifest_id', header.manifestId).eq('segment_num', 0); } catch(e) { console.warn('Name save fallback failed:', e); }
+      // Save name+size to localStorage
+      var meta = getVideoMeta();
+      meta[header.manifestId] = { name: videoName, size: file.size };
+      saveVideoMeta(meta);
 
       bar.style.width = '100%';
       text.textContent = 'Complete! All segments on Mega.';
@@ -1404,8 +1440,10 @@ async function uploadEncryptedVideo() {
     } else {
       // JSON response (large file stored in Supabase)
       const result = await resp.json();
-      // Save name directly via Supabase (fallback)
-      try { await sb.from('mega_segments').update({ file_name: videoName }).eq('manifest_id', result.manifestId).eq('segment_num', 0); } catch(e) { console.warn('Name save fallback failed:', e); }
+      // Save name+size to localStorage
+      var meta = getVideoMeta();
+      meta[result.manifestId] = { name: videoName, size: file.size };
+      saveVideoMeta(meta);
       bar.style.width = '100%';
       text.textContent = 'Complete! Manifest ID: ' + result.manifestId.slice(0, 8) + '...';
       details.innerHTML = 'Large video stored in Supabase.<br>Run: node scripts/migrate-to-mega.js --manifest=' + result.manifestId;
@@ -1503,13 +1541,18 @@ async function loadEncVideoDropdown() {
   var { data } = await sb.from('video_manifests').select('id,created_at').order('created_at', { ascending: false }).limit(50);
   if (!data) return;
   var ids = data.map(m => m.id);
-  var { data: segs } = await sb.from('mega_segments').select('manifest_id,file_name,segment_num').in('manifest_id', ids).order('segment_num', { ascending: true });
-  var nameMap = {};
-  if (segs) segs.forEach(function(s) { if (!nameMap[s.manifest_id]) nameMap[s.manifest_id] = s.file_name; });
+  var { data: segs } = await sb.from('mega_segments').select('manifest_id,file_name').in('manifest_id', ids).order('segment_num', { ascending: true });
+  var dbNameMap = {};
+  if (segs) segs.forEach(function(s) { if (!dbNameMap[s.manifest_id]) dbNameMap[s.manifest_id] = s.file_name; });
+  var localMeta = getVideoMeta();
   sel.innerHTML = '<option value="">None</option>';
   data.forEach(function(m) {
-    var raw = nameMap[m.manifest_id] || '';
-    var display = raw.split('/').pop();
+    var local = localMeta[m.id] || {};
+    var display = local.name || '';
+    if (!display) {
+      var raw = dbNameMap[m.id] || '';
+      display = raw.split('/').pop();
+    }
     if (!display || display.startsWith('seg_')) display = 'Video ' + new Date(m.created_at).toLocaleDateString();
     var selected = m.id === currentVal ? ' selected' : '';
     sel.innerHTML += '<option value="' + m.id + '"' + selected + '>' + display + ' (' + new Date(m.created_at).toLocaleDateString() + ')</option>';
