@@ -1394,6 +1394,9 @@ async function uploadEncryptedVideo() {
         }
       }
 
+      // Save name directly via Supabase (fallback if functions not deployed)
+      try { await sb.from('mega_segments').update({ file_name: videoName }).eq('manifest_id', header.manifestId).eq('segment_num', 0); } catch(e) { console.warn('Name save fallback failed:', e); }
+
       bar.style.width = '100%';
       text.textContent = 'Complete! All segments on Mega.';
       details.innerHTML += '<br><strong>Done!</strong>';
@@ -1401,6 +1404,8 @@ async function uploadEncryptedVideo() {
     } else {
       // JSON response (large file stored in Supabase)
       const result = await resp.json();
+      // Save name directly via Supabase (fallback)
+      try { await sb.from('mega_segments').update({ file_name: videoName }).eq('manifest_id', result.manifestId).eq('segment_num', 0); } catch(e) { console.warn('Name save fallback failed:', e); }
       bar.style.width = '100%';
       text.textContent = 'Complete! Manifest ID: ' + result.manifestId.slice(0, 8) + '...';
       details.innerHTML = 'Large video stored in Supabase.<br>Run: node scripts/migrate-to-mega.js --manifest=' + result.manifestId;
