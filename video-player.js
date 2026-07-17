@@ -47,7 +47,7 @@ async function playEncryptedVideoById(manifestId, container) {
     const isTicket = manifestId.length > 50;
 
     const manifestResp = await fetch(
-      `${base}/api/manifest/0?${isTicket ? 'ticket=' : 'mid='}${manifestId}`,
+      `${base}/api/manifest/0?${isTicket ? 'ticket=' : 'mid='}${encodeURIComponent(manifestId)}`,
       { headers }
     );
     if (!manifestResp.ok) throw new Error('Video not available');
@@ -62,7 +62,7 @@ async function playEncryptedVideoById(manifestId, container) {
       });
       if (!atResp.ok) throw new Error('Access denied');
       const atData = await atResp.json();
-      keyParam = 'access_token=' + atData.accessToken;
+      keyParam = 'access_token=' + encodeURIComponent(atData.accessToken);
     } else {
       keyParam = 'mid=' + manifestId;
     }
