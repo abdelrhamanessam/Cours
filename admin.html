@@ -11,6 +11,7 @@
 <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/contrib/auto-render.min.js" crossorigin="anonymous"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="https://cdn.jsdelivr.net/npm/mammoth@1.8.0/mammoth.browser.min.js"></script>
+<script src="/mega-upload.js"></script>
 <style>
 :root{--z-modal:100;--z-modal-backdrop:99;--z-sticky:50;--z-tooltip:200;--z-toast:300}
 .admin-body{padding:40px 0}
@@ -1332,10 +1333,9 @@ function fmtSize(bytes) {
 async function loadAdminVideos() {
   const el = document.getElementById('admin-page-videos');
   el.innerHTML = '<h2 style="margin-bottom:16px">Encrypted Videos</h2>';
-  el.innerHTML += '<div class="admin-card" style="padding:20px;margin-bottom:20px"><h3 style="margin-bottom:12px">Upload New Video</h3><input type="text" id="enc-video-name" placeholder="Video name (e.g. Algebra Lesson 1)" style="width:100%;margin-bottom:8px;padding:8px 10px;background:var(--bg-card);color:var(--fg);border:1px solid var(--border);border-radius:6px;font-size:.875rem"><input type="file" id="enc-video-file" accept="video/mp4,video/webm" style="margin-bottom:12px"><p style="font-size:.75rem;color:var(--muted);margin-bottom:8px">Uploaded segments are sent server-side to Mega.nz. No credentials leave the server.</p><button class="btn btn-primary" onclick="uploadEncryptedVideo()">Upload & Encrypt</button><div id="enc-upload-progress" style="display:none;margin-top:12px"><div style="height:6px;background:var(--border);border-radius:4px;overflow:hidden"><div id="enc-upload-bar" style="height:100%;width:0%;background:var(--primary);transition:width .3s"></div></div><span id="enc-upload-text" style="font-size:.75rem;color:var(--muted);margin-top:4px;display:block"></span></div></div>';
-  el.innerHTML += '<div class="admin-card" style="padding:20px;margin-bottom:20px"><h3 style="margin-bottom:12px">Mega Storage</h3><p style="font-size:.85rem;color:var(--muted);margin-bottom:8px">Mega credentials are configured via server environment variables. No credentials are stored in the browser.</p><div id="mega-accounts-list"><div style="color:var(--muted);font-size:.85rem;padding:4px 0">Mega storage status unknown — upload a video to verify connectivity.</div></div><button class="btn btn-ghost btn-sm" onclick="checkMegaStatus()" style="margin-top:8px;width:100%">🔍 Check Mega Status</button></div>';
+  el.innerHTML += '<div class="admin-card" style="padding:20px;margin-bottom:20px"><h3 style="margin-bottom:12px">Upload New Video</h3><input type="text" id="enc-video-name" placeholder="Video name (e.g. Algebra Lesson 1)" style="width:100%;margin-bottom:8px;padding:8px 10px;background:var(--bg-card);color:var(--fg);border:1px solid var(--border);border-radius:6px;font-size:.875rem"><input type="file" id="enc-video-file" accept="video/mp4,video/webm" style="margin-bottom:12px"><input type="email" id="enc-mega-email" placeholder="Mega email (session only)" autocomplete="off" style="width:100%;margin-bottom:6px;padding:8px 10px;background:var(--bg-card);color:var(--fg);border:1px solid var(--border);border-radius:6px;font-size:.875rem;box-sizing:border-box"><input type="password" id="enc-mega-password" placeholder="Mega password (session only — NOT stored)" autocomplete="new-password" style="width:100%;margin-bottom:10px;padding:8px 10px;background:var(--bg-card);color:var(--fg);border:1px solid var(--border);border-radius:6px;font-size:.875rem;box-sizing:border-box"><p style="font-size:.75rem;color:var(--muted);margin-bottom:8px">Mega credentials are used in-browser only and never stored. Cleared after upload completes.</p><button class="btn btn-primary" onclick="uploadEncryptedVideo()">Upload & Encrypt → Mega</button><div id="enc-upload-progress" style="display:none;margin-top:12px"><div style="height:6px;background:var(--border);border-radius:4px;overflow:hidden"><div id="enc-upload-bar" style="height:100%;width:0%;background:var(--primary);transition:width .3s"></div></div><span id="enc-upload-text" style="font-size:.75rem;color:var(--muted);margin-top:4px;display:block"></span></div></div>';
+  el.innerHTML += '<div class="admin-card" style="padding:20px;margin-bottom:20px"><h3 style="margin-bottom:12px">Mega Storage</h3><p style="font-size:.85rem;color:var(--muted);margin-bottom:8px">Mega credentials are entered in the upload form above (session only — never stored).</p><div id="mega-accounts-list"><div style="color:var(--muted);font-size:.85rem;padding:4px 0">Mega storage status unknown — upload a video to verify connectivity.</div></div></div>';
   el.innerHTML += '<div id="enc-video-list"></div>';
-  await checkMegaStatus();
   await renderEncryptedVideoList();
 }
 
@@ -1385,6 +1385,11 @@ async function deleteEncVideo(manifestId) {
 async function uploadEncryptedVideo() {
   const file = document.getElementById('enc-video-file').files?.[0];
   if (!file) { alert('Select a video file first.'); return; }
+
+  const megaEmail = document.getElementById('enc-mega-email').value.trim();
+  const megaPassword = document.getElementById('enc-mega-password').value;
+  if (!megaEmail || !megaPassword) { alert('Enter Mega email and password.'); return; }
+
   const progress = document.getElementById('enc-upload-progress');
   const bar = document.getElementById('enc-upload-bar');
   const text = document.getElementById('enc-upload-text');
@@ -1406,7 +1411,7 @@ async function uploadEncryptedVideo() {
     form.append('file', file);
     form.append('name', videoName);
 
-    bar.style.width = '50%';
+    bar.style.width = '30%';
     text.textContent = 'Uploading & encrypting...';
 
     const resp = await fetch('/api/upload', {
@@ -1422,8 +1427,7 @@ async function uploadEncryptedVideo() {
     const contentType = resp.headers.get('content-type') || '';
 
     if (contentType.includes('application/octet-stream')) {
-      // Binary response with embedded segments — upload to Mega via server
-      bar.style.width = '60%';
+      bar.style.width = '45%';
       text.textContent = 'Parsing encrypted segments...';
 
       const buf = await resp.arrayBuffer();
@@ -1432,41 +1436,56 @@ async function uploadEncryptedVideo() {
       const headerBytes = new Uint8Array(buf, 4, headerLen);
       const header = JSON.parse(new TextDecoder().decode(headerBytes));
 
-      details.innerHTML = 'Manifest: ' + header.manifestId.slice(0, 8) + '...<br>' + header.totalSegments + ' segments, uploading to Mega...';
+      details.innerHTML = 'Manifest: ' + header.manifestId.slice(0, 8) + '...<br>' + header.totalSegments + ' segments<br><br><strong>Logging into Mega...</strong>';
+
+      var megaStorage;
+      try {
+        megaStorage = await mega({ email: megaEmail, password: megaPassword });
+      } catch (loginErr) {
+        throw new Error('Mega login failed: ' + (loginErr.message || loginErr));
+      }
+      details.innerHTML = details.innerHTML.replace('<strong>Logging into Mega...</strong>', '<span style="color:var(--success)">✅ Logged into Mega</span>');
 
       const dataStart = 4 + headerLen;
+      var segCount = 0;
       for (const seg of header.segments) {
+        segCount++;
         const segData = new Uint8Array(buf.slice(dataStart + seg.offset, dataStart + seg.offset + seg.length));
-        details.innerHTML += '<br>Uploading segment ' + seg.segment_num + ' via server...';
+        details.innerHTML += '<br>Uploading segment ' + seg.segment_num + ' (' + segCount + '/' + header.totalSegments + ')...';
+        bar.style.width = Math.round(45 + (segCount / header.totalSegments) * 40) + '%';
+        text.textContent = 'Uploading segment ' + seg.segment_num + ' to Mega...';
 
-        // Convert to base64 for JSON transport
-        var binary = '';
-        for (var j = 0; j < segData.length; j++) {
-          binary += String.fromCharCode(segData[j]);
+        var megaLink;
+        try {
+          const remoteFile = await megaStorage.upload({
+            name: 'admin_uploads_' + header.manifestId + '_seg_' + seg.segment_num + '.enc'
+          }, segData).complete;
+          megaLink = await remoteFile.link();
+        } catch (uploadErr) {
+          details.innerHTML += ' <span style="color:var(--danger)">UPLOAD FAILED: ' + (uploadErr.message || uploadErr).slice(0, 100) + '</span>';
+          continue;
         }
-        var base64Data = btoa(binary);
 
-        const megaResp = await fetch('/api/mega-upload', {
+        const storeResp = await fetch('/api/store-mega-link', {
           method: 'POST',
           headers: { 'Authorization': 'Bearer ' + token, 'Content-Type': 'application/json' },
           body: JSON.stringify({
-            segmentData: base64Data,
-            fileName: 'admin_uploads_' + header.manifestId + '_seg_' + seg.segment_num + '.enc',
             manifestId: header.manifestId,
             segmentNum: seg.segment_num,
-            iv: seg.iv,
-            videoName: videoName
+            megaLink: megaLink,
+            name: seg.segment_num === 0 ? videoName : undefined
           })
         });
-        if (!megaResp.ok) {
-          const err = await megaResp.text();
-          details.innerHTML += ' <span style="color:var(--danger)">FAILED: ' + err.slice(0, 100) + '</span>';
+        if (!storeResp.ok) {
+          const err = await storeResp.text();
+          details.innerHTML += ' <span style="color:var(--warning)">⚠ stored on Mega but DB save failed: ' + err.slice(0, 100) + '</span>';
         } else {
-          details.innerHTML += ' <span style="color:var(--success)">OK</span>';
+          details.innerHTML += ' <span style="color:var(--success)">✅ Mega + DB</span>';
         }
       }
 
-      // Save name+size to localStorage
+      document.getElementById('enc-mega-password').value = '';
+
       var meta = getVideoMeta();
       meta[header.manifestId] = { name: videoName, size: file.size };
       saveVideoMeta(meta);
@@ -1476,9 +1495,7 @@ async function uploadEncryptedVideo() {
       details.innerHTML += '<br><strong>Done!</strong>';
       await renderEncryptedVideoList();
     } else {
-      // JSON response (large file stored in Supabase)
       const result = await resp.json();
-      // Save name+size to localStorage
       var meta = getVideoMeta();
       meta[result.manifestId] = { name: videoName, size: file.size };
       saveVideoMeta(meta);
@@ -1491,6 +1508,7 @@ async function uploadEncryptedVideo() {
     text.textContent = 'Error: ' + e.message;
     details.innerHTML = '';
     console.error(e);
+    document.getElementById('enc-mega-password').value = '';
   }
 }
 // ========== END ENCRYPTED VIDEOS ==========
