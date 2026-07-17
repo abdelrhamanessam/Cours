@@ -645,6 +645,24 @@ async function loadAdminStats() {
         '<div class="sys-card info"><div class="sys-card-icon">📦</div><div class="sys-card-value">' + fmtNum(fileStorageMB) + ' MB</div><div class="sys-card-label">File Storage</div></div>' +
         '</div></div>';
     }
+    // Mega Storage section
+    var megaAccs = getMegaAccounts();
+    if (megaAccs.length > 0) {
+      var megaTotalUsed = 0, megaTotalTotal = 0;
+      html += '<div class="sys-section"><div class="sys-section-title">📁 Mega.nz Storage <span>— per-account usage (click 🔄 to refresh)</span></div><div class="sys-grid">';
+      megaAccs.forEach(function(a) {
+        var used = a.storageUsed ? fmtBytes(a.storageUsed) : '?';
+        var total = a.storageTotal ? fmtBytes(a.storageTotal) : '?';
+        var pct = a.storageTotal > 0 ? Math.round(a.storageUsed / a.storageTotal * 100) + '%' : '?';
+        megaTotalUsed += a.storageUsed || 0;
+        megaTotalTotal += a.storageTotal || 0;
+        html += '<div class="sys-card"><div class="sys-card-icon">☁️</div><div class="sys-card-value">' + used + ' <span class="sys-unit">/ ' + total + '</span></div><div class="sys-card-label">' + a.label + '</div><div class="sys-card-bar"><div class="sys-card-bar-fill" style="width:' + pct + ';background:var(--accent)"></div></div></div>';
+      });
+      var megaTotalPct = megaTotalTotal > 0 ? Math.round(megaTotalUsed / megaTotalTotal * 100) + '%' : '?';
+      html += '<div class="sys-card accent"><div class="sys-card-icon">📊</div><div class="sys-card-value">' + fmtBytes(megaTotalUsed) + ' <span class="sys-unit">/ ' + fmtBytes(megaTotalTotal) + '</span></div><div class="sys-card-label">Total Across All Accounts</div><div class="sys-card-bar"><div class="sys-card-bar-fill" style="width:' + megaTotalPct + ';background:var(--primary)"></div></div></div>';
+      html += '</div></div>';
+    }
+
     // Database section
     html += '<div class="sys-section"><div class="sys-section-title">🗄️ Database <span>— Free tier: 500 MB max</span></div><div class="sys-table-wrap"><table class="sys-table"><thead><tr><th>Table</th><th style="text-align:right">Rows</th></tr></thead><tbody>';
     var tables = [['courses', coursesR.count||0],['lessons', lessonsR.count||0],['lectures', lecturesR.count||0],['profiles', profilesR.count||0],['progress', progressR.count||0],['homework', hwR.count||0],['exams', examsR.count||0],['exam_attempts', attR.count||0],['final_exam_attempts', finalAttR.count||0],['exam_questions', examQR.count||0],['hw_questions', hwQR.count||0],['exam_image_questions', examImgR.count||0],['hw_image_questions', hwImgR.count||0],['question_categories', catsR.count||0],['category_questions', catQR.count||0],['site_config', siteConfigR.count||0]];
@@ -1499,11 +1517,49 @@ function renderMegaAccounts() {
   if (accs.length === 0) {
     list.innerHTML = '<div style="color:var(--muted);font-size:.85rem;padding:4px 0">No accounts saved yet.</div>';
   } else {
+    var totalUsed = 0, totalTotal = 0;
     list.innerHTML = accs.map(function(a, i) {
-      return '<div style="display:flex;justify-content:space-between;align-items:center;padding:6px 0;border-bottom:1px solid var(--border)"><span><strong>' + a.label + '</strong> &middot; ' + a.email + '</span><button class="btn btn-danger" style="padding:4px 10px;font-size:.8rem" onclick="deleteMegaAccount(' + i + ')">Delete</button></div>';
+      var used = a.storageUsed ? fmtSize(a.storageUsed) : '?';
+      var total = a.storageTotal ? fmtSize(a.storageTotal) : '?';
+      var pct = a.storageTotal > 0 ? ' (' + Math.round(a.storageUsed / a.storageTotal * 100) + '%)' : '';
+      totalUsed += a.storageUsed || 0;
+      totalTotal += a.storageTotal || 0;
+      return '<div style="display:flex;justify-content:space-between;align-items:center;padding:6px 0;border-bottom:1px solid var(--border)"><span><strong>' + a.label + '</strong> &middot; ' + a.email + '<br><span style="font-size:.75rem;color:var(--muted)">Used: ' + used + ' / ' + total + pct + '</span></span><button class="btn btn-danger" style="padding:4px 10px;font-size:.8rem" onclick="deleteMegaAccount(' + i + ')">Delete</button></div>';
     }).join('');
+    var totalPct = totalTotal > 0 ? ' (' + Math.round(totalUsed / totalTotal * 100) + '%)' : '';
+    list.innerHTML += '<div style="padding:8px 0;font-size:.85rem;font-weight:600;text-align:right;color:var(--fg)">Total: ' + fmtSize(totalUsed) + ' / ' + fmtSize(totalTotal) + totalPct + '</div>';
   }
+  list.innerHTML += '<button class="btn btn-ghost btn-sm" onclick="refreshMegaStorage()" style="margin-top:4px;width:100%" id="mega-storage-btn">🔄 Refresh Storage Usage</button>';
   populateMegaDropdown();
+}
+
+async function refreshMegaStorage() {
+  var btn = document.getElementById('mega-storage-btn');
+  var accs = getMegaAccounts();
+  if (accs.length === 0) return;
+  btn.textContent = '⏳ Refreshing...';
+  btn.disabled = true;
+  for (var i = 0; i < accs.length; i++) {
+    btn.textContent = '⏳ Logging into ' + accs[i].label + '...';
+    try {
+      var s = await new Promise(function(resolve, reject) {
+        var m = new mega({ email: accs[i].email, password: accs[i].password });
+        m.on('ready', function() { resolve(m); });
+        m.on('error', reject);
+      });
+      // Get account storage from Mega (try both old and new property names)
+      if (s.account) {
+        accs[i].storageUsed = s.account.spaceUsed || s.account.storageUsed || 0;
+        accs[i].storageTotal = s.account.spaceTotal || s.account.storageMax || 0;
+      }
+    } catch (e) {
+      console.warn('Failed to get storage for', accs[i].label, e);
+    }
+  }
+  saveMegaAccounts(accs);
+  renderMegaAccounts();
+  btn.textContent = '🔄 Refresh Storage Usage';
+  btn.disabled = false;
 }
 function addMegaAccount() {
   const email = document.getElementById('mega-acc-email').value.trim();
