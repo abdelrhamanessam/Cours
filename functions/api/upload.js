@@ -16,6 +16,7 @@ export async function onRequest(context) {
     const form = await request.formData();
     const file = form.get('file');
     if (!file) return new Response(JSON.stringify({ error: 'Missing file' }), { status: 400, headers: cors });
+    const videoName = (form.get('name') || file.name.replace(/\.[^.]+$/, '')).trim();
 
     const fileData = await file.arrayBuffer();
     const manifestId = crypto.randomUUID();
@@ -55,7 +56,7 @@ export async function onRequest(context) {
       encData.set(new Uint8Array(iv), 0);
       encData.set(new Uint8Array(encrypted), iv.byteLength);
 
-      const storageName = `admin_uploads/${manifestId}/seg_${i}.enc`;
+      const storageName = i === 0 ? videoName : `admin_uploads/${manifestId}/seg_${i}.enc`;
 
       const segRes = await fetch(`${sbUrl}/rest/v1/mega_segments`, {
         method: 'POST',
@@ -75,7 +76,7 @@ export async function onRequest(context) {
     // If total encrypted data fits in response (under 50MB), embed it
     const MAX_INLINE = 50 * 1024 * 1024;
     if (totalEncSize <= MAX_INLINE) {
-      const header = JSON.stringify({ manifestId, totalSegments: numSegments, format: 'embedded', segments });
+      const header = JSON.stringify({ manifestId, name: videoName, totalSegments: numSegments, format: 'embedded', segments });
       const headerBytes = new TextEncoder().encode(header);
       const headerLen = new Uint8Array(4);
       new DataView(headerLen.buffer).setUint32(0, headerBytes.length, true);
@@ -103,8 +104,16 @@ export async function onRequest(context) {
       if (!upRes.ok) return new Response(JSON.stringify({ error: `Segment ${i} upload to storage failed`, detail: await upRes.text() }), { status: 500, headers: cors });
     }
 
+    // For large files, update segment 0's file_name to the video name
+    const nameQs = `manifest_id=eq.${manifestId}&segment_num=eq.0`;
+    await fetch(`${sbUrl}/rest/v1/mega_segments?${nameQs}`, {
+      method: 'PATCH',
+      headers: { 'apikey': svc, 'Authorization': `Bearer ${svc}`, 'Content-Type': 'application/json', 'Prefer': 'return=minimal' },
+      body: JSON.stringify({ file_name: videoName })
+    });
+
     return new Response(JSON.stringify({
-      manifestId, totalSegments: numSegments, storage: 'supabase', format: 'stored',
+      manifestId, name: videoName, totalSegments: numSegments, storage: 'supabase', format: 'stored',
       note: 'Large file stored in Supabase. Run: node scripts/migrate-to-mega.js --manifest=' + manifestId
     }), { status: 200, headers: { ...cors, 'Content-Type': 'application/json' } });
 

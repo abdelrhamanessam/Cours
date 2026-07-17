@@ -13,7 +13,7 @@ export async function onRequest(context) {
   if (!user) return new Response('Invalid token', { status: 401, headers: cors });
 
   try {
-    const { manifestId, segmentNum, megaLink } = await request.json();
+    const { manifestId, segmentNum, megaLink, name } = await request.json();
     if (!manifestId || segmentNum === undefined || !megaLink) {
       return new Response(JSON.stringify({ error: 'Missing manifestId, segmentNum, or megaLink' }), { status: 400, headers: cors });
     }
@@ -21,10 +21,11 @@ export async function onRequest(context) {
     const svc = env.SUPABASE_SERVICE_KEY;
     const sbUrl = env.SUPABASE_URL.replace(/\/+$/, '');
     const q = `manifest_id=eq.${manifestId}&segment_num=eq.${segmentNum}`;
+    const updateBody = name && segmentNum === 0 ? { mega_link: megaLink, file_name: name } : { mega_link: megaLink };
     const res2 = await fetch(`${sbUrl}/rest/v1/mega_segments?${q}`, {
       method: 'PATCH',
       headers: { 'apikey': svc, 'Authorization': `Bearer ${svc}`, 'Content-Type': 'application/json', 'Prefer': 'return=minimal' },
-      body: JSON.stringify({ mega_link: megaLink })
+      body: JSON.stringify(updateBody)
     });
 
     if (!res2.ok) {

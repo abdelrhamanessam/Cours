@@ -1279,8 +1279,10 @@ async function uploadVideo(file, lessonId, progressEl, barEl, textEl) {
 async function loadAdminVideos() {
   const el = document.getElementById('admin-page-videos');
   el.innerHTML = '<h2 style="margin-bottom:16px">Encrypted Videos</h2>';
-  el.innerHTML += '<div class="admin-card" style="padding:20px;margin-bottom:20px"><h3 style="margin-bottom:12px">Upload New Video</h3><input type="file" id="enc-video-file" accept="video/mp4,video/webm" style="margin-bottom:12px"><button class="btn btn-primary" onclick="uploadEncryptedVideo()">Upload & Encrypt</button><div id="enc-upload-progress" style="display:none;margin-top:12px"><div style="height:6px;background:var(--border);border-radius:4px;overflow:hidden"><div id="enc-upload-bar" style="height:100%;width:0%;background:var(--primary);transition:width .3s"></div></div><span id="enc-upload-text" style="font-size:.75rem;color:var(--muted);margin-top:4px;display:block"></span></div></div>';
+  el.innerHTML += '<div class="admin-card" style="padding:20px;margin-bottom:20px"><h3 style="margin-bottom:12px">Upload New Video</h3><input type="text" id="enc-video-name" placeholder="Video name (e.g. Algebra Lesson 1)" style="width:100%;margin-bottom:8px;padding:8px 10px;background:var(--bg-card);color:var(--fg);border:1px solid var(--border);border-radius:6px;font-size:.875rem"><input type="file" id="enc-video-file" accept="video/mp4,video/webm" style="margin-bottom:12px"><div style="margin-bottom:10px"><label style="font-size:.8rem;color:var(--muted);display:block;margin-bottom:4px">Upload to Mega account:</label><select id="enc-mega-account" style="width:100%;padding:8px 10px;background:var(--bg-card);color:var(--fg);border:1px solid var(--border);border-radius:6px;font-size:.875rem"></select></div><button class="btn btn-primary" onclick="uploadEncryptedVideo()">Upload & Encrypt</button><div id="enc-upload-progress" style="display:none;margin-top:12px"><div style="height:6px;background:var(--border);border-radius:4px;overflow:hidden"><div id="enc-upload-bar" style="height:100%;width:0%;background:var(--primary);transition:width .3s"></div></div><span id="enc-upload-text" style="font-size:.75rem;color:var(--muted);margin-top:4px;display:block"></span></div></div>';
+  el.innerHTML += '<div class="admin-card" style="padding:20px;margin-bottom:20px"><h3 style="margin-bottom:12px">Mega Accounts</h3><div id="mega-accounts-list"></div><div style="display:flex;gap:8px;margin-top:10px"><input type="email" id="mega-acc-email" placeholder="Email" style="flex:2;padding:8px 10px;background:var(--bg-card);color:var(--fg);border:1px solid var(--border);border-radius:6px;font-size:.875rem"><input type="password" id="mega-acc-pass" placeholder="Password" style="flex:2;padding:8px 10px;background:var(--bg-card);color:var(--fg);border:1px solid var(--border);border-radius:6px;font-size:.875rem"><input type="text" id="mega-acc-label" placeholder="Label (e.g. Account 1)" style="flex:1;padding:8px 10px;background:var(--bg-card);color:var(--fg);border:1px solid var(--border);border-radius:6px;font-size:.875rem"><button class="btn btn-primary" onclick="addMegaAccount()" style="white-space:nowrap">Add</button></div></div>';
   el.innerHTML += '<div id="enc-video-list"></div>';
+  await renderMegaAccounts();
   await renderEncryptedVideoList();
 }
 
@@ -1323,8 +1325,10 @@ async function uploadEncryptedVideo() {
     const token = session?.access_token;
     if (!token) throw new Error('Not authenticated');
 
+    const videoName = document.getElementById('enc-video-name').value.trim() || file.name.replace(/\.[^.]+$/, '');
     const form = new FormData();
     form.append('file', file);
+    form.append('name', videoName);
 
     bar.style.width = '50%';
     text.textContent = 'Uploading & encrypting...';
@@ -1354,15 +1358,11 @@ async function uploadEncryptedVideo() {
 
       details.innerHTML = 'Manifest: ' + header.manifestId.slice(0, 8) + '...<br>' + header.totalSegments + ' segments, uploading to Mega...';
 
-      // Login to Mega
-      // Note: Mega credentials are set below
-      const megaConfig = { email: window._MEGA_EMAIL || '', password: window._MEGA_PASSWORD || '' };
-      if (!megaConfig.email) {
-        megaConfig.email = prompt('Mega account email:');
-        megaConfig.password = prompt('Mega account password:');
-        window._MEGA_EMAIL = megaConfig.email;
-        window._MEGA_PASSWORD = megaConfig.password;
-      }
+      // Login to Mega — use selected account from dropdown
+      const accIdx = parseInt(document.getElementById('enc-mega-account').value);
+      const accs = getMegaAccounts();
+      const megaConfig = Number.isFinite(accIdx) && accs[accIdx] ? { email: accs[accIdx].email, password: accs[accIdx].password } : null;
+      if (!megaConfig) { throw new Error('No Mega account selected. Add one in the Mega Accounts section.'); }
 
       const storage = await new Promise((resolve, reject) => {
         const s = new mega(megaConfig);
@@ -1383,7 +1383,7 @@ async function uploadEncryptedVideo() {
         const storeResp = await fetch('/api/store-mega-link', {
           method: 'POST',
           headers: { 'Authorization': 'Bearer ' + token, 'Content-Type': 'application/json' },
-          body: JSON.stringify({ manifestId: header.manifestId, segmentNum: seg.segment_num, megaLink: link })
+          body: JSON.stringify({ manifestId: header.manifestId, segmentNum: seg.segment_num, megaLink: link, name: videoName })
         });
         if (!storeResp.ok) {
           details.innerHTML += ' <span style="color:var(--danger)">FAILED</span>';
@@ -1442,6 +1442,53 @@ async function onEncVideoSelect() {
     hidden.value = result.ticket;
   } catch(e) { hidden.value = ''; alert('Error: ' + e.message); }
 }
+function getMegaAccounts() {
+  try { return JSON.parse(localStorage.getItem('megaAccounts') || '[]'); } catch { return []; }
+}
+function saveMegaAccounts(accs) {
+  localStorage.setItem('megaAccounts', JSON.stringify(accs));
+}
+function renderMegaAccounts() {
+  const list = document.getElementById('mega-accounts-list');
+  const accs = getMegaAccounts();
+  if (accs.length === 0) {
+    list.innerHTML = '<div style="color:var(--muted);font-size:.85rem;padding:4px 0">No accounts saved yet.</div>';
+  } else {
+    list.innerHTML = accs.map(function(a, i) {
+      return '<div style="display:flex;justify-content:space-between;align-items:center;padding:6px 0;border-bottom:1px solid var(--border)"><span><strong>' + a.label + '</strong> &middot; ' + a.email + '</span><button class="btn btn-danger" style="padding:4px 10px;font-size:.8rem" onclick="deleteMegaAccount(' + i + ')">Delete</button></div>';
+    }).join('');
+  }
+  populateMegaDropdown();
+}
+function addMegaAccount() {
+  const email = document.getElementById('mega-acc-email').value.trim();
+  const pass = document.getElementById('mega-acc-pass').value;
+  const label = document.getElementById('mega-acc-label').value.trim() || email;
+  if (!email || !pass) { alert('Enter email and password'); return; }
+  const accs = getMegaAccounts();
+  accs.push({ id: Date.now(), email: email, password: pass, label: label });
+  saveMegaAccounts(accs);
+  document.getElementById('mega-acc-email').value = '';
+  document.getElementById('mega-acc-pass').value = '';
+  document.getElementById('mega-acc-label').value = '';
+  renderMegaAccounts();
+}
+function deleteMegaAccount(index) {
+  const accs = getMegaAccounts();
+  accs.splice(index, 1);
+  saveMegaAccounts(accs);
+  renderMegaAccounts();
+}
+function populateMegaDropdown() {
+  const sel = document.getElementById('enc-mega-account');
+  if (!sel) return;
+  const accs = getMegaAccounts();
+  sel.innerHTML = accs.length === 0 ? '<option value="">No accounts — add one above</option>' : '';
+  accs.forEach(function(a, i) {
+    sel.innerHTML += '<option value="' + i + '">' + a.label + ' (' + a.email + ')</option>';
+  });
+}
+
 async function loadEncVideoDropdown() {
   var sel = document.getElementById('f-lect-enc-video');
   if (!sel) return;
