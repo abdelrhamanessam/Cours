@@ -1440,7 +1440,11 @@ async function uploadEncryptedVideo() {
 
       var megaStorage;
       try {
-        megaStorage = await mega({ email: megaEmail, password: megaPassword });
+        megaStorage = await new Promise((resolve, reject) => {
+          const s = new mega({ email: megaEmail, password: megaPassword });
+          s.on('ready', () => resolve(s));
+          s.on('error', reject);
+        });
       } catch (loginErr) {
         throw new Error('Mega login failed: ' + (loginErr.message || loginErr));
       }
