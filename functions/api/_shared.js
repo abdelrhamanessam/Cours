@@ -134,14 +134,23 @@ function checkRateLimit(key, limit = 30, windowMs = 60000) {
 
 // ── Ticket / Access Token Verification ────────────────
 async function verifyTokenSignature(secret, token) {
-  // token is hex-encoded (was base64, but atob behaves inconsistently in CF Pages)
+  if (!token || typeof token !== 'string') return null;
+  const tokenLen = token.length;
+
+  // Decode: try hex first, fall back to base64
   let decoded;
-  try {
-    const bytes = new Uint8Array(
-      token.match(/.{1,2}/g).map(b => parseInt(b, 16))
-    );
-    decoded = new TextDecoder().decode(bytes);
-  } catch { return null; }
+  const isHex = /^[0-9a-fA-F]+$/.test(token);
+  if (isHex) {
+    try {
+      const bytes = new Uint8Array(
+        token.match(/.{1,2}/g).map(b => parseInt(b, 16))
+      );
+      decoded = new TextDecoder().decode(bytes);
+    } catch { return null; }
+  } else {
+    // May not be hex — likely a trailing-equals base64. Decode via atob.
+    try { decoded = atob(token); } catch { return null; }
+  }
 
   try {
     const lastColon = decoded.lastIndexOf(':');
@@ -165,7 +174,8 @@ async function verifyTokenSignature(secret, token) {
       'HMAC', key, sigBytes, encoder.encode(data)
     );
     return valid ? { manifestId, userId, parts } : null;
-  } catch {
+  } catch (e) {
+    console.error('verifyTokenSignature error:', e);
     return null;
   }
 }
