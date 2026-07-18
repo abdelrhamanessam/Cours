@@ -499,7 +499,8 @@ function uploadProfilePic(event) {
     const formData = new FormData();
     formData.append('file', compressed);
     sb.auth.getSession().then(function(ses) {
-      var token = ses.data.session ? ses.data.session.access_token : SUPABASE_ANON_KEY;
+      if (!ses.data.session) return;
+      var token = ses.data.session.access_token;
       const xhr = new XMLHttpRequest();
       xhr.open('POST', SUPABASE_URL + '/storage/v1/object/question-images/' + path);
       xhr.setRequestHeader('Authorization', 'Bearer ' + token);
@@ -842,7 +843,7 @@ function renderPlatform() {
     }
   }
   // Header
-  var h = '<div class="dash-header-inner"><div><h1>Welcome back, ' + name + '</h1><p>Continue where you left off.</p></div><button class="btn btn-ghost btn-sm" onclick="showView(\'courses\')">Browse Courses &rarr;</button></div><div class="dash-stats">';
+  var h = '<div class="dash-header-inner"><div><h1>Welcome back, ' + esc(name) + '</h1><p>Continue where you left off.</p></div><button class="btn btn-ghost btn-sm" onclick="showView(\'courses\')">Browse Courses &rarr;</button></div><div class="dash-stats">';
   h += '<div class="ds-card"><div class="ds-val" style="color:var(--primary)">' + done + '</div><div class="ds-lbl">Lessons Done</div></div>';
   h += '<div class="ds-card"><div class="ds-val" style="color:var(--success)">' + (avgScore != null ? avgScore + '%' : '—') + '</div><div class="ds-lbl">Avg Score</div></div>';
   h += '<div class="ds-card"><div class="ds-val">' + examsTotal + '</div><div class="ds-lbl">Exam Attempts</div></div>';

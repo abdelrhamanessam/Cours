@@ -1,5 +1,6 @@
 const VIDEO_API = '';
 const MSE_CODECS = 'video/mp4; codecs="avc1.42E01E, mp4a.40.2"';
+function esc(s) { if (!s) return ''; return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;').replace(/`/g,'&#96;'); }
 
 // ── Main entry: play by lessonId ─────────────────────
 async function playEncryptedVideo(lessonId, container) {
@@ -26,7 +27,7 @@ async function playEncryptedVideo(lessonId, container) {
 
     buildPlayerUI(wrap, manifest, key, token, base, null);
   } catch (err) {
-    wrap.innerHTML = `<div class="vp-error">Error: ${err.message}</div>`;
+    wrap.innerHTML = `<div class="vp-error">Error: ${esc(err.message)}</div>`;
     console.error('Video player error:', err);
   }
 }
@@ -74,7 +75,7 @@ async function playEncryptedVideoById(manifestId, container) {
 
     buildPlayerUI(container, manifest, key, token, base, isTicket ? manifestId : null);
   } catch (err) {
-    container.innerHTML = `<div class="vp-error">Error: ${err.message}</div>`;
+    container.innerHTML = `<div class="vp-error">Error: ${esc(err.message)}</div>`;
     console.error('Video player error:', err);
   }
 }

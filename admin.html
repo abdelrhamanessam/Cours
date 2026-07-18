@@ -428,8 +428,14 @@ async function adminLogin() {
   const { data: profile } = await sb.from('profiles').select('*').eq('id', adminUser.id).single();
   if (!profile || profile.role !== 'admin') { await sb.auth.signOut(); errEl.textContent = 'Not authorized as admin'; return; }
   adminProfile = profile;
-  const { data: codeData } = await sb.from('admin_config').select('value').eq('key', 'admin_secret_code').single();
-  if (codeData && codeData.value) {
+  // Check if admin code is set (server-side check — code never sent to client)
+  var codeCheck = await fetch('/api/admin-code', {
+    method: 'POST',
+    headers: { 'Authorization': 'Bearer ' + data.session.access_token, 'Content-Type': 'application/json' },
+    body: JSON.stringify({ action: 'check' })
+  }).then(r => r.json()).catch(() => ({}));
+  var codeExists = codeCheck.exists;
+  if (codeExists) {
     document.getElementById('admin-login').classList.add('hidden');
     document.getElementById('admin-code-prompt').classList.remove('hidden');
     document.getElementById('admin-secret-input').value = '';
@@ -448,8 +454,14 @@ async function verifyAdminCode() {
   const code = document.getElementById('admin-secret-input').value;
   const errEl = document.getElementById('admin-code-error'); errEl.textContent = '';
   if (!code) { errEl.textContent = 'Enter the admin code'; return; }
-  const { data: row } = await sb.from('admin_config').select('value').eq('key', 'admin_secret_code').single();
-  if (!row || code !== row.value) { errEl.textContent = 'Wrong code'; return; }
+  const { data: { session } } = await sb.auth.getSession();
+  const resp = await fetch('/api/admin-code', {
+    method: 'POST',
+    headers: { 'Authorization': 'Bearer ' + (session?.access_token || ''), 'Content-Type': 'application/json' },
+    body: JSON.stringify({ action: 'verify', code })
+  });
+  const result = await resp.json();
+  if (!result.ok) { errEl.textContent = 'Wrong code'; return; }
   document.getElementById('admin-code-prompt').classList.add('hidden');
   document.getElementById('admin-dashboard').classList.remove('hidden');
   document.getElementById('manage-code-btn').style.display = '';
@@ -458,27 +470,35 @@ async function verifyAdminCode() {
 function cancelAdminCode() { sb.auth.signOut(); adminUser = null; document.getElementById('admin-code-prompt').classList.add('hidden'); document.getElementById('admin-login').classList.remove('hidden'); }
 
 async function showAdminCodeSettings() {
-  const { data: row } = await sb.from('admin_config').select('value').eq('key', 'admin_secret_code').single();
-  var has = row && row.value;
   showModal('<h3 style="margin-bottom:8px">Admin 2FA Code</h3>'
     + '<p style="color:var(--muted);font-size:.875rem;margin-bottom:12px">Set a secret code required after login.</p>'
-    + '<input type="text" id="new-admin-code" class="admin-input" placeholder="Enter new code" value="' + (has ? esc(row.value) : '') + '" style="margin-bottom:8px">'
+    + '<input type="text" id="new-admin-code" class="admin-input" placeholder="Enter new code" style="margin-bottom:8px">'
     + '<button class="btn btn-primary" onclick="saveAdminCode()" style="width:100%;justify-content:center;margin-bottom:6px">Save Code</button>'
-    + (has ? '<button class="btn btn-ghost btn-sm" onclick="clearAdminCode()" style="width:100%;justify-content:center;color:var(--error)">Remove Code (disable 2FA)</button>' : '')
+    + '<button class="btn btn-ghost btn-sm" onclick="clearAdminCode()" style="width:100%;justify-content:center;color:var(--error)">Remove Code (disable 2FA)</button>'
     + '<p id="admin-code-save-error" style="color:var(--error);margin-top:8px;font-size:.875rem"></p>');
 }
 async function saveAdminCode() {
   var val = document.getElementById('new-admin-code').value;
   var errEl = document.getElementById('admin-code-save-error'); if (errEl) errEl.textContent = '';
   if (!val) { if (errEl) errEl.textContent = 'Enter a code'; return; }
-  var { error } = await sb.from('admin_config').upsert({ key: 'admin_secret_code', value: val }, { onConflict: 'key' });
-  if (error) { if (errEl) errEl.textContent = error.message; return; }
+  const { data: { session } } = await sb.auth.getSession();
+  var resp = await fetch('/api/admin-code', {
+    method: 'POST',
+    headers: { 'Authorization': 'Bearer ' + (session?.access_token || ''), 'Content-Type': 'application/json' },
+    body: JSON.stringify({ action: 'set', code: val })
+  });
+  if (!resp.ok) { if (errEl) errEl.textContent = 'Failed to save'; return; }
   hideModal(); alert('Admin code saved!');
 }
 async function clearAdminCode() {
   if (!confirm('Remove admin code? Anyone with password can access admin.')) return;
-  var { error } = await sb.from('admin_config').delete().eq('key', 'admin_secret_code');
-  if (error) { alert(error.message); return; }
+  const { data: { session } } = await sb.auth.getSession();
+  var resp = await fetch('/api/admin-code', {
+    method: 'POST',
+    headers: { 'Authorization': 'Bearer ' + (session?.access_token || ''), 'Content-Type': 'application/json' },
+    body: JSON.stringify({ action: 'clear' })
+  });
+  if (!resp.ok) { alert('Failed to remove code'); return; }
   hideModal(); alert('Admin code removed.');
 }
 
