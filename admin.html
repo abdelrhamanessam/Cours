@@ -2833,7 +2833,7 @@ async function loadAdminEnrollments() {
   el.innerHTML = '<div style="text-align:center;padding:48px;color:var(--muted)">Loading…</div>';
   try {
     var [enrR, coursesR, studentsR] = await Promise.all([
-      sb.from('enrollments').select('*, profiles:user_id!left(id, name, email), courses:course_id!left(id, title)').order('created_at', { ascending: false }),
+      sb.from('enrollments').select('*, profiles:user_id!left(id, name), courses:course_id!left(id, title)').order('created_at', { ascending: false }),
       sb.from('courses').select('id, title').order('sort_order'),
       sb.from('profiles').select('id, name, email').eq('role', 'student').order('name'),
     ]);
@@ -2866,16 +2866,15 @@ function renderEnrollments() {
     el.innerHTML = html;
     return;
   }
-  html += '<div class="data-table-wrap"><table class="data-table"><thead><tr><th>Student</th><th>Email</th><th>Course</th><th>Enrolled</th><th>Actions</th></tr></thead><tbody>';
+  html += '<div class="data-table-wrap"><table class="data-table"><thead><tr><th>Student</th><th>Course</th><th>Enrolled</th><th>Actions</th></tr></thead><tbody>';
   for (var i = 0; i < filtered.length; i++) {
     var e = filtered[i];
     var p = e.profiles;
     var c = e.courses;
     var sName = p ? esc(p.name || '—') : '<span style="color:var(--muted)">Deleted</span>';
-    var sEmail = p ? esc(p.email || '—') : '<span style="color:var(--muted)">—</span>';
     var cTitle = c ? esc(c.title) : '<span style="color:var(--muted)">Deleted</span>';
     var date = e.created_at ? new Date(e.created_at).toLocaleDateString() : '—';
-    html += '<tr><td class="student-name">' + sName + '</td><td>' + sEmail + '</td><td>' + cTitle + '</td><td class="cell-mono">' + date + '</td><td><button class="btn btn-sm btn-danger" onclick="removeEnrollment(' + e.id + ')" ' + (!p || !c ? 'disabled title="Cannot remove — parent record deleted"' : '') + '>Remove</button></td></tr>';
+    html += '<tr><td class="student-name">' + sName + '</td><td>' + cTitle + '</td><td class="cell-mono">' + date + '</td><td><button class="btn btn-sm btn-danger" onclick="removeEnrollment(' + e.id + ')" ' + (!p || !c ? 'disabled title="Cannot remove — parent record deleted"' : '') + '>Remove</button></td></tr>';
   }
   html += '</tbody></table></div>';
   el.innerHTML = html;
@@ -2908,7 +2907,7 @@ function updateStudentDropdown() {
   var opts = '<option value="">Select student…</option>';
   for (var si = 0; si < d.allStudents.length; si++) {
     var s = d.allStudents[si];
-    if (!enrolledIds[s.id]) opts += '<option value="' + s.id + '">' + esc(s.name || s.email) + ' (' + esc(s.email) + ')' + '</option>';
+      if (!enrolledIds[s.id]) opts += '<option value="' + s.id + '">' + esc(s.name || s.id.substring(0,8)) + '</option>';
   }
   sel.innerHTML = opts;
 }
