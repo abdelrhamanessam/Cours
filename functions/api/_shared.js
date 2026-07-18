@@ -81,7 +81,8 @@ async function checkAdmin(user, env) {
 // The actual enrollment/subscription logic depends on your business model.
 // Adjust the table name and query to match your schema.
 async function checkEnrollment(userId, lessonId, env) {
-  if (!userId || !lessonId) return false;
+  if (!userId) return false;
+  if (!lessonId) return true; // No lessonId bound — access gated by manifest/key endpoints
   try {
     // TODO: Replace with your actual enrollment/subscription check
     // Example: Check if user purchased the course containing this lesson
