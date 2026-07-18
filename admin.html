@@ -2833,7 +2833,7 @@ async function loadAdminEnrollments() {
   el.innerHTML = '<div style="text-align:center;padding:48px;color:var(--muted)">Loading…</div>';
   try {
     var [enrR, coursesR, studentsR] = await Promise.all([
-      sb.from('enrollments').select('*, profiles:user_id!left(id, name), courses:course_id!left(id, title)').order('created_at', { ascending: false }),
+      sb.from('enrollments').select('*, profiles:user_id!left(id, name, email), courses:course_id!left(id, title)').order('created_at', { ascending: false }),
       sb.from('courses').select('id, title').order('sort_order'),
       sb.from('profiles').select('id, name, email').eq('role', 'student').order('name'),
     ]);
