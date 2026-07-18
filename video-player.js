@@ -1,5 +1,4 @@
 const VIDEO_API = '';
-const MSE_CODECS = 'video/mp4; codecs="avc1.42E01E, mp4a.40.2"';
 function esc(s) { if (!s) return ''; return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;').replace(/`/g,'&#96;'); }
 
 // ── Main entry: play by lessonId ─────────────────────
@@ -35,7 +34,11 @@ async function playEncryptedVideo(lessonId, container) {
 // ── Main entry: play by manifestId (ticket or direct) ─
 async function playEncryptedVideoById(manifestId, container) {
   if (!currentUser) { alert('Please log in first.'); return; }
-  const { data: { session } } = await sb.auth.getSession();
+  let { data: { session } } = await sb.auth.getSession();
+  if (!session?.access_token) {
+    const { data: { session: refreshed } } = await sb.auth.refreshSession();
+    session = refreshed;
+  }
   const token = session?.access_token;
   if (!token) { alert('Session expired. Please log in again.'); return; }
 
@@ -97,124 +100,21 @@ function buildPlayerUI(wrap, manifest, key, token, base, ticket) {
   const video = document.getElementById('vp-video');
   const status = document.getElementById('vp-status');
 
-  // Try MSE first, fall back to Blob
-  if (window.MediaSource && MediaSource.isTypeSupported(MSE_CODECS)) {
-    status.textContent = 'Streaming video...';
-    streamWithMSE(video, status, manifest, key, token, base)
-      .then(() => {
-        setupWatermark(wrap, video);
-        if (ticket) refreshTimer = startTokenRefresh(token, base, ticket);
-      })
-      .catch((err) => {
-        console.warn('MSE failed, falling back to Blob:', err);
-        streamWithBlob(video, status, manifest, key, token, base)
-          .then(() => {
-            setupWatermark(wrap, video);
-            if (ticket) refreshTimer = startTokenRefresh(token, base, ticket);
-          })
-          .catch((e2) => {
-            status.textContent = 'Error: ' + e2.message;
-          });
-      });
-  } else {
-    streamWithBlob(video, status, manifest, key, token, base)
-      .then(() => {
-        setupWatermark(wrap, video);
-        if (ticket) refreshTimer = startTokenRefresh(token, base, ticket);
-      })
-      .catch((err) => {
-        status.textContent = 'Error: ' + err.message;
-      });
-  }
+  // Blob-based playback (segments are MP4 byte-chunks, not fragmented MP4 for MSE)
+  streamWithBlob(video, status, manifest, key, token, base)
+    .then(() => {
+      video.play().catch(() => {});
+      setupWatermark(wrap, video);
+      if (ticket) refreshTimer = startTokenRefresh(token, base, ticket);
+    })
+    .catch((e2) => {
+      status.textContent = 'Error: ' + e2.message;
+    });
 
   video.load();
 }
 
-// ── MSE streaming ────────────────────────────────────
-async function streamWithMSE(video, status, manifest, key, token, base) {
-  const mediaSource = new MediaSource();
-  video.src = URL.createObjectURL(mediaSource);
-
-  return new Promise((resolve, reject) => {
-    let aborted = false;
-
-    mediaSource.addEventListener('sourceopen', async () => {
-      if (aborted) return;
-
-      let sourceBuffer;
-      try {
-        sourceBuffer = mediaSource.addSourceBuffer(MSE_CODECS);
-      } catch (e) {
-        reject(new Error('SourceBuffer creation failed: ' + e.message));
-        return;
-      }
-
-      const appendBuffer = (data) => new Promise((res, rej) => {
-        try {
-          sourceBuffer.addEventListener('updateend', res, { once: true });
-          sourceBuffer.appendBuffer(data);
-        } catch (e) {
-          rej(e);
-        }
-      });
-
-      const headers = { 'Authorization': `Bearer ${token}` };
-
-      for (let i = 0; i < manifest.segments.length; i++) {
-        if (aborted) return;
-        const seg = manifest.segments[i];
-        status.textContent = `Downloading segment ${i + 1}/${manifest.segments.length}...`;
-
-        try {
-          const resp = await fetch(
-            `${base}/api/download?mid=${manifest.manifestId}&segment=${seg.segment_num}`,
-            { headers }
-          );
-          if (!resp.ok) throw new Error('Download failed: ' + resp.status);
-          const encrypted = await resp.arrayBuffer();
-
-          status.textContent = `Decrypting segment ${i + 1}/${manifest.segments.length}...`;
-          const iv = hexToBytes(seg.iv);
-          const combined = new Uint8Array(encrypted.slice(16));
-          const decrypted = await crypto.subtle.decrypt(
-            { name: 'AES-GCM', iv, tagLength: 128 }, key, combined
-          );
-
-          status.textContent = `Buffering segment ${i + 1}/${manifest.segments.length}...`;
-          await appendBuffer(decrypted);
-        } catch (e) {
-          if (!aborted) {
-            aborted = true;
-            reject(e);
-          }
-          return;
-        }
-      }
-
-      if (!aborted) {
-        try {
-          if (mediaSource.readyState === 'open') {
-            mediaSource.endOfStream();
-          }
-        } catch (e) {
-          console.warn('endOfStream error:', e);
-        }
-        status.textContent = '';
-        resolve();
-      }
-    });
-
-    mediaSource.addEventListener('sourceclose', () => {
-      aborted = true;
-    });
-
-    mediaSource.addEventListener('sourceended', () => {
-      status.textContent = '';
-    });
-  });
-}
-
-// ── Legacy Blob fallback (same as before) ────────────
+// ── Legacy Blob fallback ────────────────────────────
 async function streamWithBlob(video, status, manifest, key, token, base) {
   const headers = { 'Authorization': `Bearer ${token}` };
   const decryptedChunks = [];
