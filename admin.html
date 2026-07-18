@@ -380,6 +380,7 @@
         <a onclick="switchAdminPage('courses',this)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg>Courses</a>
         <a onclick="switchAdminPage('categories',this)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 4h16v4H4z"/><path d="M4 12h16v8H4z"/></svg>Categories</a>
         <a onclick="switchAdminPage('students',this)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>Students</a>
+        <a onclick="switchAdminPage('enrollments',this)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>Enrollments</a>
         <a onclick="switchAdminPage('admins',this)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>Admins</a>
         <a onclick="switchAdminPage('stats',this)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12v-2a5 5 0 0 0-5-5H8a5 5 0 0 0-5 5v2"/><circle cx="12" cy="16" r="5"/><path d="M12 11v5"/><path d="M9.5 13.5 12 16l2.5-2.5"/></svg>System</a>
         <a onclick="switchAdminPage('site',this)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/></svg>Site</a>
@@ -392,6 +393,7 @@
         <div id="admin-page-courses" class="admin-page active"></div>
         <div id="admin-page-categories" class="admin-page"></div>
         <div id="admin-page-students" class="admin-page"></div>
+        <div id="admin-page-enrollments" class="admin-page"></div>
         <div id="admin-page-admins" class="admin-page"></div>
         <div id="admin-page-stats" class="admin-page sys-page"></div>
         <div id="admin-page-site" class="admin-page"></div>
@@ -507,6 +509,7 @@ function loadAdminPage(page) {
   else if (page === 'courses') loadAdminCourses();
   else if (page === 'categories') loadAdminCategories();
   else if (page === 'students') loadAdminStudents();
+  else if (page === 'enrollments') loadAdminEnrollments();
   else if (page === 'admins') loadAdminAdmins();
   else if (page === 'stats') loadAdminStats();
   else if (page === 'site') loadAdminSite();
@@ -2822,6 +2825,127 @@ async function saveWordExam(examId) {
 
 function esc(s) { if (!s) return ''; return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;'); }
 
+// ========== ENROLLMENTS ==========
+var _enrData = null;
+
+async function loadAdminEnrollments() {
+  var el = document.getElementById('admin-page-enrollments');
+  el.innerHTML = '<div style="text-align:center;padding:48px;color:var(--muted)">Loading…</div>';
+  try {
+    var [enrR, coursesR, studentsR] = await Promise.all([
+      sb.from('enrollments').select('*, profiles:user_id!left(id, name), courses:course_id!left(id, title)').order('created_at', { ascending: false }),
+      sb.from('courses').select('id, title').order('sort_order'),
+      sb.from('profiles').select('id, name, email').eq('role', 'student').order('name'),
+    ]);
+    var enrollments = enrR.data || [];
+    var courses = coursesR.data || [];
+    var allStudents = studentsR.data || [];
+    _enrData = { enrollments: enrollments, courses: courses, allStudents: allStudents, filterCourseId: '' };
+    renderEnrollments();
+  } catch (e) { el.innerHTML = '<div class="empty-state"><div class="empty-icon">⚠️</div><h3>Error</h3><p>' + esc(e.message) + '</p></div>'; }
+}
+
+function renderEnrollments() {
+  var el = document.getElementById('admin-page-enrollments');
+  var d = _enrData;
+  if (!d) return;
+  var filterCourseId = d.filterCourseId;
+  var filtered = d.enrollments;
+  if (filterCourseId) filtered = filtered.filter(function(e) { return String(e.course_id) === filterCourseId; });
+  var html = '<div class="admin-header"><h1>Enrollments</h1><div class="admin-header-actions">';
+  html += '<select class="admin-input" style="width:auto;margin:0" onchange="_enrData.filterCourseId=this.value;renderEnrollments()"><option value="">All Courses</option>';
+  for (var ci = 0; ci < d.courses.length; ci++) {
+    var c = d.courses[ci];
+    html += '<option value="' + c.id + '"' + (String(c.id) === filterCourseId ? ' selected' : '') + '>' + esc(c.title) + '</option>';
+  }
+  html += '</select>';
+  html += '<button class="btn btn-primary btn-sm" onclick="showAddEnrollmentModal()">+ Add</button>';
+  html += '</div></div>';
+  if (filtered.length === 0) {
+    html += '<div class="empty-state"><div class="empty-icon">📋</div><h3>No enrollments</h3><p>' + (filterCourseId ? 'No students enrolled in this course.' : 'No enrollments yet. Students are auto-enrolled on signup.') + '</p></div>';
+    el.innerHTML = html;
+    return;
+  }
+  html += '<div class="data-table-wrap"><table class="data-table"><thead><tr><th>Student</th><th>Email</th><th>Course</th><th>Enrolled</th><th>Actions</th></tr></thead><tbody>';
+  for (var i = 0; i < filtered.length; i++) {
+    var e = filtered[i];
+    var p = e.profiles;
+    var c = e.courses;
+    var sName = p ? esc(p.name || '—') : '<span style="color:var(--muted)">Deleted</span>';
+    var sEmail = p ? esc(p.email || '—') : '<span style="color:var(--muted)">—</span>';
+    var cTitle = c ? esc(c.title) : '<span style="color:var(--muted)">Deleted</span>';
+    var date = e.created_at ? new Date(e.created_at).toLocaleDateString() : '—';
+    html += '<tr><td class="student-name">' + sName + '</td><td>' + sEmail + '</td><td>' + cTitle + '</td><td class="cell-mono">' + date + '</td><td><button class="btn btn-sm btn-danger" onclick="removeEnrollment(' + e.id + ')" ' + (!p || !c ? 'disabled title="Cannot remove — parent record deleted"' : '') + '>Remove</button></td></tr>';
+  }
+  html += '</tbody></table></div>';
+  el.innerHTML = html;
+}
+
+function showAddEnrollmentModal() {
+  var d = _enrData;
+  if (!d) return;
+  var courseOpts = '<option value="">Select course…</option>';
+  for (var ci = 0; ci < d.courses.length; ci++) { courseOpts += '<option value="' + d.courses[ci].id + '">' + esc(d.courses[ci].title) + '</option>'; }
+  var html = '<h2>Add Enrollment</h2>'
+    + '<label>Course</label><select id="f-enr-course" class="admin-input" onchange="updateStudentDropdown()">' + courseOpts + '</select>'
+    + '<label>Student</label><select id="f-enr-student" class="admin-input"><option value="">Select a course first…</option></select>'
+    + '<p id="enr-modal-error" style="color:var(--error);font-size:.875rem;margin-top:8px"></p>'
+    + '<div class="admin-modal-footer"><button class="btn btn-primary" id="btn-add-enr" onclick="addEnrollment()">Add</button><button class="btn btn-ghost" onclick="hideModal()">Cancel</button></div>';
+  showModal(html);
+}
+
+function updateStudentDropdown() {
+  var courseId = document.getElementById('f-enr-course').value;
+  var sel = document.getElementById('f-enr-student');
+  var d = _enrData;
+  if (!d || !courseId) { sel.innerHTML = '<option value="">Select a course first…</option>'; return; }
+  var enrolledIds = {};
+  for (var i = 0; i < d.enrollments.length; i++) {
+    if (String(d.enrollments[i].course_id) === String(courseId) && d.enrollments[i].profiles) {
+      enrolledIds[d.enrollments[i].profiles.id] = true;
+    }
+  }
+  var opts = '<option value="">Select student…</option>';
+  for (var si = 0; si < d.allStudents.length; si++) {
+    var s = d.allStudents[si];
+    if (!enrolledIds[s.id]) opts += '<option value="' + s.id + '">' + esc(s.name || s.email) + ' (' + esc(s.email) + ')' + '</option>';
+  }
+  sel.innerHTML = opts;
+}
+
+async function addEnrollment() {
+  var btn = document.getElementById('btn-add-enr');
+  var errEl = document.getElementById('enr-modal-error');
+  if (errEl) errEl.textContent = '';
+  var courseId = document.getElementById('f-enr-course').value;
+  var studentId = document.getElementById('f-enr-student').value;
+  if (!courseId || !studentId) { if (errEl) errEl.textContent = 'Select a course and student.'; return; }
+  btn.disabled = true; btn.textContent = 'Adding…';
+  try {
+    var { error } = await sb.from('enrollments').insert({ user_id: studentId, course_id: parseInt(courseId) });
+    if (error) {
+      if (error.code === '23505') { if (errEl) errEl.textContent = 'This student is already enrolled in this course.'; }
+      else { if (errEl) errEl.textContent = esc(error.message); }
+      btn.disabled = false; btn.textContent = 'Add';
+      return;
+    }
+    hideModal();
+    loadAdminEnrollments();
+  } catch (e) {
+    if (errEl) errEl.textContent = esc(e.message);
+    btn.disabled = false; btn.textContent = 'Add';
+  }
+}
+
+async function removeEnrollment(id) {
+  if (!confirm('Remove this enrollment?')) return;
+  try {
+    var { error } = await sb.from('enrollments').delete().eq('id', id);
+    if (error) { alert('Error: ' + error.message); return; }
+    loadAdminEnrollments();
+  } catch (e) { alert('Error: ' + e.message); }
+}
+
 // Global paste handler for image pasting into question/option inputs
 document.addEventListener('paste', function(e) {
   if (!document.getElementById('admin-modal')?.classList.contains('show')) return;
@@ -3493,7 +3617,7 @@ async function adminSaveDeviceLimit(userId) {
     requestAnimationFrame(function() { fresh.forEach(function(el) { el.classList.add('sr-in'); }); });
   }
   var dTimers = {};
-  ['admin-page-courses','admin-page-students','admin-page-admins','admin-page-categories','admin-page-community','admin-page-support'].forEach(function(id) {
+  ['admin-page-courses','admin-page-students','admin-page-enrollments','admin-page-admins','admin-page-categories','admin-page-community','admin-page-support'].forEach(function(id) {
     var container = document.getElementById(id);
     if (!container) return;
     new MutationObserver(function() {
