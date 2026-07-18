@@ -40,8 +40,9 @@ export async function onRequest(context) {
     mid = verified.manifestId;
   }
 
-  // Enrollment check
-  const enrolled = await checkEnrollment(userId, lessonId, env);
+  // Enrollment check — when mid is specified, use manifest's lesson_id if available
+  const checkLessonId = mid ? null : lessonId;
+  const enrolled = await checkEnrollment(userId, checkLessonId, env);
   if (!enrolled) {
     return corsResponse({ error: 'Access denied: not enrolled' }, 403);
   }
