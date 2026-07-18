@@ -22,7 +22,12 @@ async function playEncryptedVideo(lessonId, container) {
     const keyResp = await fetch(`${base}/api/key/${lessonId}`, { headers });
     if (!keyResp.ok) throw new Error('Access denied');
     const keyData = await keyResp.arrayBuffer();
-    const key = await crypto.subtle.importKey('raw', keyData, { name: 'AES-GCM' }, false, ['decrypt']);
+    const jwtHash = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(token));
+    const wrapKey = new Uint8Array(jwtHash);
+    const keyRaw = new Uint8Array(keyData);
+    const unwrapped = new Uint8Array(32);
+    for (let i = 0; i < 32; i++) unwrapped[i] = keyRaw[i] ^ wrapKey[i];
+    const key = await crypto.subtle.importKey('raw', unwrapped, { name: 'AES-GCM' }, false, ['decrypt']);
 
     buildPlayerUI(wrap, manifest, key, token, base, null);
   } catch (err) {
@@ -74,7 +79,12 @@ async function playEncryptedVideoById(manifestId, container) {
     const keyResp = await fetch(`${base}/api/key/0?${keyParam}`, { headers });
     if (!keyResp.ok) throw new Error('Access denied');
     const keyData = await keyResp.arrayBuffer();
-    const key = await crypto.subtle.importKey('raw', keyData, { name: 'AES-GCM' }, false, ['decrypt']);
+    const jwtHash = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(token));
+    const wrapKey = new Uint8Array(jwtHash);
+    const keyRaw = new Uint8Array(keyData);
+    const unwrapped = new Uint8Array(32);
+    for (let i = 0; i < 32; i++) unwrapped[i] = keyRaw[i] ^ wrapKey[i];
+    const key = await crypto.subtle.importKey('raw', unwrapped, { name: 'AES-GCM' }, false, ['decrypt']);
 
     buildPlayerUI(container, manifest, key, token, base, isTicket ? manifestId : null);
   } catch (err) {

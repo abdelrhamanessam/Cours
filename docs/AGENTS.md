@@ -24,6 +24,7 @@ exams       → id, lesson_id(FK,unique), pass_score
 exam_questions→ id, exam_id(FK), question, options(jsonb), correct(int), sort_order
 profiles    → id(uuid,PK→auth.users), name, role(student|admin)
 progress    → id, user_id(FK→profiles), lesson_id(FK), hw_score, exam_score, exam_completed, hw_result(jsonb), exam_result(jsonb)
+enrollments → id, user_id(FK→profiles), course_id(FK→courses), created_at
 ```
 
 ## Dev Server
@@ -125,3 +126,11 @@ node --check script.js  # syntax check only
 - `E:\New folder\admin.html` — standalone admin panel with CRUD
 - `E:\New folder\index.html` — 6 views + auth modal + Supabase CDN
 - `E:\New folder\style.css` — all design tokens + component styles (~450 lines)
+
+### Migration order
+1. database_final.sql
+2. migration_profiles_rls.sql
+3. migration_video.sql
+4. migration_video_rls.sql
+5. migration_enrollments.sql
+6. All other migrations in filename order

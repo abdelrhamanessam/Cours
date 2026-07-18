@@ -11,7 +11,7 @@
 <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/contrib/auto-render.min.js" crossorigin="anonymous"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="https://cdn.jsdelivr.net/npm/mammoth@1.8.0/mammoth.browser.min.js"></script>
-<script src="/mega-upload.js"></script>
+<script src="/mega-upload.js?v=2"></script>
 <style>
 :root{--z-modal:100;--z-modal-backdrop:99;--z-sticky:50;--z-tooltip:200;--z-toast:300}
 .admin-body{padding:40px 0}
@@ -1353,9 +1353,27 @@ function fmtSize(bytes) {
 async function loadAdminVideos() {
   const el = document.getElementById('admin-page-videos');
   el.innerHTML = '<h2 style="margin-bottom:16px">Encrypted Videos</h2>';
-  el.innerHTML += '<div class="admin-card" style="padding:20px;margin-bottom:20px"><h3 style="margin-bottom:12px">Upload New Video</h3><input type="text" id="enc-video-name" placeholder="Video name (e.g. Algebra Lesson 1)" style="width:100%;margin-bottom:8px;padding:8px 10px;background:var(--bg-card);color:var(--fg);border:1px solid var(--border);border-radius:6px;font-size:.875rem"><input type="file" id="enc-video-file" accept="video/mp4,video/webm" style="margin-bottom:12px"><input type="email" id="enc-mega-email" placeholder="Mega email (session only)" autocomplete="off" style="width:100%;margin-bottom:6px;padding:8px 10px;background:var(--bg-card);color:var(--fg);border:1px solid var(--border);border-radius:6px;font-size:.875rem;box-sizing:border-box"><input type="password" id="enc-mega-password" placeholder="Mega password (session only — NOT stored)" autocomplete="new-password" style="width:100%;margin-bottom:10px;padding:8px 10px;background:var(--bg-card);color:var(--fg);border:1px solid var(--border);border-radius:6px;font-size:.875rem;box-sizing:border-box"><p style="font-size:.75rem;color:var(--muted);margin-bottom:8px">Mega credentials are used in-browser only and never stored. Cleared after upload completes.</p><button class="btn btn-primary" onclick="uploadEncryptedVideo()">Upload & Encrypt → Mega</button><div id="enc-upload-progress" style="display:none;margin-top:12px"><div style="height:6px;background:var(--border);border-radius:4px;overflow:hidden"><div id="enc-upload-bar" style="height:100%;width:0%;background:var(--primary);transition:width .3s"></div></div><span id="enc-upload-text" style="font-size:.75rem;color:var(--muted);margin-top:4px;display:block"></span></div></div>';
+  el.innerHTML += '<div class="admin-card" style="padding:20px;margin-bottom:20px"><h3 style="margin-bottom:12px">Upload New Video</h3>' +
+  '<input type="text" id="enc-video-name" placeholder="Video name (e.g. Algebra Lesson 1)" style="width:100%;margin-bottom:8px;padding:8px 10px;background:var(--bg-card);color:var(--fg);border:1px solid var(--border);border-radius:6px;font-size:.875rem">' +
+  '<select id="enc-video-lesson" style="width:100%;margin-bottom:8px;padding:8px 10px;background:var(--bg-card);color:var(--fg);border:1px solid var(--border);border-radius:6px;font-size:.875rem;box-sizing:border-box"><option value="">— Select lesson (optional) —</option></select>' +
+  '<input type="file" id="enc-video-file" accept="video/mp4,video/webm" style="margin-bottom:12px">' +
+  '<input type="email" id="enc-mega-email" placeholder="Mega email (session only)" autocomplete="off" style="width:100%;margin-bottom:6px;padding:8px 10px;background:var(--bg-card);color:var(--fg);border:1px solid var(--border);border-radius:6px;font-size:.875rem;box-sizing:border-box"><input type="password" id="enc-mega-password" placeholder="Mega password (session only — NOT stored)" autocomplete="new-password" style="width:100%;margin-bottom:10px;padding:8px 10px;background:var(--bg-card);color:var(--fg);border:1px solid var(--border);border-radius:6px;font-size:.875rem;box-sizing:border-box"><p style="font-size:.75rem;color:var(--muted);margin-bottom:8px">Mega credentials are used in-browser only and never stored. Cleared after upload completes.</p><button class="btn btn-primary" onclick="uploadEncryptedVideo()">Upload & Encrypt → Mega</button><div id="enc-upload-progress" style="display:none;margin-top:12px"><div style="height:6px;background:var(--border);border-radius:4px;overflow:hidden"><div id="enc-upload-bar" style="height:100%;width:0%;background:var(--primary);transition:width .3s"></div></div><span id="enc-upload-text" style="font-size:.75rem;color:var(--muted);margin-top:4px;display:block"></span></div></div>';
   el.innerHTML += '<div class="admin-card" style="padding:20px;margin-bottom:20px"><h3 style="margin-bottom:12px">Mega Storage</h3><p style="font-size:.85rem;color:var(--muted);margin-bottom:8px">Mega credentials are entered in the upload form above (session only — never stored).</p><div id="mega-accounts-list"><div style="color:var(--muted);font-size:.85rem;padding:4px 0">Mega storage status unknown — upload a video to verify connectivity.</div></div></div>';
   el.innerHTML += '<div id="enc-video-list"></div>';
+  (async function() {
+    try {
+      var { data: lessons } = await sb.from('lessons').select('id,title,course_id').order('course_id').order('id');
+      var sel = document.getElementById('enc-video-lesson');
+      if (sel && lessons) {
+        lessons.forEach(function(l) {
+          var opt = document.createElement('option');
+          opt.value = l.id;
+          opt.textContent = 'Lesson ' + l.id + ': ' + l.title;
+          sel.appendChild(opt);
+        });
+      }
+    } catch(e) { console.warn('Failed to load lessons for upload form', e); }
+  })();
   await renderEncryptedVideoList();
 }
 
@@ -1430,6 +1448,8 @@ async function uploadEncryptedVideo() {
     const form = new FormData();
     form.append('file', file);
     form.append('name', videoName);
+    var lessonIdInput = document.getElementById('enc-video-lesson');
+    if (lessonIdInput && lessonIdInput.value) form.append('lesson_id', lessonIdInput.value);
 
     bar.style.width = '30%';
     text.textContent = 'Uploading & encrypting...';

@@ -135,7 +135,7 @@ export async function onRequest(context) {
       'Content-Type': 'application/json', 'Prefer': 'return=minimal',
     },
     body: JSON.stringify({
-      id: manifestId, course_id: null, lesson_id: null,
+      id: manifestId, course_id: null, lesson_id: form.get('lesson_id') ? parseInt(form.get('lesson_id')) : null,
       master_key: null, total_segments: numSegments, segment_duration: 0,
       file_size: totalBytes,
       created_at: new Date().toISOString(),

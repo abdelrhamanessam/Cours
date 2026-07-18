@@ -79,11 +79,18 @@ export async function onRequest(context) {
     return corsResponse({ error: 'Server misconfiguration: no key source' }, 500);
   }
 
-  // ── 7. Log access (non-blocking) ───────────────────
+  // ── 7. Wrap key with session-bound JWT hash ───────────
+  const wrapEncoder = new TextEncoder();
+  const jwtHash = await crypto.subtle.digest('SHA-256', wrapEncoder.encode(token));
+  const wrapKeyArr = new Uint8Array(jwtHash);
+  const wrappedKey = new Uint8Array(keyBytes.length);
+  for (let i = 0; i < keyBytes.length; i++) wrappedKey[i] = keyBytes[i] ^ wrapKeyArr[i];
+
+  // ── 8. Log access (non-blocking) ───────────────────
   context.waitUntil(logKeyAccess(userId, manifest.id, request, env));
 
-  // ── 8. Return key bytes ────────────────────────────
-  return new Response(keyBytes, {
+  // ── 9. Return wrapped key bytes ────────────────────
+  return new Response(wrappedKey, {
     headers: mergeHeaders(CORS_HEADERS, SECURITY_HEADERS, {
       'Content-Type': 'application/octet-stream',
     }),

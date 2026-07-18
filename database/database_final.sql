@@ -5,6 +5,7 @@
 -- ============================================
 
 -- DROP ALL EXISTING TABLES
+drop table if exists enrollments cascade;
 drop table if exists progress cascade;
 drop table if exists exam_questions cascade;
 drop table if exists exams cascade;
@@ -261,7 +262,7 @@ begin
     from (values
       ('courses','id'),('lessons','id'),('lectures','id'),
       ('homework','id'),('hw_questions','id'),('exams','id'),
-      ('exam_questions','id'),('progress','id')
+      ('exam_questions','id'),('progress','id'),('enrollments','id')
     ) as t(tablename, columnname)
   loop
     seq_name := pg_get_serial_sequence(rec.tablename, rec.columnname);

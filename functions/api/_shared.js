@@ -77,21 +77,15 @@ async function checkAdmin(user, env) {
   }
 }
 
-// Note: Enrollment verification is a placeholder.
-// The actual enrollment/subscription logic depends on your business model.
-// Adjust the table name and query to match your schema.
 async function checkEnrollment(userId, lessonId, env) {
   if (!userId) return false;
-  if (!lessonId) return true; // No lessonId bound — access gated by manifest/key endpoints
+  if (!lessonId) return true;
   try {
-    // TODO: Replace with your actual enrollment/subscription check
-    // Example: Check if user purchased the course containing this lesson
-    // const enrollments = await supabaseGet('enrollments',
-    //   `user_id=eq.${userId}&course_id=eq.${courseId}&status=eq.active`,
-    //   env
-    // );
-    // return enrollments && enrollments.length > 0;
-    return true; // TEMP: Allow all authenticated users
+    const lesson = await supabaseGet('lessons', `id=eq.${lessonId}&select=course_id`, env);
+    if (!lesson || lesson.length === 0) return false;
+    const courseId = lesson[0].course_id;
+    const enrollments = await supabaseGet('enrollments', `user_id=eq.${userId}&course_id=eq.${courseId}&select=id`, env);
+    return enrollments && enrollments.length > 0;
   } catch {
     return false;
   }
@@ -198,26 +192,6 @@ async function deriveKey(secret, manifestId) {
   return new Uint8Array(bits);
 }
 
-// Derive a session-bound key from the master key + context
-// This ensures the key is specific to (user, day) and cannot be reused
-async function deriveSessionKey(secret, manifestId, userId, sessionId) {
-  const encoder = new TextEncoder();
-  const keyMaterial = await crypto.subtle.importKey(
-    'raw', encoder.encode(secret), 'HKDF', false, ['deriveBits']
-  );
-  const today = new Date().toISOString().slice(0, 10);
-  const info = `${manifestId}:${userId}:${sessionId || ''}:${today}`;
-  const bits = await crypto.subtle.deriveBits(
-    {
-      name: 'HKDF', hash: 'SHA-256',
-      salt: encoder.encode('mr-maths-session-key-v2'),
-      info: encoder.encode(info),
-    },
-    keyMaterial, 256
-  );
-  return new Uint8Array(bits);
-}
-
 // ── Helpers ───────────────────────────────────────────
 function bytesToHex(bytes) {
   return Array.from(new Uint8Array(bytes))
@@ -262,7 +236,7 @@ export {
   checkRateLimit,
   verifyTokenSignature,
   deriveKey,
-  deriveSessionKey,
+
   bytesToHex,
   hexToBytes,
   parseAuthToken,
