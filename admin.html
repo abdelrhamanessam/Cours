@@ -1558,14 +1558,7 @@ async function onEncVideoSelect() {
   var hidden = document.getElementById('f-lect-enc-manifest');
   var mid = sel.value;
   if (!mid) { hidden.value = ''; return; }
-  try {
-    hidden.value = '...';
-    var { data: { session } } = await sb.auth.getSession();
-    var resp = await fetch('/api/ticket?mid=' + mid, { method: 'POST', headers: { 'Authorization': 'Bearer ' + (session?.access_token || '') } });
-    if (!resp.ok) { hidden.value = ''; alert('Failed to create ticket'); return; }
-    var result = await resp.json();
-    hidden.value = result.ticket;
-  } catch(e) { hidden.value = ''; alert('Error: ' + e.message); }
+  hidden.value = mid; // Store manifestId directly (tickets expire in 60s)
 }
 async function checkMegaStatus() {
   const list = document.getElementById('mega-accounts-list');
