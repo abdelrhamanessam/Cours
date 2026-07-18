@@ -192,7 +192,13 @@ async function streamWithMSE(video, status, manifest, key, token, base) {
       }
 
       if (!aborted) {
-        mediaSource.endOfStream();
+        try {
+          if (mediaSource.readyState === 'open') {
+            mediaSource.endOfStream();
+          }
+        } catch (e) {
+          console.warn('endOfStream error:', e);
+        }
         status.textContent = '';
         resolve();
       }
